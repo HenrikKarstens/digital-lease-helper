@@ -36,6 +36,7 @@ export interface MeterReading {
 export interface HandoverData {
   // Step 1a/1b
   transactionType: 'rental' | 'sale' | null;
+  handoverDirection: 'move-in' | 'move-out' | null;
   role: 'landlord' | 'tenant' | null;
   // Step 3-4
   propertyAddress: string;
@@ -69,6 +70,7 @@ export interface HandoverData {
 
 const defaultData: HandoverData = {
   transactionType: null,
+  handoverDirection: null,
   role: null,
   propertyAddress: '',
   landlordName: '',

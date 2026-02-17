@@ -93,7 +93,7 @@ export const Step12Deposit = () => {
         </motion.div>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-          <Button onClick={() => setCurrentStep(13)} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+          <Button onClick={() => setCurrentStep(14)} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
             <CheckCircle2 className="w-4 h-4" />
             Weiter zur Finalisierung
           </Button>

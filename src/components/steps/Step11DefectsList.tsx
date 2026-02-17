@@ -2,27 +2,29 @@ import { motion } from 'framer-motion';
 import { MapPin, AlertTriangle, Euro, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
+import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export const Step11DefectsList = () => {
   const { data, setCurrentStep } = useHandover();
+  const { isMoveIn } = useTransactionLabels();
   const totalCost = data.findings.reduce((sum, f) => sum + f.recommendedWithholding, 0);
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
       <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-2 text-center">
-        Mängelübersicht
+        {isMoveIn ? 'Zustandsdokumentation' : 'Mängelübersicht'}
       </motion.h2>
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-muted-foreground text-center mb-6 text-sm">
-        Alle dokumentierten Mängel aus der Beweissicherung
+        {isMoveIn ? 'Alle dokumentierten Zustände bei Einzug' : 'Alle dokumentierten Mängel aus der Beweissicherung'}
       </motion.p>
 
       <div className="w-full max-w-md space-y-4">
         {data.findings.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card rounded-2xl p-8 text-center">
             <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-3" />
-            <p className="font-semibold">Keine Mängel erfasst</p>
-            <p className="text-sm text-muted-foreground mt-1">Es wurden keine Mängel in der Beweissicherung dokumentiert.</p>
+            <p className="font-semibold">{isMoveIn ? 'Keine Befunde dokumentiert' : 'Keine Mängel erfasst'}</p>
+            <p className="text-sm text-muted-foreground mt-1">{isMoveIn ? 'Es wurden keine Befunde bei der Zustandsdokumentation erfasst.' : 'Es wurden keine Mängel in der Beweissicherung dokumentiert.'}</p>
           </motion.div>
         ) : (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card rounded-2xl overflow-hidden">
@@ -86,8 +88,8 @@ export const Step11DefectsList = () => {
         ))}
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-          <Button onClick={() => setCurrentStep(12)} className="w-full h-12 rounded-2xl font-semibold" size="lg">
-            Weiter zur Kautionsberechnung
+          <Button onClick={() => setCurrentStep(isMoveIn ? 14 : 13)} className="w-full h-12 rounded-2xl font-semibold" size="lg">
+            {isMoveIn ? 'Weiter zur Finalisierung' : 'Weiter zur Kautionsberechnung'}
           </Button>
         </motion.div>
       </div>

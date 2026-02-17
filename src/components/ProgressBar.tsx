@@ -2,7 +2,7 @@ import { useHandover } from '@/context/HandoverContext';
 import { cn } from '@/lib/utils';
 
 const STEPS = [
-  'Art', 'Rolle', 'Einstieg', 'Daten', 'Grundriss', 'Teilnehmer', 'Beweis',
+  'Art', 'Rolle', 'Begehung', 'Einstieg', 'Daten', 'Grundriss', 'Teilnehmer', 'Beweis',
   'Zähler', 'Signatur', 'NK-Check', 'Mängel', 'Kaution', 'Zertifikat', 'Utility'
 ];
 
@@ -16,7 +16,7 @@ export const ProgressBar = () => {
       <div className="max-w-lg mx-auto">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-medium text-muted-foreground">
-            Schritt {currentStep} von 14
+            Schritt {currentStep} von 15
           </span>
           <span className="text-xs font-medium text-muted-foreground">
             {STEPS[currentStep - 1]}

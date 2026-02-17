@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Camera, X, CheckCircle2, Crosshair, Clock, Compass, AlertTriangle, Euro } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover, Finding } from '@/context/HandoverContext';
+import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState, useEffect } from 'react';
 
 const AI_RESULTS = [
@@ -40,6 +41,7 @@ const analysisMessages = [
 ];
 
 export const Step7Evidence = () => {
+  const { evidenceTitle, evidenceSubtitle, isMoveIn } = useTransactionLabels();
   const { data, updateData, setCurrentStep } = useHandover();
   const [phase, setPhase] = useState<Phase>('floorplan');
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
@@ -103,10 +105,10 @@ export const Step7Evidence = () => {
     return (
       <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
         <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-2 text-center">
-          Beweissicherung
+          {evidenceTitle}
         </motion.h2>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-muted-foreground text-center mb-6 text-sm">
-          Tippen Sie auf den Grundriss, um einen Mangel zu dokumentieren
+          {evidenceSubtitle}
         </motion.p>
 
         <motion.div
@@ -182,7 +184,7 @@ export const Step7Evidence = () => {
               <span>Gesamt empfohlener Einbehalt</span>
               <span className="text-primary">{data.findings.reduce((sum, f) => sum + f.recommendedWithholding, 0)} €</span>
             </div>
-            <Button onClick={() => setCurrentStep(8)} className="w-full h-12 rounded-2xl font-semibold mt-2" size="lg">
+            <Button onClick={() => setCurrentStep(9)} className="w-full h-12 rounded-2xl font-semibold mt-2" size="lg">
               Weiter zur Zählererfassung
             </Button>
           </motion.div>

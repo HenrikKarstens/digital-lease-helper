@@ -107,7 +107,7 @@ export const Step10NKCheck = () => {
               </div>
             </motion.div>
 
-            <Button onClick={() => setCurrentStep(11)} className="w-full h-12 rounded-2xl font-semibold" size="lg">
+            <Button onClick={() => setCurrentStep(12)} className="w-full h-12 rounded-2xl font-semibold" size="lg">
               Weiter zur Mängelübersicht
             </Button>
           </>
