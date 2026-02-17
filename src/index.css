@@ -111,6 +111,59 @@
   }
 }
 
+/* Compact mode */
+.compact * {
+  --radius: 0.375rem;
+}
+.compact .glass-card {
+  @apply p-3;
+}
+.compact h1, .compact h2, .compact h3 {
+  @apply leading-tight;
+}
+.compact .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.5rem * var(--tw-space-y-reverse));
+}
+.compact .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.75rem * var(--tw-space-y-reverse));
+}
+.compact .gap-4 {
+  gap: 0.5rem;
+}
+.compact .p-5 {
+  padding: 0.75rem;
+}
+.compact .py-6 {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+.compact .py-12 {
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+/* High contrast mode */
+.high-contrast {
+  --background: 60 10% 95%;
+  --foreground: 0 0% 0%;
+  --card: 60 10% 98%;
+  --card-foreground: 0 0% 0%;
+  --primary: 220 90% 30%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 60 5% 85%;
+  --muted-foreground: 0 0% 20%;
+  --border: 0 0% 60%;
+  --input: 0 0% 70%;
+  --accent: 142 80% 35%;
+  --accent-foreground: 0 0% 100%;
+  --success: 142 80% 35%;
+  --success-foreground: 0 0% 100%;
+}
+
 @layer utilities {
   .glass-card {
     @apply bg-card/80 backdrop-blur-xl border border-border/50 shadow-lg;
