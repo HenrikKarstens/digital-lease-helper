@@ -140,7 +140,7 @@ export const Step5FloorPlan = () => {
           ))}
         </div>
 
-        <Button onClick={() => setCurrentStep(6)} className="w-full h-13 rounded-2xl text-base font-semibold gap-2 mt-4" size="lg">
+        <Button onClick={() => setCurrentStep(7)} className="w-full h-13 rounded-2xl text-base font-semibold gap-2 mt-4" size="lg">
           Weiter
           <ArrowRight className="w-5 h-5" />
         </Button>

@@ -32,7 +32,7 @@ export const Step3SmartEntry = () => {
         contractStart: '2021-04-01',
         contractEnd: '2025-03-31',
       });
-      setTimeout(() => setCurrentStep(4), 500);
+      setTimeout(() => setCurrentStep(5), 500);
       return;
     }
     const timer = setTimeout(() => setAnalysisStep(s => s + 1), 1200);
@@ -45,7 +45,7 @@ export const Step3SmartEntry = () => {
   };
 
   const handleManual = () => {
-    setCurrentStep(4);
+    setCurrentStep(5);
   };
 
   if (analyzing) {

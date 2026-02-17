@@ -75,7 +75,7 @@ export const Step4Validation = () => {
                 { id: '2', name: data.tenantName || clientRole, role: clientRole, email: data.tenantEmail, present: true },
               ]
             });
-            setCurrentStep(5);
+            setCurrentStep(6);
           }}
           className="w-full h-13 rounded-2xl text-base font-semibold gap-2"
           size="lg"
