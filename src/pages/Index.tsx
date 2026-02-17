@@ -8,24 +8,19 @@ import { Step4Validation } from '@/components/steps/Step4Validation';
 import { Step5FloorPlan } from '@/components/steps/Step5FloorPlan';
 import { Step6Participants } from '@/components/steps/Step6Participants';
 import { Step7Evidence } from '@/components/steps/Step7Evidence';
+import { Step8MeterScan } from '@/components/steps/Step8MeterScan';
+import { Step9Signature } from '@/components/steps/Step9Signature';
+import { Step10NKCheck } from '@/components/steps/Step10NKCheck';
+import { Step11DefectsList } from '@/components/steps/Step11DefectsList';
+import { Step12Deposit } from '@/components/steps/Step12Deposit';
+import { Step13Certificate } from '@/components/steps/Step13Certificate';
+import { Step14Utility } from '@/components/steps/Step14Utility';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-const stepComponents: Record<number, React.FC> = {
-  0: Step1Hero,
-  1: Step2Role,
-  2: Step2Role,
-  3: Step3SmartEntry,
-  4: Step4Validation,
-  5: Step5FloorPlan,
-  6: Step6Participants,
-  7: Step7Evidence,
-};
 
 const Index = () => {
   const { currentStep, setCurrentStep } = useHandover();
 
-  // Map step 1 to role selection (step 2 in plan)
   const getStepComponent = () => {
     switch (currentStep) {
       case 0: return <Step1Hero />;
@@ -36,6 +31,13 @@ const Index = () => {
       case 5: return <Step5FloorPlan />;
       case 6: return <Step6Participants />;
       case 7: return <Step7Evidence />;
+      case 8: return <Step8MeterScan />;
+      case 9: return <Step9Signature />;
+      case 10: return <Step10NKCheck />;
+      case 11: return <Step11DefectsList />;
+      case 12: return <Step12Deposit />;
+      case 13: return <Step13Certificate />;
+      case 14: return <Step14Utility />;
       default: return <Step1Hero />;
     }
   };
