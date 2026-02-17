@@ -47,6 +47,9 @@ export interface HandoverData {
   depositAmount: string;
   contractStart: string;
   contractEnd: string;
+  // AI analysis results
+  depositLegalCheck: string;
+  renovationClauseAnalysis: string;
   // Step 5
   floorPlanUrl: string | null;
   rooms: { id: string; name: string; x: number; y: number }[];
@@ -80,6 +83,8 @@ const defaultData: HandoverData = {
   depositAmount: '',
   contractStart: '',
   contractEnd: '',
+  depositLegalCheck: '',
+  renovationClauseAnalysis: '',
   floorPlanUrl: null,
   rooms: [],
   participants: [],
