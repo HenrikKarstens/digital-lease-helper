@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { CheckCircle2, ArrowRight } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Scale, Paintbrush, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,8 @@ export const Step4Validation = () => {
     { key: 'contractStart', label: contractStartLabel, value: data.contractStart },
     { key: 'contractEnd', label: contractEndLabel, value: data.contractEnd },
   ] as const;
+
+  const hasLegalAnalysis = data.depositLegalCheck || data.renovationClauseAnalysis;
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
@@ -60,6 +62,44 @@ export const Step4Validation = () => {
           </div>
         ))}
       </motion.div>
+
+      {hasLegalAnalysis && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="w-full max-w-md mt-4 space-y-3"
+        >
+          <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+            <Scale className="w-4 h-4" />
+            KI-Rechtsanalyse
+          </h3>
+
+          {data.depositLegalCheck && (
+            <div className="glass-card rounded-2xl p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-primary shrink-0" />
+                <span className="text-xs font-semibold">Kautionsprüfung (§ 551 BGB)</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {data.depositLegalCheck}
+              </p>
+            </div>
+          )}
+
+          {data.renovationClauseAnalysis && (
+            <div className="glass-card rounded-2xl p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Paintbrush className="w-4 h-4 text-primary shrink-0" />
+                <span className="text-xs font-semibold">Schönheitsreparaturen</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {data.renovationClauseAnalysis}
+              </p>
+            </div>
+          )}
+        </motion.div>
+      )}
 
       <motion.div
         initial={{ opacity: 0 }}
