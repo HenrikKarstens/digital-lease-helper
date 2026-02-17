@@ -1,16 +1,14 @@
 import { useHandover } from '@/context/HandoverContext';
 import { cn } from '@/lib/utils';
-import { Check, Lock } from 'lucide-react';
 
 const STEPS = [
-  'Start', 'Rolle', 'Einstieg', 'Daten', 'Grundriss', 'Teilnehmer', 'Beweis',
+  'Art', 'Rolle', 'Einstieg', 'Daten', 'Grundriss', 'Teilnehmer', 'Beweis',
   'Zähler', 'Signatur', 'NK-Check', 'Mängel', 'Kaution', 'Zertifikat', 'Utility'
 ];
 
 export const ProgressBar = () => {
   const { currentStep } = useHandover();
 
-  // Step 0 = hero/start (no progress bar shown)
   if (currentStep === 0) return null;
 
   return (
@@ -29,7 +27,6 @@ export const ProgressBar = () => {
             const stepNum = i + 1;
             const isCompleted = stepNum < currentStep;
             const isCurrent = stepNum === currentStep;
-            const isLocked = false;
 
             return (
               <div
@@ -38,8 +35,7 @@ export const ProgressBar = () => {
                   'h-1.5 flex-1 rounded-full transition-all duration-500',
                   isCompleted && 'bg-success',
                   isCurrent && 'bg-primary',
-                  !isCompleted && !isCurrent && !isLocked && 'bg-muted',
-                  isLocked && 'bg-muted/50'
+                  !isCompleted && !isCurrent && 'bg-muted'
                 )}
               />
             );

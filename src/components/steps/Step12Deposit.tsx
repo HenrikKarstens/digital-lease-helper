@@ -2,9 +2,11 @@ import { motion } from 'framer-motion';
 import { Scale, Euro, AlertTriangle, CheckCircle2, Shield, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
+import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 
 export const Step12Deposit = () => {
   const { data, setCurrentStep } = useHandover();
+  const { depositLabel, ownerRole, isSale } = useTransactionLabels();
 
   const deposit = parseFloat(data.depositAmount) || 0;
   const defectsCost = data.findings.reduce((sum, f) => sum + f.recommendedWithholding, 0);
@@ -16,14 +18,13 @@ export const Step12Deposit = () => {
   return (
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
       <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-2 text-center">
-        Kautions-Schiedsrichter
+        {isSale ? 'Kaufpreis-Verrechnung' : 'Kautions-Schiedsrichter'}
       </motion.h2>
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-muted-foreground text-center mb-6 text-sm">
-        Rechtssichere Kautionsberechnung auf BGH-Basis
+        Rechtssichere Berechnung auf BGH-Basis
       </motion.p>
 
       <div className="w-full max-w-md space-y-4">
-        {/* Calculation breakdown */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2 mb-2">
             <Scale className="w-5 h-5 text-primary" />
@@ -31,7 +32,7 @@ export const Step12Deposit = () => {
           </div>
 
           <div className="flex justify-between items-center py-2 border-b border-border/30">
-            <span className="text-sm">Kaution</span>
+            <span className="text-sm">{depositLabel}</span>
             <span className="font-semibold">{deposit.toFixed(2)} €</span>
           </div>
 
@@ -60,7 +61,6 @@ export const Step12Deposit = () => {
           </div>
         </motion.div>
 
-        {/* Warning if full withhold */}
         {payout === 0 && deposit > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
             className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 flex items-start gap-3"
@@ -68,12 +68,11 @@ export const Step12Deposit = () => {
             <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-destructive">Vollständiger Einbehalt</p>
-              <p className="text-xs text-muted-foreground mt-1">Die Abzüge übersteigen die Kaution. Der Vermieter hat ggf. Nachforderungsansprüche.</p>
+              <p className="text-xs text-muted-foreground mt-1">Die Abzüge übersteigen {isSale ? 'den Restbetrag' : 'die Kaution'}. {ownerRole} hat ggf. Nachforderungsansprüche.</p>
             </div>
           </motion.div>
         )}
 
-        {/* Legal text */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="glass-card rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <Shield className="w-5 h-5 text-success" />

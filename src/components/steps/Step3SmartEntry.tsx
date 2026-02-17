@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ScanLine, PenLine, Upload, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
+import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState, useEffect } from 'react';
 
 const analysisSteps = [
@@ -14,20 +15,20 @@ const analysisSteps = [
 
 export const Step3SmartEntry = () => {
   const { updateData, setCurrentStep } = useHandover();
+  const { contractLabel, isSale } = useTransactionLabels();
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisStep, setAnalysisStep] = useState(0);
 
   useEffect(() => {
     if (!analyzing) return;
     if (analysisStep >= analysisSteps.length) {
-      // Simulate extracted data
       updateData({
         propertyAddress: 'Musterstraße 42, 10115 Berlin',
-        landlordName: 'Dr. Thomas Müller',
+        landlordName: isSale ? 'Dr. Thomas Müller' : 'Dr. Thomas Müller',
         landlordEmail: 'mueller@immobilien.de',
-        tenantName: 'Anna Schmidt',
+        tenantName: isSale ? 'Anna Schmidt' : 'Anna Schmidt',
         tenantEmail: 'a.schmidt@mail.de',
-        depositAmount: '2.400',
+        depositAmount: isSale ? '15.000' : '2.400',
         contractStart: '2021-04-01',
         contractEnd: '2025-03-31',
       });
@@ -103,7 +104,7 @@ export const Step3SmartEntry = () => {
         transition={{ delay: 0.1 }}
         className="text-muted-foreground text-center mb-8 max-w-sm"
       >
-        Laden Sie Ihren Mietvertrag hoch oder geben Sie die Daten manuell ein
+        Laden Sie Ihren {contractLabel} hoch oder geben Sie die Daten manuell ein
       </motion.p>
 
       <div className="grid gap-4 w-full max-w-md">
@@ -120,7 +121,7 @@ export const Step3SmartEntry = () => {
             <ScanLine className="w-7 h-7 text-primary" />
           </div>
           <div>
-            <h3 className="font-semibold text-lg">Vertrag scannen</h3>
+            <h3 className="font-semibold text-lg">{contractLabel} scannen</h3>
             <p className="text-sm text-muted-foreground">KI-gestützte Analyse Ihres Vertrags</p>
           </div>
         </motion.button>

@@ -2,6 +2,7 @@ import { useHandover } from '@/context/HandoverContext';
 import { ProgressBar } from '@/components/ProgressBar';
 import { PageTransition } from '@/components/PageTransition';
 import { Step1Hero } from '@/components/steps/Step1Hero';
+import { Step1aTransactionType } from '@/components/steps/Step1aTransactionType';
 import { Step2Role } from '@/components/steps/Step2Role';
 import { Step3SmartEntry } from '@/components/steps/Step3SmartEntry';
 import { Step4Validation } from '@/components/steps/Step4Validation';
@@ -24,8 +25,8 @@ const Index = () => {
   const getStepComponent = () => {
     switch (currentStep) {
       case 0: return <Step1Hero />;
-      case 1: return <Step2Role />;
-      case 2: return <Step3SmartEntry />;
+      case 1: return <Step1aTransactionType />;
+      case 2: return <Step2Role />;
       case 3: return <Step3SmartEntry />;
       case 4: return <Step4Validation />;
       case 5: return <Step5FloorPlan />;

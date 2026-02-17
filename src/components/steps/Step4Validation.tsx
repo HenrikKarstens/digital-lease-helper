@@ -4,19 +4,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useHandover } from '@/context/HandoverContext';
+import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 
 export const Step4Validation = () => {
   const { data, updateData, setCurrentStep } = useHandover();
+  const { ownerRole, clientRole, depositLabel, contractStartLabel, contractEndLabel } = useTransactionLabels();
 
   const fields = [
     { key: 'propertyAddress', label: 'Objektadresse', value: data.propertyAddress },
-    { key: 'landlordName', label: 'Vermieter', value: data.landlordName },
-    { key: 'landlordEmail', label: 'E-Mail Vermieter', value: data.landlordEmail },
-    { key: 'tenantName', label: 'Mieter', value: data.tenantName },
-    { key: 'tenantEmail', label: 'E-Mail Mieter', value: data.tenantEmail },
-    { key: 'depositAmount', label: 'Kaution (€)', value: data.depositAmount },
-    { key: 'contractStart', label: 'Vertragsbeginn', value: data.contractStart },
-    { key: 'contractEnd', label: 'Vertragsende', value: data.contractEnd },
+    { key: 'landlordName', label: ownerRole, value: data.landlordName },
+    { key: 'landlordEmail', label: `E-Mail ${ownerRole}`, value: data.landlordEmail },
+    { key: 'tenantName', label: clientRole, value: data.tenantName },
+    { key: 'tenantEmail', label: `E-Mail ${clientRole}`, value: data.tenantEmail },
+    { key: 'depositAmount', label: `${depositLabel} (€)`, value: data.depositAmount },
+    { key: 'contractStart', label: contractStartLabel, value: data.contractStart },
+    { key: 'contractEnd', label: contractEndLabel, value: data.contractEnd },
   ] as const;
 
   return (
@@ -43,7 +45,7 @@ export const Step4Validation = () => {
         transition={{ delay: 0.2 }}
         className="glass-card rounded-2xl p-6 w-full max-w-md space-y-4"
       >
-        {fields.map((field, i) => (
+        {fields.map((field) => (
           <div key={field.key} className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-muted-foreground">{field.label}</Label>
@@ -67,11 +69,10 @@ export const Step4Validation = () => {
       >
         <Button
           onClick={() => {
-            // Pre-fill participants from data
             updateData({
               participants: [
-                { id: '1', name: data.landlordName || 'Vermieter', role: 'Vermieter', email: data.landlordEmail, present: true },
-                { id: '2', name: data.tenantName || 'Mieter', role: 'Mieter', email: data.tenantEmail, present: true },
+                { id: '1', name: data.landlordName || ownerRole, role: ownerRole, email: data.landlordEmail, present: true },
+                { id: '2', name: data.tenantName || clientRole, role: clientRole, email: data.tenantEmail, present: true },
               ]
             });
             setCurrentStep(5);
