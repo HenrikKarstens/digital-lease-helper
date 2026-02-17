@@ -23,6 +23,16 @@ export interface Finding {
   timestamp: string;
 }
 
+export interface MeterReading {
+  id: string;
+  medium: string;
+  meterNumber: string;
+  reading: string;
+  unit: string;
+  maloId: string;
+  photoUrl?: string;
+}
+
 export interface HandoverData {
   // Step 2
   role: 'landlord' | 'tenant' | null;
@@ -43,6 +53,17 @@ export interface HandoverData {
   attendancePhotoUrl: string | null;
   // Step 7
   findings: Finding[];
+  // Step 8
+  meterReadings: MeterReading[];
+  // Step 9
+  signatureLandlord: string | null;
+  signatureTenant: string | null;
+  // Step 10
+  nkVorauszahlung: number;
+  nkPrognose: number;
+  nkRisiko: 'niedrig' | 'mittel' | 'hoch';
+  // Step 13
+  protocolSent: boolean;
 }
 
 const defaultData: HandoverData = {
@@ -60,6 +81,13 @@ const defaultData: HandoverData = {
   participants: [],
   attendancePhotoUrl: null,
   findings: [],
+  meterReadings: [],
+  signatureLandlord: null,
+  signatureTenant: null,
+  nkVorauszahlung: 150,
+  nkPrognose: 210,
+  nkRisiko: 'hoch',
+  protocolSent: false,
 };
 
 interface HandoverContextType {

@@ -40,7 +40,7 @@ const analysisMessages = [
 ];
 
 export const Step7Evidence = () => {
-  const { data, updateData } = useHandover();
+  const { data, updateData, setCurrentStep } = useHandover();
   const [phase, setPhase] = useState<Phase>('floorplan');
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [pinPosition, setPinPosition] = useState<{ x: number; y: number } | null>(null);
@@ -182,6 +182,9 @@ export const Step7Evidence = () => {
               <span>Gesamt empfohlener Einbehalt</span>
               <span className="text-primary">{data.findings.reduce((sum, f) => sum + f.recommendedWithholding, 0)} €</span>
             </div>
+            <Button onClick={() => setCurrentStep(8)} className="w-full h-12 rounded-2xl font-semibold mt-2" size="lg">
+              Weiter zur Zählererfassung
+            </Button>
           </motion.div>
         )}
       </div>

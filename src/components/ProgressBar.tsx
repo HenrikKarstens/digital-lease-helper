@@ -29,7 +29,7 @@ export const ProgressBar = () => {
             const stepNum = i + 1;
             const isCompleted = stepNum < currentStep;
             const isCurrent = stepNum === currentStep;
-            const isLocked = stepNum > 7;
+            const isLocked = false;
 
             return (
               <div
