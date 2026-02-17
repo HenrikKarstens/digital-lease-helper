@@ -105,6 +105,7 @@ interface HandoverContextType {
   setCurrentStep: (step: number) => void;
   updateData: (partial: Partial<HandoverData>) => void;
   resetData: () => void;
+  loadProject: (savedData: Partial<HandoverData>, step: number) => void;
 }
 
 const HandoverContext = createContext<HandoverContextType | undefined>(undefined);
@@ -122,8 +123,13 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
     setCurrentStep(0);
   };
 
+  const loadProject = (savedData: Partial<HandoverData>, step: number) => {
+    setData({ ...defaultData, ...savedData });
+    setCurrentStep(step);
+  };
+
   return (
-    <HandoverContext.Provider value={{ data, currentStep, setCurrentStep, updateData, resetData }}>
+    <HandoverContext.Provider value={{ data, currentStep, setCurrentStep, updateData, resetData, loadProject }}>
       {children}
     </HandoverContext.Provider>
   );
