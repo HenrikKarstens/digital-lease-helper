@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { PenTool, Shield, CheckCircle2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
+import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useRef, useState, useEffect } from 'react';
 
 interface SignaturePadProps {
@@ -117,6 +118,7 @@ const SignaturePad = ({ label, value, onSave }: SignaturePadProps) => {
 
 export const Step9Signature = () => {
   const { data, updateData, setCurrentStep } = useHandover();
+  const { ownerRole, clientRole } = useTransactionLabels();
   const bothSigned = data.signatureLandlord && data.signatureTenant;
 
   return (
@@ -131,7 +133,7 @@ export const Step9Signature = () => {
       <div className="w-full max-w-md space-y-4">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <SignaturePad
-            label={data.landlordName || 'Vermieter'}
+            label={data.landlordName || ownerRole}
             value={data.signatureLandlord}
             onSave={(url) => updateData({ signatureLandlord: url })}
           />
@@ -139,13 +141,12 @@ export const Step9Signature = () => {
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <SignaturePad
-            label={data.tenantName || 'Mieter'}
+            label={data.tenantName || clientRole}
             value={data.signatureTenant}
             onSave={(url) => updateData({ signatureTenant: url })}
           />
         </motion.div>
 
-        {/* SHA-256 Info */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="glass-card rounded-2xl p-4 flex items-start gap-3">
           <Lock className="w-5 h-5 text-success shrink-0 mt-0.5" />
           <div>

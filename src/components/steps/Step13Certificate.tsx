@@ -2,11 +2,13 @@ import { motion } from 'framer-motion';
 import { FileText, Send, CheckCircle2, Shield, Mail, Calendar, MapPin, Users, Euro } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
+import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export const Step13Certificate = () => {
   const { data, updateData, setCurrentStep } = useHandover();
+  const { ownerRole, clientRole, depositLabel, isSale } = useTransactionLabels();
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
 
@@ -22,7 +24,7 @@ export const Step13Certificate = () => {
       updateData({ protocolSent: true });
       toast({
         title: '✅ Protokoll versendet!',
-        description: `Das EstateTurn-Zertifikat wurde an ${data.landlordEmail || 'vermieter@email.de'} und ${data.tenantEmail || 'mieter@email.de'} gesendet.`,
+        description: `Das EstateTurn-Zertifikat wurde an ${data.landlordEmail || 'email@beispiel.de'} und ${data.tenantEmail || 'email@beispiel.de'} gesendet.`,
       });
     }, 2000);
   };
@@ -37,13 +39,12 @@ export const Step13Certificate = () => {
       </motion.p>
 
       <div className="w-full max-w-md space-y-4">
-        {/* Certificate preview */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           className="glass-card rounded-2xl p-5 border-2 border-primary/20"
         >
           <div className="text-center mb-4 pb-4 border-b border-border/30">
             <FileText className="w-8 h-8 text-primary mx-auto mb-2" />
-            <h3 className="text-lg font-bold">Übergabeprotokoll</h3>
+            <h3 className="text-lg font-bold">{isSale ? 'Übergabeprotokoll (Kauf)' : 'Übergabeprotokoll'}</h3>
             <p className="text-xs text-muted-foreground font-mono mt-1">
               ID: ET-{Date.now().toString(36).toUpperCase()}
             </p>
@@ -70,7 +71,7 @@ export const Step13Certificate = () => {
               <Users className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs text-muted-foreground">Parteien</p>
-                <p className="font-medium">{data.landlordName || 'Vermieter'} / {data.tenantName || 'Mieter'}</p>
+                <p className="font-medium">{data.landlordName || ownerRole} / {data.tenantName || clientRole}</p>
               </div>
             </div>
 
@@ -99,11 +100,10 @@ export const Step13Certificate = () => {
 
           <div className="mt-4 pt-3 border-t border-border/30 flex items-center gap-2 text-xs text-muted-foreground">
             <Shield className="w-3.5 h-3.5 text-success" />
-            <span>SHA-256 versiegelt • Rechtssicher nach dt. Mietrecht</span>
+            <span>SHA-256 versiegelt • Rechtssicher nach dt. {isSale ? 'Kaufrecht' : 'Mietrecht'}</span>
           </div>
         </motion.div>
 
-        {/* Send action */}
         {!data.protocolSent ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
             <Button onClick={handleSend} disabled={sending} className="w-full h-14 rounded-2xl text-base font-semibold gap-2" size="lg">
@@ -127,7 +127,7 @@ export const Step13Certificate = () => {
             <p className="text-sm text-muted-foreground mt-1">Das Protokoll wurde an alle Beteiligten gesendet.</p>
             <div className="flex items-center justify-center gap-1 mt-3 text-xs text-muted-foreground">
               <Mail className="w-3.5 h-3.5" />
-              <span>{data.landlordEmail || 'vermieter@email.de'}, {data.tenantEmail || 'mieter@email.de'}</span>
+              <span>{data.landlordEmail || 'email@beispiel.de'}, {data.tenantEmail || 'email@beispiel.de'}</span>
             </div>
             <Button onClick={() => setCurrentStep(14)} className="w-full h-12 rounded-2xl font-semibold gap-2 mt-4" size="lg">
               Weiter zum Utility-Switch

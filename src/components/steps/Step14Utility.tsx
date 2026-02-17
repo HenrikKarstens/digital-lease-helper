@@ -2,11 +2,13 @@ import { motion } from 'framer-motion';
 import { Zap, Leaf, TrendingDown, Euro, ArrowRight, FileText, CheckCircle2, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
+import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export const Step14Utility = () => {
   const { data, resetData } = useHandover();
+  const { cancellationTarget } = useTransactionLabels();
   const [switched, setSwitched] = useState(false);
   const [cancellation, setCancellation] = useState(false);
   const { toast } = useToast();
@@ -93,7 +95,7 @@ export const Step14Utility = () => {
         >
           <div className="flex items-center gap-2 mb-3">
             <FileText className="w-5 h-5 text-muted-foreground" />
-            <h3 className="font-semibold text-sm">Kündigung für Altmieter</h3>
+            <h3 className="font-semibold text-sm">Kündigung für {cancellationTarget}</h3>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
             Automatisch generierte Kündigung des bestehenden Stromvertrags zum Auszugsdatum.
@@ -101,7 +103,7 @@ export const Step14Utility = () => {
           {!cancellation ? (
             <Button variant="outline" onClick={handleCancellation} className="w-full rounded-xl gap-2">
               <FileText className="w-4 h-4" />
-              Kündigung für Altmieter vorbereiten
+              Kündigung für {cancellationTarget} vorbereiten
             </Button>
           ) : (
             <div className="flex items-center gap-2 justify-center p-3 bg-secondary/40 rounded-xl text-sm font-medium">
