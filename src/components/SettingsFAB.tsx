@@ -1,15 +1,13 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/context/AuthContext';
 
 export const SettingsFAB = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
 
   // Don't show on auth page or settings page
-  if (!user || location.pathname === '/auth' || location.pathname === '/settings') return null;
+  if (location.pathname === '/auth' || location.pathname === '/settings') return null;
 
   return (
     <Button
@@ -23,3 +21,4 @@ export const SettingsFAB = () => {
     </Button>
   );
 };
+
