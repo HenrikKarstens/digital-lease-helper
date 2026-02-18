@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, Palette, Sun, Moon, Eye, Minimize2, Save } from 'lucide-react';
+import { ArrowLeft, User, Palette, Sun, Moon, Eye, Minimize2, Save, CloudUpload, LogIn } from 'lucide-react';
+import { getGuestProjectData, clearGuestProject } from '@/hooks/useGuestStorage';
+
 
 const viewModes: { mode: ViewMode; label: string; description: string; icon: typeof Sun }[] = [
   { mode: 'standard', label: 'Standard', description: 'Premium-Design mit voller Darstellung', icon: Sun },
@@ -72,34 +74,62 @@ const Settings = () => {
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
-        {/* Profile */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="border-border/50">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <User className="w-4 h-4" /> Profil
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Name</label>
-                <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Ihr Name" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">E-Mail</label>
-                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="E-Mail" type="email" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Handynummer</label>
-                <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+49..." type="tel" />
-              </div>
-              <Button onClick={saveProfile} disabled={saving} className="w-full gap-2">
-                <Save className="w-4 h-4" />
-                {saving ? 'Speichern...' : 'Profil speichern'}
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
+
+        {/* Cloud Upgrade – shown only for guests, always at top */}
+        {!user && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-4 flex items-start gap-3">
+                <CloudUpload className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-primary">Jetzt Konto erstellen</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Speichern Sie Ihre Daten sicher in der Cloud und greifen Sie von jedem Gerät darauf zu. Ihr lokaler Fortschritt wird dabei automatisch übertragen.
+                  </p>
+                  <Button
+                    className="mt-3 gap-2 w-full"
+                    size="sm"
+                    onClick={() => navigate('/auth')}
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Konto erstellen & Daten übertragen
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Profile – only for authenticated users */}
+        {user && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="border-border/50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <User className="w-4 h-4" /> Profil
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+                  <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Ihr Name" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">E-Mail</label>
+                  <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="E-Mail" type="email" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Handynummer</label>
+                  <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+49..." type="tel" />
+                </div>
+                <Button onClick={saveProfile} disabled={saving} className="w-full gap-2">
+                  <Save className="w-4 h-4" />
+                  {saving ? 'Speichern...' : 'Profil speichern'}
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* View Modes */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
@@ -139,3 +169,4 @@ const Settings = () => {
 };
 
 export default Settings;
+

@@ -15,13 +15,6 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><span className="text-muted-foreground">Laden...</span></div>;
-  if (!user) return <Navigate to="/auth" replace />;
-  return <>{children}</>;
-};
-
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -33,9 +26,9 @@ const AppRoutes = () => (
   <>
     <Routes>
       <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/project/:id" element={<ProtectedRoute><ProjectView /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/project/:id" element={<ProjectView />} />
+      <Route path="/settings" element={<Settings />} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

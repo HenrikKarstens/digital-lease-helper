@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useHandover, HandoverData } from '@/context/HandoverContext';
+import { saveGuestProject } from '@/hooks/useGuestStorage';
 import { ProgressBar } from '@/components/ProgressBar';
 import { PageTransition } from '@/components/PageTransition';
 import { Step1Hero } from '@/components/steps/Step1Hero';
@@ -33,8 +34,16 @@ const ProjectView = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const isGuest = id === 'guest' || !user;
+
   // Load project on mount
   useEffect(() => {
+    if (isGuest) {
+      // Guest: data already loaded in Dashboard or fresh start
+      setLoading(false);
+      return;
+    }
+
     const load = async () => {
       if (!id || !user) return;
       const { data: project, error } = await supabase
@@ -55,9 +64,20 @@ const ProjectView = () => {
     load();
   }, [id, user]);
 
-  // Auto-save on step/data change (debounced)
+  // Auto-save: localStorage for guests, cloud for authenticated users
   useEffect(() => {
-    if (loading || !id) return;
+    if (loading) return;
+
+    if (isGuest) {
+      // Guest: debounced save to localStorage
+      const timeout = setTimeout(() => {
+        saveGuestProject(data, currentStep);
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+
+    // Authenticated: debounced save to cloud
+    if (!id) return;
     const timeout = setTimeout(() => {
       supabase
         .from('projects')
@@ -75,7 +95,7 @@ const ProjectView = () => {
         });
     }, 1000);
     return () => clearTimeout(timeout);
-  }, [currentStep, data, loading, id]);
+  }, [currentStep, data, loading, id, isGuest]);
 
   if (loading) {
     return (
