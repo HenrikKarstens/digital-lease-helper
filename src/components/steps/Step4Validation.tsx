@@ -16,6 +16,8 @@ export const Step4Validation = () => {
     { key: 'landlordEmail', label: `E-Mail ${ownerRole}`, value: data.landlordEmail },
     { key: 'tenantName', label: clientRole, value: data.tenantName },
     { key: 'tenantEmail', label: `E-Mail ${clientRole}`, value: data.tenantEmail },
+    { key: 'coldRent', label: 'Kaltmiete (€)', value: data.coldRent },
+    { key: 'nkAdvancePayment', label: 'NK-Vorauszahlung (€)', value: data.nkAdvancePayment },
     { key: 'depositAmount', label: `${depositLabel} (€)`, value: data.depositAmount },
     { key: 'contractStart', label: contractStartLabel, value: data.contractStart },
     { key: 'contractEnd', label: contractEndLabel, value: data.contractEnd },
@@ -98,6 +100,22 @@ export const Step4Validation = () => {
               </p>
             </div>
           )}
+        </motion.div>
+      )}
+
+      {data.preDamages && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="w-full max-w-md mt-4"
+        >
+          <div className="glass-card rounded-2xl p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold">🔍 Vorschäden aus Protokoll</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">{data.preDamages}</p>
+          </div>
         </motion.div>
       )}
 

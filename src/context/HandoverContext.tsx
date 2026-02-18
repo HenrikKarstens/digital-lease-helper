@@ -33,12 +33,28 @@ export interface MeterReading {
   photoUrl?: string;
 }
 
+export interface DocumentPage {
+  id: string;
+  dataUrl: string;
+  mimeType: string;
+}
+
+export interface CapturedDocument {
+  id: string;
+  type: 'main-contract' | 'amendment' | 'handover-protocol' | 'utility-bill';
+  pages: DocumentPage[];
+  analyzed: boolean;
+  analysisSummary?: string;
+}
+
 export interface HandoverData {
   // Step 1a/1b
   transactionType: 'rental' | 'sale' | null;
   handoverDirection: 'move-in' | 'move-out' | null;
   role: 'landlord' | 'tenant' | null;
-  // Step 3-4
+  // Step 3-4 (document wizard)
+  capturedDocuments: CapturedDocument[];
+  // Step 3-4 (extracted data)
   propertyAddress: string;
   landlordName: string;
   landlordEmail: string;
@@ -47,6 +63,9 @@ export interface HandoverData {
   depositAmount: string;
   contractStart: string;
   contractEnd: string;
+  coldRent: string;
+  nkAdvancePayment: string;
+  preDamages: string;
   // AI analysis results
   depositLegalCheck: string;
   renovationClauseAnalysis: string;
@@ -75,12 +94,16 @@ const defaultData: HandoverData = {
   transactionType: null,
   handoverDirection: null,
   role: null,
+  capturedDocuments: [],
   propertyAddress: '',
   landlordName: '',
   landlordEmail: '',
   tenantName: '',
   tenantEmail: '',
   depositAmount: '',
+  coldRent: '',
+  nkAdvancePayment: '',
+  preDamages: '',
   contractStart: '',
   contractEnd: '',
   depositLegalCheck: '',
