@@ -12,10 +12,25 @@ serve(async (req) => {
 
   try {
     const formData = await req.formData();
-    const file = formData.get('file') as File | null;
     const transactionType = formData.get('transactionType') as string || 'rental';
+    const documentType = formData.get('documentType') as string || 'main-contract';
 
-    if (!file) {
+    // Support multiple files (multi-page)
+    const files: File[] = [];
+    let i = 0;
+    while (true) {
+      const f = formData.get(`file_${i}`) as File | null;
+      if (!f) {
+        // fallback: single file
+        const single = formData.get('file') as File | null;
+        if (single && i === 0) files.push(single);
+        break;
+      }
+      files.push(f);
+      i++;
+    }
+
+    if (files.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Keine Datei hochgeladen' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -30,28 +45,77 @@ serve(async (req) => {
       );
     }
 
-    // Read file as base64
-    const arrayBuffer = await file.arrayBuffer();
-    const base64Data = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-
-    const mimeType = file.type || 'application/pdf';
     const isSale = transactionType === 'sale';
 
-    const prompt = `Du bist ein deutscher Immobilienrechtsexperte. Analysiere dieses Dokument (${isSale ? 'Kaufvertrag' : 'Mietvertrag'}) und extrahiere die folgenden Informationen als JSON.
+    // Build parts for all pages
+    const parts: any[] = [];
 
-Extrahiere:
+    for (let idx = 0; idx < files.length; idx++) {
+      const file = files[idx];
+      const arrayBuffer = await file.arrayBuffer();
+      const base64Data = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const mimeType = file.type || 'application/pdf';
+      parts.push({
+        inlineData: { mimeType, data: base64Data }
+      });
+    }
+
+    // Build tailored prompt based on document type
+    let docTypeLabel = '';
+    let extraFields = '';
+
+    if (documentType === 'main-contract') {
+      docTypeLabel = isSale ? 'Kaufvertrag' : 'Mietvertrag';
+      extraFields = `
 - "propertyAddress": Die vollständige Objektadresse
-- "landlordName": Name ${isSale ? 'des Verkäufers' : 'des Vermieters'} 
+- "landlordName": Name ${isSale ? 'des Verkäufers' : 'des Vermieters'}
 - "landlordEmail": E-Mail ${isSale ? 'des Verkäufers' : 'des Vermieters'} (falls vorhanden, sonst "")
 - "tenantName": Name ${isSale ? 'des Käufers' : 'des Mieters'}
 - "tenantEmail": E-Mail ${isSale ? 'des Käufers' : 'des Mieters'} (falls vorhanden, sonst "")
-- "depositAmount": ${isSale ? 'Anzahlung/Kaufpreisanteil' : 'Kautionshöhe'} als Zahl in Euro (nur die Zahl, z.B. "2400")
+- "depositAmount": ${isSale ? 'Kaufpreis' : 'Kautionshöhe'} als Zahl in Euro (nur die Zahl, z.B. "2400")
+- "coldRent": Aktuelle Kaltmiete in Euro als Zahl (nur bei Mietvertrag, sonst "")
+- "nkAdvancePayment": Aktuelle Nebenkostenvorauszahlung in Euro als Zahl (nur bei Mietvertrag, sonst "")
 - "contractStart": Vertragsbeginn im Format YYYY-MM-DD
 - "contractEnd": Vertragsende im Format YYYY-MM-DD (falls unbefristet, dann "")
-- "depositLegalCheck": Prüfung der ${isSale ? 'Zahlungsbedingungen' : 'Kaution gegen § 551 BGB'} - ist die Höhe zulässig? (max. 3 Nettokaltmieten bei Miete)
-- "renovationClauseAnalysis": Analyse der Schönheitsreparaturklauseln nach aktueller BGH-Rechtsprechung. Sind starre Fristen enthalten? Ist die Klausel wirksam?
+- "depositLegalCheck": Prüfung der ${isSale ? 'Zahlungsbedingungen' : 'Kaution gegen § 551 BGB'} - ist die Höhe zulässig? Max. 3 Nettokaltmieten bei Mietvertrag. Kurze Bewertung in 1-2 Sätzen.
+- "renovationClauseAnalysis": Analyse der Schönheitsreparaturklauseln nach aktueller BGH-Rechtsprechung. Sind starre Fristen enthalten? Ist die Klausel wirksam? Kurze Bewertung in 1-2 Sätzen.`;
+    } else if (documentType === 'amendment') {
+      docTypeLabel = 'Miet-Nachtrag / Änderungsvereinbarung';
+      extraFields = `
+- "coldRent": Neue/aktuelle Kaltmiete in Euro als Zahl (falls geändert, sonst "")
+- "nkAdvancePayment": Neue Nebenkostenvorauszahlung in Euro als Zahl (falls geändert, sonst "")
+- "contractStart": Datum des Nachtrags im Format YYYY-MM-DD
+- "amendmentSummary": Kurze Zusammenfassung der wesentlichen Änderungen in 1-2 Sätzen`;
+    } else if (documentType === 'handover-protocol') {
+      docTypeLabel = 'Übergabeprotokoll / Einzugsprotokoll';
+      extraFields = `
+- "propertyAddress": Objektadresse falls erkennbar, sonst ""
+- "preDamages": Auflistung aller im Protokoll vermerkten Vorschäden und Mängel. Jeder Eintrag mit Raum und Beschreibung, kommagetrennt. Falls keine vorhanden: ""
+- "contractStart": Datum des Protokolls im Format YYYY-MM-DD
+- "protocolSummary": Kurze Zusammenfassung des Zustands der Wohnung in 1-2 Sätzen`;
+    } else if (documentType === 'utility-bill') {
+      docTypeLabel = 'Nebenkostenabrechnung';
+      extraFields = `
+- "nkAdvancePayment": Bisher geleistete Vorauszahlungen pro Monat in Euro als Zahl (falls erkennbar)
+- "nkTotal": Gesamte NK-Kosten des Abrechnungsjahres in Euro als Zahl
+- "nkBalance": Nachzahlungsbetrag (positiv) oder Guthaben (negativ) in Euro als Zahl
+- "contractStart": Abrechnungszeitraum Beginn im Format YYYY-MM-DD
+- "contractEnd": Abrechnungszeitraum Ende im Format YYYY-MM-DD
+- "billSummary": Kurze Bewertung des Puffers - ist die aktuelle Vorauszahlung ausreichend? 1-2 Sätze.`;
+    }
 
-Antworte NUR mit validem JSON, keine Erklärungen davor oder danach.`;
+    const prompt = `Du bist ein deutscher Immobilienrechtsexperte und Gutachter.
+Analysiere alle bereitgestellten Seiten (${files.length} Seite${files.length > 1 ? 'n' : ''}) dieses Dokuments: ${docTypeLabel}.
+
+Extrahiere die folgenden Informationen als JSON:
+${extraFields}
+
+WICHTIG: 
+- Antworte NUR mit validem JSON, keine Erklärungen davor oder danach.
+- Felder, die nicht gefunden werden, mit leerem String "" befüllen, nicht weglassen.
+- Zahlen ohne Währungssymbol, nur die Zahl (z.B. "1250" nicht "1.250 €").`;
+
+    parts.push({ text: prompt });
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
@@ -59,20 +123,10 @@ Antworte NUR mit validem JSON, keine Erklärungen davor oder danach.`;
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            {
-              inlineData: {
-                mimeType,
-                data: base64Data,
-              }
-            },
-            { text: prompt }
-          ]
-        }],
+        contents: [{ parts }],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
         }
       })
     });
@@ -89,12 +143,9 @@ Antworte NUR mit validem JSON, keine Erklärungen davor oder danach.`;
     const geminiResult = await geminiResponse.json();
     const textContent = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    // Extract JSON from response (handle markdown code blocks)
     let jsonStr = textContent;
     const jsonMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1].trim();
-    }
+    if (jsonMatch) jsonStr = jsonMatch[1].trim();
 
     let parsedData;
     try {
@@ -108,7 +159,7 @@ Antworte NUR mit validem JSON, keine Erklärungen davor oder danach.`;
     }
 
     return new Response(
-      JSON.stringify({ success: true, data: parsedData }),
+      JSON.stringify({ success: true, data: parsedData, pageCount: files.length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
