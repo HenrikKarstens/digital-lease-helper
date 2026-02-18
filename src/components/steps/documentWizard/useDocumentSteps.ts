@@ -7,7 +7,9 @@ export const useDocumentSteps = (): DocStep[] => {
   const { contractLabel, isSale } = useTransactionLabels();
   const isMoveOut = data.handoverDirection === 'move-out';
 
-  const steps: DocStep[] = [
+  const isMoveIn = data.handoverDirection === 'move-in';
+
+  const allSteps: DocStep[] = [
     {
       id: 'main-contract',
       title: contractLabel,
@@ -42,6 +44,12 @@ export const useDocumentSteps = (): DocStep[] => {
       optional: true,
     },
   ];
+
+  // Hide handover-protocol for move-in (only relevant for move-out)
+  const steps = allSteps.filter(s => {
+    if (s.id === 'handover-protocol' && isMoveIn) return false;
+    return true;
+  });
 
   return steps;
 };
