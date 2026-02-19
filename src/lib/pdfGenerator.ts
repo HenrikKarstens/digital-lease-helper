@@ -510,27 +510,40 @@ export function generateMasterProtocol(data: HandoverData): void {
 
   // ── §7 Kautions-Abrechnung ────────────────────────────────────────────────
   if (!isSale) {
+    // Interest calculation helper
+    const calcInterest = (dep: number, rate: number, payDateStr: string): number => {
+      if (!dep || !rate || !payDateStr) return 0;
+      const start = new Date(payDateStr);
+      if (isNaN(start.getTime())) return 0;
+      const years = Math.max(0, (new Date().getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+      return dep * (rate / 100) * years;
+    };
+    const interest = calcInterest(deposit, data.depositInterestRate || 1.5, data.depositPaymentDate || '');
+    const gross = deposit + interest;
+    const payoutFinal = Math.max(0, gross - defectsCost - nkBuffer);
+
     if (y > pageH - 80) { doc.addPage(); y = 36; }
-    y = sectionTitle(doc, '§7  Kautions-Abrechnung', y, pageW);
+    y = sectionTitle(doc, '§7  Kautions-Abrechnung (§ 551 BGB)', y, pageW);
+    const tableBody7: string[][] = [
+      ['+ Hinterlegte Kaution', `${deposit.toFixed(2)} €`],
+    ];
+    if (interest > 0) {
+      tableBody7.push([`+ Erwirtschaftete Zinsen (${(data.depositInterestRate || 1.5).toFixed(2)}% p.a., § 551 Abs. 3 BGB)`, `+ ${interest.toFixed(2)} €`]);
+    }
+    tableBody7.push(
+      [`- Mängelkosten (${defectFindings.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
+      [hasNkData ? '- NK-Puffer (KI-Prognose, 3 Mon.)' : '- NK-Puffer (Standardwert)', `- ${nkBuffer.toFixed(2)} €`],
+      ['= Auszuzahlender Endbetrag', `${payoutFinal.toFixed(2)} €`],
+    );
     autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
       head: [['Position', 'Betrag']],
-      body: [
-        ['Hinterlegte Kaution', `+ ${deposit.toFixed(2)} €`],
-        [`Mängelkosten (${defectFindings.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
-        [hasNkData ? 'NK-Puffer (KI-Prognose, 3 Mon.)' : 'NK-Puffer (Standardwert)', `- ${nkBuffer.toFixed(2)} €`],
-        ['⇒ Rückzahlung an Mieter', `${payout.toFixed(2)} €`],
-      ],
+      body: tableBody7,
       headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
       bodyStyles: { fontSize: 9 },
       alternateRowStyles: { fillColor: [248, 249, 255] },
       columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
-      didDrawCell: (d: any) => {
-        if (d.section === 'body' && d.row.index === 3) {
-          doc.setFillColor(...SUCCESS_COLOR);
-        }
-      },
     });
     y = (doc as any).lastAutoTable.finalY + 4;
 
@@ -539,17 +552,44 @@ export function generateMasterProtocol(data: HandoverData): void {
     doc.setTextColor(...SUCCESS_COLOR);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Auszahlungsbetrag: ${payout.toFixed(2)} €`, pageW / 2, y + 6.5, { align: 'center' });
+    doc.text(`Auszahlungsbetrag: ${payoutFinal.toFixed(2)} €`, pageW / 2, y + 6.5, { align: 'center' });
     y += 14;
 
     // Legal basis
     doc.setTextColor(...MUTED_COLOR);
     doc.setFontSize(7);
     doc.setFont('helvetica', 'italic');
-    doc.text(`Berechnung gemäß BGH VIII ZR 71/05 (NK-Puffer) & BGH VIII ZR 222/15 (Zeitwert-Abzug, § 538 BGB).`, col1, y);
+    doc.text(`Berechnung gemäß BGH VIII ZR 71/05 (NK-Puffer) & BGH VIII ZR 222/15 (Zeitwert-Abzug, § 538 BGB). Zinsen gemäß § 551 Abs. 3 BGB.`, col1, y);
     y += 6;
     doc.setFont('helvetica', 'normal');
+
+    // ── §7c Zahlungsanweisung ──────────────────────────────────────────────
+    if (payoutFinal > 0 && (data.payeeIban || data.payeeAccountHolder)) {
+      if (y > pageH - 50) { doc.addPage(); y = 36; }
+      y = sectionTitle(doc, '§7c  Zahlungsanweisung', y, pageW);
+      const deadline28 = (() => { const d = new Date(); d.setDate(d.getDate() + 28); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
+      const payeeHolder = data.payeeAccountHolder || data.tenantName || 'Mieter';
+      const payeeIban = data.payeeIban || '(IBAN nicht angegeben)';
+
+      doc.setFillColor(238, 242, 255);
+      doc.roundedRect(14, y, pageW - 28, 22, 2, 2, 'F');
+      doc.setTextColor(...TEXT_COLOR);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const paymentText = `Der Betrag in Höhe von ${payoutFinal.toFixed(2)} € ist bis zum ${deadline28} auf das folgende Konto zu überweisen: ${payeeHolder}, IBAN: ${payeeIban}.`;
+      const paymentLines = doc.splitTextToSize(paymentText, pageW - 36);
+      doc.text(paymentLines, 18, y + 6);
+      y += 26;
+
+      doc.setTextColor(...MUTED_COLOR);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Verwendungszweck: Kautionsrückzahlung gemäß Übergabeprotokoll EstateTurn · Objekt: ' + (data.propertyAddress || '–'), col1, y);
+      doc.setFont('helvetica', 'normal');
+      y += 7;
+    }
   }
+
 
 
   // ── §7b Aufforderungsschreiben (§ 281 BGB) ───────────────────────────────
@@ -896,17 +936,34 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   }
 
   if (!isSale) {
+    const calcInterest2 = (dep: number, rate: number, payDateStr: string): number => {
+      if (!dep || !rate || !payDateStr) return 0;
+      const start = new Date(payDateStr);
+      if (isNaN(start.getTime())) return 0;
+      const years = Math.max(0, (new Date().getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+      return dep * (rate / 100) * years;
+    };
+    const interest2 = calcInterest2(deposit, data.depositInterestRate || 1.5, data.depositPaymentDate || '');
+    const gross2 = deposit + interest2;
+    const payoutFinal2 = Math.max(0, gross2 - defectsCost - nkBuffer);
+
     if (y > pageH - 80) { doc.addPage(); y = 36; }
-    y = sectionTitle(doc, '§7  Kautions-Abrechnung', y, pageW);
+    y = sectionTitle(doc, '§7  Kautions-Abrechnung (§ 551 BGB)', y, pageW);
+    const tableBody7b: string[][] = [
+      ['+ Hinterlegte Kaution', `${deposit.toFixed(2)} €`],
+    ];
+    if (interest2 > 0) {
+      tableBody7b.push([`+ Erwirtschaftete Zinsen (${(data.depositInterestRate || 1.5).toFixed(2)}% p.a., § 551 Abs. 3 BGB)`, `+ ${interest2.toFixed(2)} €`]);
+    }
+    tableBody7b.push(
+      [`- Mängelkosten (${defectFindings2.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
+      [hasNkData ? '- NK-Puffer (KI-Prognose, 3 Mon.)' : '- NK-Puffer (Standardwert)', `- ${nkBuffer.toFixed(2)} €`],
+      ['= Auszuzahlender Endbetrag', `${payoutFinal2.toFixed(2)} €`],
+    );
     autoTable(doc, {
       startY: y, margin: { left: 14, right: 14 },
       head: [['Position', 'Betrag']],
-      body: [
-        ['Hinterlegte Kaution', `+ ${deposit.toFixed(2)} €`],
-        [`Mängelkosten (${defectFindings2.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
-        [hasNkData ? 'NK-Puffer (KI-Prognose, 3 Mon.)' : 'NK-Puffer (Standardwert)', `- ${nkBuffer.toFixed(2)} €`],
-        ['⇒ Rückzahlung an Mieter', `${payout.toFixed(2)} €`],
-      ],
+      body: tableBody7b,
       headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
       bodyStyles: { fontSize: 9 },
       alternateRowStyles: { fillColor: [248, 249, 255] },
@@ -916,12 +973,31 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     doc.setFillColor(230, 255, 240);
     doc.roundedRect(14, y, pageW - 28, 10, 2, 2, 'F');
     doc.setTextColor(...SUCCESS_COLOR); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-    doc.text(`Auszahlungsbetrag: ${payout.toFixed(2)} €`, pageW / 2, y + 6.5, { align: 'center' });
+    doc.text(`Auszahlungsbetrag: ${payoutFinal2.toFixed(2)} €`, pageW / 2, y + 6.5, { align: 'center' });
     y += 14;
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'italic');
-    doc.text(`Berechnung gemäß BGH VIII ZR 71/05 (NK-Puffer) & ${bghRef} (Zeitwert-Abzug, § 538 BGB).`, col1, y);
+    doc.text(`Berechnung gemäß BGH VIII ZR 71/05 (NK-Puffer) & ${bghRef} (Zeitwert-Abzug, § 538 BGB). Zinsen gemäß § 551 Abs. 3 BGB.`, col1, y);
     y += 6; doc.setFont('helvetica', 'normal');
+
+    // §7c Zahlungsanweisung
+    if (payoutFinal2 > 0 && (data.payeeIban || data.payeeAccountHolder)) {
+      if (y > pageH - 50) { doc.addPage(); y = 36; }
+      y = sectionTitle(doc, '§7c  Zahlungsanweisung', y, pageW);
+      const deadline28b = (() => { const d = new Date(); d.setDate(d.getDate() + 28); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
+      const payeeHolder2 = data.payeeAccountHolder || data.tenantName || 'Mieter';
+      const payeeIban2 = data.payeeIban || '(IBAN nicht angegeben)';
+      doc.setFillColor(238, 242, 255);
+      doc.roundedRect(14, y, pageW - 28, 22, 2, 2, 'F');
+      doc.setTextColor(...TEXT_COLOR); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+      const payText2 = `Der Betrag in Höhe von ${payoutFinal2.toFixed(2)} € ist bis zum ${deadline28b} auf das folgende Konto zu überweisen: ${payeeHolder2}, IBAN: ${payeeIban2}.`;
+      doc.text(doc.splitTextToSize(payText2, pageW - 36), 18, y + 6);
+      y += 26;
+      doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'italic');
+      doc.text('Verwendungszweck: Kautionsrückzahlung gemäß EstateTurn-Übergabeprotokoll · Objekt: ' + (data.propertyAddress || '–'), col1, y);
+      doc.setFont('helvetica', 'normal'); y += 7;
+    }
   }
+
 
   const damageFindings = defectFindings2.filter(f => f.recommendedWithholding > 0);
   if (damageFindings.length > 0 && !isSale) {
