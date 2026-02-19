@@ -12,6 +12,8 @@ export interface Participant {
 export type LegalClassification = 'Gebrauchsspur' | 'Schaden' | 'Normalverschleiß' | 'Vertragswidriger Schaden';
 export type RemediationOption = 'self' | 'notice';
 
+export type EntryType = 'defect' | 'note';
+
 export interface Finding {
   id: string;
   room: string;
@@ -25,6 +27,8 @@ export interface Finding {
   recommendedWithholding: number;
   description: string;
   timestamp: string;
+  locationDetail?: string;
+  entryType?: EntryType; // 'defect' = Mangel (with cost), 'note' = Besonderheit (no cost)
   // Remediation fields
   legalClassification?: LegalClassification;
   remediationOption?: RemediationOption;
