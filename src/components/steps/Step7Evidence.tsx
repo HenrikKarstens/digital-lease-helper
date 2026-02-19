@@ -166,6 +166,15 @@ export const Step7Evidence = () => {
           </div>
         </motion.div>
 
+        {/* Skip / continue */}
+        {data.findings.length === 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="w-full max-w-md mt-4">
+            <Button variant="outline" onClick={() => setCurrentStep(9)} className="w-full h-12 rounded-2xl font-semibold">
+              Weiter ohne Mängel →
+            </Button>
+          </motion.div>
+        )}
+
         {/* Findings list */}
         {data.findings.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-md space-y-2">
