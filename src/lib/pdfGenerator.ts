@@ -380,16 +380,23 @@ export function generateMasterProtocol(data: HandoverData): void {
   // ── §4 Teilnehmer & Unterschriften ────────────────────────────────────────
   if (y > pageH - 60) { doc.addPage(); y = 36; }
   y = sectionTitle(doc, '§4  Anwesende Teilnehmer & Unterschriften', y, pageW);
+  const isLandlordUser = data.role === 'landlord';
+  const isTenantUser = data.role === 'tenant';
+  const landlordLabel = isSale ? 'Verkäufer' : 'Vermieter';
+  const tenantLabel = isSale ? 'Käufer' : 'Mieter';
   autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
     head: [['Name', 'Rolle', 'Anwesend', 'Unterschrift']],
-    body: data.participants.map(p => [
-      p.name,
-      p.role,
-      p.present ? 'Ja' : 'Nein',
-      p.signature ? '✓ Digital geleistet' : 'Nicht unterschrieben',
-    ]),
+    body: data.participants.map(p => {
+      const isAppUser =
+        (isLandlordUser && (p.role === landlordLabel || p.name === data.landlordName)) ||
+        (isTenantUser && (p.role === tenantLabel || p.name === data.tenantName));
+      const sigStatus = p.signature
+        ? (isAppUser ? '✓ Digital geleistet (App-Nutzer)' : '✓ Digital geleistet (vor Ort)')
+        : 'Nicht unterschrieben';
+      return [p.name, p.role, p.present ? 'Ja' : 'Nein', sigStatus];
+    }),
     headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
     bodyStyles: { fontSize: 8 },
     alternateRowStyles: { fillColor: [248, 249, 255] },
@@ -642,18 +649,53 @@ export function generateMasterProtocol(data: HandoverData): void {
   doc.text(clauseLines, 18, y + 5);
   y += clauseH + 6;
 
-  // ── §9 Finale Unterschriften ──────────────────────────────────────────────
-  if (y > pageH - 55) { doc.addPage(); y = 36; }
+// ── §9 Finale Unterschriften ──────────────────────────────────────────────
+  if (y > pageH - 70) { doc.addPage(); y = 36; }
   y = sectionTitle(doc, '§9  Unterschriften & Bestätigung', y, pageW);
   const sigBoxW = (pageW - 28 - 8) / 2;
-  [[col1, data.landlordName || (isSale ? 'Verkäufer' : 'Vermieter')], [col2 - 2, data.tenantName || (isSale ? 'Käufer' : 'Mieter')]].forEach(([x, name]) => {
+  const sigBoxH9 = 38;
+
+  const sigParties = [
+    { x: col1, name: data.landlordName || (isSale ? 'Verkäufer' : 'Vermieter'), roleLabel: isSale ? 'Verkäufer' : 'Vermieter', sig: data.signatureLandlord, isAppUser: data.role === 'landlord' },
+    { x: col2 - 2, name: data.tenantName || (isSale ? 'Käufer' : 'Mieter'), roleLabel: isSale ? 'Käufer' : 'Mieter', sig: data.signatureTenant, isAppUser: data.role === 'tenant' },
+  ];
+
+  for (const party of sigParties) {
     doc.setDrawColor(180, 180, 200);
-    doc.rect(Number(x), y, sigBoxW, 20);
+    doc.rect(party.x, y, sigBoxW, sigBoxH9);
     doc.setTextColor(...MUTED_COLOR);
     doc.setFontSize(7);
-    doc.text('Datum, Ort & Unterschrift', Number(x) + 2, y + 25);
-    doc.text(String(name), Number(x) + 2, y + 29);
-  });
+    doc.setFont('helvetica', 'normal');
+    doc.text(party.roleLabel, party.x + 2, y + 4);
+    doc.setTextColor(...TEXT_COLOR);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(party.name, party.x + 2, y + 9);
+    doc.setFont('helvetica', 'normal');
+    if (party.sig) {
+      // Embed the actual signature image
+      doc.addImage(party.sig, 'PNG', party.x + 2, y + 11, sigBoxW - 4, 18, undefined, 'FAST');
+      doc.setTextColor(...SUCCESS_COLOR);
+      doc.setFontSize(6.5);
+      doc.text(party.isAppUser ? '✓ Digital geleistet (App-Nutzer)' : '✓ Digital geleistet (vor Ort)', party.x + 2, y + sigBoxH9 - 3);
+    } else {
+      // Empty signature line placeholder
+      doc.setDrawColor(200, 200, 220);
+      doc.line(party.x + 2, y + sigBoxH9 - 8, party.x + sigBoxW - 4, y + sigBoxH9 - 8);
+      doc.setTextColor(...MUTED_COLOR);
+      doc.setFontSize(6.5);
+      doc.text('Datum, Ort & Unterschrift', party.x + 2, y + sigBoxH9 - 3);
+    }
+  }
+  y += sigBoxH9 + 6;
+
+  // Integrity note
+  doc.setTextColor(...MUTED_COLOR);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'italic');
+  doc.text(`Protokoll-ID: ${protocolId} · SHA-256 versiegelt · Nur tatsächlich in der App oder vor Ort geleistete Unterschriften werden hier abgebildet.`, col1, y, { maxWidth: pageW - 28 });
+  y += 8;
+  doc.setFont('helvetica', 'normal');
 
   // Page numbers
   const totalPages = (doc as any).internal.getNumberOfPages();
@@ -662,7 +704,12 @@ export function generateMasterProtocol(data: HandoverData): void {
     addFooter(doc, i, totalPages, pageW, pageH);
   }
 
-  doc.save(`EstateTurn_Protokoll_${protocolId}.pdf`);
+  // Smart filename: EstateTurn_Protokoll_[Adresse]_[Datum]_[ID].pdf
+  const safeAddress = (data.propertyAddress || 'Unbekannt')
+    .replace(/[^a-zA-Z0-9äöüÄÖÜß]/g, '')
+    .substring(0, 30);
+  const safeDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  doc.save(`EstateTurn_Protokoll_${safeAddress}_${safeDate}_${protocolId}.pdf`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -742,7 +789,19 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
       startY: y,
       margin: { left: 14, right: 14 },
       head: [['Name', 'Rolle', 'Anwesend', 'Unterschrift']],
-      body: data.participants.map(p => [p.name, p.role, p.present ? 'Ja' : 'Nein', p.signature ? `✓ Digital signiert am ${signatureTimestamp}` : 'Nicht unterschrieben']),
+      body: data.participants.map(p => {
+        const isLandlordUser2 = data.role === 'landlord';
+        const isTenantUser2 = data.role === 'tenant';
+        const landlordLabel2 = isSale ? 'Verkäufer' : 'Vermieter';
+        const tenantLabel2 = isSale ? 'Käufer' : 'Mieter';
+        const isAppUser2 =
+          (isLandlordUser2 && (p.role === landlordLabel2 || p.name === data.landlordName)) ||
+          (isTenantUser2 && (p.role === tenantLabel2 || p.name === data.tenantName));
+        const sigStatus2 = p.signature
+          ? (isAppUser2 ? `✓ Digital geleistet (App-Nutzer) – ${signatureTimestamp}` : `✓ Digital geleistet (vor Ort) – ${signatureTimestamp}`)
+          : 'Nicht unterschrieben';
+        return [p.name, p.role, p.present ? 'Ja' : 'Nein', sigStatus2];
+      }),
       headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: [248, 249, 255] },
@@ -921,21 +980,48 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   doc.setTextColor(120, 80, 20); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
   doc.text(clauseLines, 18, y + 5); y += clauseH + 6;
 
-  if (y > pageH - 55) { doc.addPage(); y = 36; }
+  if (y > pageH - 70) { doc.addPage(); y = 36; }
   y = sectionTitle(doc, '§9  Unterschriften & Bestätigung', y, pageW);
   const sigBoxW2 = (pageW - 28 - 8) / 2;
-  [[col1, data.landlordName || (isSale ? 'Verkäufer' : 'Vermieter'), data.signatureLandlord], [col2 - 2, data.tenantName || (isSale ? 'Käufer' : 'Mieter'), data.signatureTenant]].forEach(([x, name, sig]) => {
+  const sigBoxH2 = 38;
+
+  const sigParties2 = [
+    { x: col1, name: data.landlordName || (isSale ? 'Verkäufer' : 'Vermieter'), roleLabel: isSale ? 'Verkäufer' : 'Vermieter', sig: data.signatureLandlord, isAppUser: data.role === 'landlord' },
+    { x: col2 - 2, name: data.tenantName || (isSale ? 'Käufer' : 'Mieter'), roleLabel: isSale ? 'Käufer' : 'Mieter', sig: data.signatureTenant, isAppUser: data.role === 'tenant' },
+  ];
+
+  for (const party2 of sigParties2) {
     doc.setDrawColor(180, 180, 200);
-    doc.rect(Number(x), y, sigBoxW2, 20);
-    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7);
-    if (sig) {
+    doc.rect(party2.x, y, sigBoxW2, sigBoxH2);
+    doc.setTextColor(...MUTED_COLOR);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text(party2.roleLabel, party2.x + 2, y + 4);
+    doc.setTextColor(...TEXT_COLOR);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(party2.name, party2.x + 2, y + 9);
+    doc.setFont('helvetica', 'normal');
+    if (party2.sig) {
+      doc.addImage(party2.sig, 'PNG', party2.x + 2, y + 11, sigBoxW2 - 4, 18, undefined, 'FAST');
       doc.setTextColor(...SUCCESS_COLOR);
-      doc.text(`✓ Digital signiert am ${signatureTimestamp}`, Number(x) + 2, y + 12);
+      doc.setFontSize(6.5);
+      doc.text(party2.isAppUser ? '✓ Digital geleistet (App-Nutzer)' : '✓ Digital geleistet (vor Ort)', party2.x + 2, y + sigBoxH2 - 3);
+    } else {
+      doc.setDrawColor(200, 200, 220);
+      doc.line(party2.x + 2, y + sigBoxH2 - 8, party2.x + sigBoxW2 - 4, y + sigBoxH2 - 8);
       doc.setTextColor(...MUTED_COLOR);
+      doc.setFontSize(6.5);
+      doc.text('Datum, Ort & Unterschrift', party2.x + 2, y + sigBoxH2 - 3);
     }
-    doc.text('Datum, Ort & Unterschrift', Number(x) + 2, y + 25);
-    doc.text(String(name), Number(x) + 2, y + 29);
-  });
+  }
+  y += sigBoxH2 + 6;
+
+  doc.setTextColor(...MUTED_COLOR);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'italic');
+  doc.text(`Protokoll-ID: ${protocolId} · SHA-256 versiegelt · Nur tatsächlich in der App oder vor Ort geleistete Unterschriften werden hier abgebildet.`, col1, y, { maxWidth: pageW - 28 });
+  doc.setFont('helvetica', 'normal');
 
   const totalPages2 = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= totalPages2; i++) {
