@@ -1,10 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, Camera, ArrowRight, Check, X, PenTool, ChevronDown } from 'lucide-react';
+import { UserPlus, Camera, ArrowRight, Check, X, PenTool, ChevronDown, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { useState, useRef } from 'react';
 import { SignaturePad } from '@/components/SignaturePad';
+import { generateBeweisanker } from '@/lib/pdfGenerator';
 
 export const Step6Participants = () => {
   const { data, updateData, setCurrentStep } = useHandover();
@@ -206,6 +207,22 @@ export const Step6Participants = () => {
               Foto aufnehmen
             </Button>
           )}
+        </div>
+
+        {/* Beweisanker PDF Download */}
+        <div className="glass-card rounded-2xl p-4">
+          <p className="text-sm font-medium mb-1">Vorab-Dokument drucken</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            PDF mit allen bisherigen Daten – als rechtssichere Basis für die Begehung (inkl. Notizfelder)
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => generateBeweisanker(data)}
+            className="w-full rounded-xl gap-2"
+          >
+            <FileDown className="w-4 h-4" />
+            Beweisanker-PDF herunterladen
+          </Button>
         </div>
 
         <Button onClick={() => setCurrentStep(8)} className="w-full h-13 rounded-2xl text-base font-semibold gap-2" size="lg">

@@ -9,6 +9,9 @@ export interface Participant {
   signature?: string | null;
 }
 
+export type LegalClassification = 'Gebrauchsspur' | 'Schaden' | 'Normalverschleiß' | 'Vertragswidriger Schaden';
+export type RemediationOption = 'self' | 'notice';
+
 export interface Finding {
   id: string;
   room: string;
@@ -22,6 +25,11 @@ export interface Finding {
   recommendedWithholding: number;
   description: string;
   timestamp: string;
+  // Remediation fields
+  legalClassification?: LegalClassification;
+  remediationOption?: RemediationOption;
+  remediationParty?: string;
+  remediationDeadline?: string;
 }
 
 export interface MeterReading {
