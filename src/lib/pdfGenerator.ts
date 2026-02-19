@@ -306,18 +306,21 @@ export function generateMasterProtocol(data: HandoverData): void {
   }
 
   // ── §6 Detailliertes Mängelverzeichnis ────────────────────────────────────
+  const defectFindings = data.findings.filter(f => f.entryType !== 'note');
+  const noteFindings = data.findings.filter(f => f.entryType === 'note');
+
   if (y > pageH - 80) { doc.addPage(); y = 36; }
   y = sectionTitle(doc, '§6  Detailliertes Mängelverzeichnis', y, pageW);
-  if (data.findings.length > 0) {
+  if (defectFindings.length > 0) {
     autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
-      head: [['Raum', 'Material', 'Schaden', 'Rechtl. Einordnung', 'Zeitwert %', 'Einbehalt €', 'Maßnahme']],
-      body: data.findings.map(f => [
-        f.room,
+      head: [['Raum', 'Lage', 'Material', 'Schaden', 'Zeitwert %', 'Einbehalt €', 'Maßnahme']],
+      body: defectFindings.map(f => [
+        f.room || '⚠ Unbekannt',
+        (f as any).locationDetail || '–',
         f.material,
         f.damageType,
-        f.legalClassification || '–',
         `${f.timeValueDeduction}%`,
         f.recommendedWithholding > 0 ? `${f.recommendedWithholding} €` : '–',
         f.remediationOption === 'self'
@@ -329,10 +332,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7 },
       bodyStyles: { fontSize: 7 },
       alternateRowStyles: { fillColor: [255, 248, 248] },
-      columnStyles: {
-        4: { halign: 'center' },
-        5: { halign: 'right', fontStyle: 'bold' },
-      },
+      columnStyles: { 4: { halign: 'center' }, 5: { halign: 'right', fontStyle: 'bold' } },
     });
     y = (doc as any).lastAutoTable.finalY + 4;
 
@@ -340,9 +340,9 @@ export function generateMasterProtocol(data: HandoverData): void {
     doc.setTextColor(...MUTED_COLOR);
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'italic');
-    data.findings.forEach(f => {
+    defectFindings.forEach(f => {
       if (f.bghReference) {
-        doc.text(`• ${f.room} / ${f.damageType}: ${f.bghReference} – ${f.description}`, col1, y);
+        doc.text(`• ${f.room || 'Unbekannt'} / ${f.damageType}: ${f.bghReference} – ${f.description}`, col1, y);
         y += 3.5;
         if (y > pageH - 20) { doc.addPage(); y = 36; }
       }
@@ -356,6 +356,33 @@ export function generateMasterProtocol(data: HandoverData): void {
     y += 8;
   }
 
+  // ── §6b Zusätzliche Feststellungen (Besonderheiten / Notizen) ─────────────
+  if (noteFindings.length > 0) {
+    if (y > pageH - 60) { doc.addPage(); y = 36; }
+    y = sectionTitle(doc, '§6b  Zusätzliche Feststellungen (Besonderheiten / Beweisanker)', y, pageW);
+    autoTable(doc, {
+      startY: y,
+      margin: { left: 14, right: 14 },
+      head: [['Raum', 'Lage', 'Feststellung', 'Zeitstempel']],
+      body: noteFindings.map(f => [
+        f.room || '–',
+        (f as any).locationDetail || '–',
+        f.description || f.damageType,
+        f.timestamp,
+      ]),
+      headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7 },
+      bodyStyles: { fontSize: 7 },
+      alternateRowStyles: { fillColor: [248, 249, 255] },
+    });
+    y = (doc as any).lastAutoTable.finalY + 4;
+    doc.setTextColor(...MUTED_COLOR);
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Hinweis: Die obigen Feststellungen sind reine Beweisanker ohne Kautionsabzug. Sie dienen der vollständigen Dokumentation des Objektzustands.', col1, y);
+    doc.setFont('helvetica', 'normal');
+    y += 7;
+  }
+
   // ── §7 Kautions-Abrechnung ────────────────────────────────────────────────
   if (!isSale) {
     if (y > pageH - 80) { doc.addPage(); y = 36; }
@@ -366,7 +393,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       head: [['Position', 'Betrag']],
       body: [
         ['Hinterlegte Kaution', `+ ${deposit.toFixed(2)} €`],
-        [`Mängelkosten (${data.findings.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
+        [`Mängelkosten (${defectFindings.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
         [hasNkData ? 'NK-Puffer (KI-Prognose, 3 Mon.)' : 'NK-Puffer (Standardwert)', `- ${nkBuffer.toFixed(2)} €`],
         ['⇒ Rückzahlung an Mieter', `${payout.toFixed(2)} €`],
       ],
@@ -398,6 +425,7 @@ export function generateMasterProtocol(data: HandoverData): void {
     y += 6;
     doc.setFont('helvetica', 'normal');
   }
+
 
   // ── §7b Aufforderungsschreiben (§ 281 BGB) ───────────────────────────────
   const damageFindings = data.findings.filter(f => f.recommendedWithholding > 0);
@@ -624,8 +652,11 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
 
   if (y > pageH - 80) { doc.addPage(); y = 36; }
   const bghRef = isSale ? 'BGH V ZR 104/19 (Kaufrecht)' : 'BGH VIII ZR 222/15 (Wohnraummietrecht)';
+  const defectFindings2 = data.findings.filter(f => f.entryType !== 'note');
+  const noteFindings2 = data.findings.filter(f => f.entryType === 'note');
+
   y = sectionTitle(doc, '§6  Detailliertes Mängelverzeichnis', y, pageW);
-  const unknownRoomWarning = data.findings.some(f => !f.room || f.room === 'Unbekannt');
+  const unknownRoomWarning = defectFindings2.some(f => !f.room || f.room === 'Unbekannt');
   if (unknownRoomWarning) {
     doc.setFillColor(255, 240, 200);
     doc.roundedRect(14, y, pageW - 28, 8, 2, 2, 'F');
@@ -634,12 +665,12 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     doc.setFont('helvetica', 'normal');
     y += 12;
   }
-  if (data.findings.length > 0) {
+  if (defectFindings2.length > 0) {
     autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
       head: [['Raum', 'Lage', 'Material', 'Schaden', 'Zeitwert %', 'Einbehalt €', 'Frist']],
-      body: data.findings.map(f => [
+      body: defectFindings2.map(f => [
         f.room || '⚠ Unbekannt',
         (f as any).locationDetail || '–',
         f.material,
@@ -655,7 +686,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     });
     y = (doc as any).lastAutoTable.finalY + 4;
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5); doc.setFont('helvetica', 'italic');
-    data.findings.forEach(f => {
+    defectFindings2.forEach(f => {
       if (f.bghReference) {
         const ref = isSale ? f.bghReference.replace('VIII ZR', 'V ZR') : f.bghReference;
         doc.text(`• ${f.room || 'Unbekannt'} / ${f.damageType}: ${ref} – ${f.description}`, col1, y);
@@ -669,6 +700,24 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     doc.text('✓ Keine Mängel dokumentiert.', col1, y); y += 8;
   }
 
+  // §6b – Zusätzliche Feststellungen
+  if (noteFindings2.length > 0) {
+    if (y > pageH - 60) { doc.addPage(); y = 36; }
+    y = sectionTitle(doc, '§6b  Zusätzliche Feststellungen (Besonderheiten / Beweisanker)', y, pageW);
+    autoTable(doc, {
+      startY: y, margin: { left: 14, right: 14 },
+      head: [['Raum', 'Lage', 'Feststellung', 'Zeitstempel']],
+      body: noteFindings2.map(f => [f.room || '–', (f as any).locationDetail || '–', f.description || f.damageType, f.timestamp]),
+      headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7 },
+      bodyStyles: { fontSize: 7 },
+      alternateRowStyles: { fillColor: [248, 249, 255] },
+    });
+    y = (doc as any).lastAutoTable.finalY + 4;
+    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5); doc.setFont('helvetica', 'italic');
+    doc.text('Hinweis: Reine Beweisanker ohne Kautionsabzug – dokumentieren den vollständigen Objektzustand.', col1, y);
+    doc.setFont('helvetica', 'normal'); y += 7;
+  }
+
   if (!isSale) {
     if (y > pageH - 80) { doc.addPage(); y = 36; }
     y = sectionTitle(doc, '§7  Kautions-Abrechnung', y, pageW);
@@ -677,7 +726,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
       head: [['Position', 'Betrag']],
       body: [
         ['Hinterlegte Kaution', `+ ${deposit.toFixed(2)} €`],
-        [`Mängelkosten (${data.findings.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
+        [`Mängelkosten (${defectFindings2.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
         [hasNkData ? 'NK-Puffer (KI-Prognose, 3 Mon.)' : 'NK-Puffer (Standardwert)', `- ${nkBuffer.toFixed(2)} €`],
         ['⇒ Rückzahlung an Mieter', `${payout.toFixed(2)} €`],
       ],
@@ -697,7 +746,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     y += 6; doc.setFont('helvetica', 'normal');
   }
 
-  const damageFindings = data.findings.filter(f => f.recommendedWithholding > 0);
+  const damageFindings = defectFindings2.filter(f => f.recommendedWithholding > 0);
   if (damageFindings.length > 0 && !isSale) {
     if (y > pageH - 80) { doc.addPage(); y = 36; }
     y = sectionTitle(doc, '§7b  Aufforderungsschreiben zur Mängelbeseitigung (§ 281 BGB)', y, pageW);
