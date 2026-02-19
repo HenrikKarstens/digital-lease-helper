@@ -1,15 +1,15 @@
 import { motion } from 'framer-motion';
-import { Camera, Upload, PenLine, AlertCircle, SkipForward, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { PenLine, AlertCircle, SkipForward, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useRef, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
-import { PageGallery } from './PageGallery';
 import { DocumentAnalysisProgress } from './DocumentAnalysisProgress';
 import { AnalysisSummaryCard } from './AnalysisSummaryCard';
+import { DocumentScanner } from './DocumentScanner';
 import type { DocStep, PagePhoto, InputMode } from './types';
 
 const analysisStepLabels = [
@@ -67,8 +67,6 @@ const getManualFields = (docType: string, isSale: boolean, ownerRole: string, cl
 export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip }: Props) => {
   const { data, updateData } = useHandover();
   const { isSale, ownerRole, clientRole } = useTransactionLabels();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<InputMode>('idle');
   const [pages, setPages] = useState<PagePhoto[]>([]);
@@ -78,22 +76,9 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
   const [analysisResult, setAnalysisResult] = useState<Record<string, string> | null>(null);
   const [manualValues, setManualValues] = useState<Record<string, string>>({});
 
-  const addPages = useCallback((files: FileList | null) => {
-    if (!files) return;
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const dataUrl = e.target?.result as string;
-        setPages(prev => [...prev, {
-          id: crypto.randomUUID(),
-          dataUrl,
-          mimeType: file.type,
-          file,
-        }]);
-      };
-      reader.readAsDataURL(file);
-    });
-  }, []);
+  const handleScannerComplete = (scannedPages: PagePhoto[]) => {
+    setPages(scannedPages);
+  };
 
   const handleAnalyze = async () => {
     if (pages.length === 0) return;
@@ -259,9 +244,6 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
   // ── Idle / capture ────────────────────────────────────────────────────
   return (
     <div className="flex flex-col px-4 py-2">
-      <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple onChange={e => { addPages(e.target.files); e.target.value = ''; }} className="hidden" />
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" multiple onChange={e => { addPages(e.target.files); e.target.value = ''; }} className="hidden" />
-
       {/* Doc header */}
       <div className="mb-5">
         <div className="flex items-center gap-3 mb-1">
@@ -282,35 +264,13 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
 
       {pages.length === 0 ? (
         <div className="grid grid-cols-1 gap-3">
-          {/* Kamera: öffnet direkt die Kamera, kein Dateisystem */}
-          <motion.button initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} whileTap={{ scale: 0.98 }}
-            onClick={() => cameraInputRef.current?.click()}
-            className="glass-card rounded-2xl p-5 flex items-center gap-4 text-left w-full border-2 border-primary/20 hover:border-primary/50 transition-colors"
-          >
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Camera className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold">Foto aufnehmen</h4>
-              <p className="text-xs text-muted-foreground">Kamera öffnet direkt – Seite für Seite scannen</p>
-            </div>
-          </motion.button>
+          <DocumentScanner onComplete={handleScannerComplete} />
 
-          {/* Upload: öffnet den Dateimanager, keine Kamera */}
-          <motion.button initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} whileTap={{ scale: 0.98 }}
-            onClick={() => fileInputRef.current?.click()}
-            className="glass-card rounded-2xl p-5 flex items-center gap-4 text-left w-full hover:border-primary/30 transition-colors"
-          >
-            <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-              <Upload className="w-6 h-6 text-muted-foreground" />
-            </div>
-            <div>
-              <h4 className="font-semibold">PDF / Bild hochladen</h4>
-              <p className="text-xs text-muted-foreground">PDF, JPG, PNG aus dem Speicher wählen</p>
-            </div>
-          </motion.button>
-
-          <motion.button initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} whileTap={{ scale: 0.98 }}
+          <motion.button
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => setMode('manual')}
             className="glass-card rounded-2xl p-5 flex items-center gap-4 text-left w-full hover:border-primary/30 transition-colors"
           >
@@ -324,9 +284,7 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
           </motion.button>
         </div>
       ) : (
-        /* ── Scanner-Modus: Seiten im Stapel ── */
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-          {/* Seiten-Stapel Header */}
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold">Seiten im Stapel</span>
@@ -342,7 +300,6 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
             </button>
           </div>
 
-          {/* Miniatur-Vorschau der Seiten */}
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
             {pages.map((page, idx) => (
               <motion.div
@@ -367,37 +324,20 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
                 </button>
               </motion.div>
             ))}
-
-            {/* Weitere Seite aufnehmen – Plus-Kachel */}
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              onClick={() => cameraInputRef.current?.click()}
-              className="shrink-0 w-16 h-20 rounded-xl border-2 border-dashed border-primary/40 flex flex-col items-center justify-center gap-1 text-primary hover:bg-primary/5 transition-colors"
-            >
-              <Camera className="w-5 h-5" />
-              <span className="text-[9px] font-medium">+ Seite</span>
-            </motion.button>
           </div>
 
-          {/* Aktions-Buttons */}
           <Button onClick={handleAnalyze} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
             KI-Analyse starten ({pages.length} {pages.length === 1 ? 'Seite' : 'Seiten'})
             <ChevronRight className="w-5 h-5" />
           </Button>
-
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center justify-center gap-1.5"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            PDF oder Bild hinzufügen
-          </button>
         </motion.div>
       )}
 
       {docStep.optional && pages.length === 0 && (
-        <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
           onClick={onSkip}
           className="mt-5 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-3 w-full"
         >
