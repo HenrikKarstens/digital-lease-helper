@@ -1,9 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, Camera, ArrowRight, Check, X, PenTool, ChevronDown, FileDown } from 'lucide-react';
+import { UserPlus, ArrowRight, Check, X, PenTool, ChevronDown, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { SignaturePad } from '@/components/SignaturePad';
 import { generateBeweisanker } from '@/lib/pdfGenerator';
 
@@ -12,7 +12,6 @@ export const Step6Participants = () => {
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState('');
   const [openSigId, setOpenSigId] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const addParticipant = () => {
     if (!newName.trim()) return;
@@ -60,11 +59,6 @@ export const Step6Participants = () => {
         p.id === id ? { ...p, signature: null } : p
       ),
     });
-  };
-
-  const handleAttendancePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) updateData({ attendancePhotoUrl: URL.createObjectURL(file) });
   };
 
   const signedCount = data.participants.filter(p => p.signature).length;
@@ -189,31 +183,11 @@ export const Step6Participants = () => {
           </Button>
         </div>
 
-        {/* Attendance photo */}
+        {/* Vorab-Dokument / Offline-Protokoll */}
         <div className="glass-card rounded-2xl p-4">
-          <p className="text-sm font-medium mb-1">Beweis-Anker</p>
-          <p className="text-xs text-muted-foreground mb-3">Foto des Anwesenheitszettels hochladen</p>
-          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleAttendancePhoto} />
-          {data.attendancePhotoUrl ? (
-            <div className="relative rounded-xl overflow-hidden">
-              <img src={data.attendancePhotoUrl} alt="Anwesenheit" className="w-full h-32 object-cover" />
-              <div className="absolute top-2 right-2 bg-success/90 rounded-full p-1">
-                <Check className="w-3 h-3 text-success-foreground" />
-              </div>
-            </div>
-          ) : (
-            <Button variant="outline" onClick={() => fileRef.current?.click()} className="w-full rounded-xl gap-2">
-              <Camera className="w-4 h-4" />
-              Foto aufnehmen
-            </Button>
-          )}
-        </div>
-
-        {/* Beweisanker PDF Download */}
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-sm font-medium mb-1">Vorab-Dokument drucken</p>
+          <p className="text-sm font-medium mb-1">Vorab-Dokument / Offline-Protokoll</p>
           <p className="text-xs text-muted-foreground mb-3">
-            PDF mit allen bisherigen Daten – als rechtssichere Basis für die Begehung (inkl. Notizfelder)
+            Druckbares PDF mit allen bisher erfassten Daten, Schlüsseltabelle, Raum-Checkliste und Unterschriftenfeldern – als rechtssichere Offline-Alternative für die Begehung.
           </p>
           <Button
             variant="outline"
@@ -221,7 +195,7 @@ export const Step6Participants = () => {
             className="w-full rounded-xl gap-2"
           >
             <FileDown className="w-4 h-4" />
-            Beweisanker-PDF herunterladen
+            Vorab-Dokument / Offline-Protokoll drucken
           </Button>
         </div>
 
