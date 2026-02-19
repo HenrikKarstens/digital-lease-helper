@@ -120,7 +120,7 @@ export const Step14Utility = () => {
           <PartyPopper className="w-10 h-10 text-primary mx-auto mb-3" />
           <h3 className="text-lg font-bold mb-1">Übergabe abgeschlossen!</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Alle 14 Schritte wurden erfolgreich durchlaufen. Ihr EstateTurn-Zertifikat ist rechtssicher erstellt.
+          Alle 13 Schritte wurden erfolgreich durchlaufen. Ihr EstateTurn-Zertifikat ist rechtssicher erstellt.
           </p>
           <Button variant="outline" onClick={resetData} className="rounded-xl gap-2">
             Neue Übergabe starten

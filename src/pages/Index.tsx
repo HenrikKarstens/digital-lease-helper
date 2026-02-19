@@ -12,7 +12,6 @@ import { Step6Participants } from '@/components/steps/Step6Participants';
 import { Step7Evidence } from '@/components/steps/Step7Evidence';
 import { Step8MeterScan } from '@/components/steps/Step8MeterScan';
 import { Step9Signature } from '@/components/steps/Step9Signature';
-import { Step10NKCheck } from '@/components/steps/Step10NKCheck';
 import { Step11DefectsList } from '@/components/steps/Step11DefectsList';
 import { Step12Deposit } from '@/components/steps/Step12Deposit';
 import { Step13Certificate } from '@/components/steps/Step13Certificate';
@@ -36,11 +35,10 @@ const Index = () => {
       case 8: return <Step7Evidence />;
       case 9: return <Step8MeterScan />;
       case 10: return <Step9Signature />;
-      case 11: return <Step10NKCheck />;
-      case 12: return <Step11DefectsList />;
-      case 13: return <Step12Deposit />;
-      case 14: return <Step13Certificate />;
-      case 15: return <Step14Utility />;
+      case 11: return <Step11DefectsList />;
+      case 12: return <Step12Deposit />;
+      case 13: return <Step13Certificate />;
+      case 14: return <Step14Utility />;
       default: return <Step1Hero />;
     }
   };

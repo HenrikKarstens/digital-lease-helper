@@ -5,7 +5,7 @@ import { Home } from 'lucide-react';
 
 const STEPS = [
   'Start', 'Art', 'Rolle', 'Richtung', 'Einstieg', 'Validierung', 'Grundriss', 'Teilnehmer', 'Beweis',
-  'Zähler', 'Signatur', 'NK-Check', 'Mängel', 'Kaution', 'Zertifikat', 'Utility'
+  'Zähler', 'Signatur', 'Mängel', 'Kaution', 'Zertifikat', 'Utility'
 ];
 
 export const ProgressBar = () => {
@@ -24,7 +24,7 @@ export const ProgressBar = () => {
             Projekte
           </button>
           <span className="text-xs font-medium text-muted-foreground">
-            Phase {currentStep}/15 · {STEPS[currentStep] || 'Start'}
+            Phase {currentStep}/14 · {STEPS[currentStep] || 'Start'}
           </span>
         </div>
         <div className="flex gap-0.5">

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Scale, Euro, AlertTriangle, CheckCircle2, Shield, ArrowDown } from 'lucide-react';
+import { Scale, Euro, AlertTriangle, CheckCircle2, Shield, ArrowDown, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
