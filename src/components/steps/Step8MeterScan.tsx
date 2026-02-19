@@ -147,7 +147,7 @@ export const Step8MeterScan = () => {
       {scanning && (
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card rounded-3xl p-8 w-full max-w-md text-center mb-6">
           <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} className="w-14 h-14 rounded-full border-4 border-success/20 border-t-success mx-auto mb-4" />
-          <h3 className="font-semibold mb-4">KI-Zähleranalyse</h3>
+          <h3 className="font-semibold mb-4">Fotoerfassung mit KI</h3>
           <div className="space-y-3 text-left">
             {scanMessages.map((msg, i) => (
               <motion.div key={msg} initial={{ opacity: 0, x: -10 }} animate={{ opacity: i <= scanStep ? 1 : 0.3, x: 0 }} className="flex items-center gap-3 text-sm">
@@ -159,12 +159,12 @@ export const Step8MeterScan = () => {
         </motion.div>
       )}
 
-      {/* Action buttons */}
-      {!scanning && (
+      {/* Action buttons – only show when meters already exist */}
+      {!scanning && data.meterReadings.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="w-full max-w-md mb-6 grid grid-cols-2 gap-3">
           <Button onClick={startScan} className="h-14 rounded-2xl font-semibold gap-2" size="lg">
             <Camera className="w-5 h-5" />
-            Scan
+            Fotoerfassung (KI)
           </Button>
           <Button
             variant="outline"
@@ -372,15 +372,29 @@ export const Step8MeterScan = () => {
         </motion.div>
       )}
 
-      {/* Empty state add button */}
+      {/* Empty state: two equal options side by side */}
       {data.meterReadings.length === 0 && !scanning && !showManualForm && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="w-full max-w-md">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="w-full max-w-md grid grid-cols-2 gap-3">
+          {/* Left: AI photo capture */}
+          <button
+            onClick={startScan}
+            className="glass-card rounded-2xl p-6 border-2 border-primary/30 flex flex-col items-center gap-3 text-foreground hover:border-primary hover:bg-primary/5 transition-all group"
+          >
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <Camera className="w-6 h-6 text-primary" />
+            </div>
+            <span className="text-xs font-semibold text-center leading-tight">Fotoerfassung<br />(mit KI)</span>
+          </button>
+
+          {/* Right: manual entry */}
           <button
             onClick={() => { setShowManualForm(true); setManualForm(emptyForm()); }}
-            className="w-full glass-card rounded-2xl p-6 border-2 border-dashed border-border/60 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+            className="glass-card rounded-2xl p-6 border-2 border-dashed border-border/60 flex flex-col items-center gap-3 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all group"
           >
-            <Plus className="w-8 h-8" />
-            <span className="text-sm font-medium">Zähler manuell hinzufügen</span>
+            <div className="w-12 h-12 rounded-xl bg-secondary/60 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+              <Plus className="w-6 h-6" />
+            </div>
+            <span className="text-xs font-semibold text-center leading-tight">Zähler manuell<br />hinzufügen</span>
           </button>
         </motion.div>
       )}
