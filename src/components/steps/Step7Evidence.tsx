@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Camera, X, CheckCircle2, Crosshair, Clock, Compass, AlertTriangle, Euro } from 'lucide-react';
+import { MapPin, Camera, X, CheckCircle2, Crosshair, Clock, Compass, AlertTriangle, Euro, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover, Finding } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
@@ -40,11 +40,14 @@ const analysisMessages = [
   'Berechne Zeitwert...',
 ];
 
+const STANDARD_ROOMS = ['Flur', 'Wohnzimmer', 'Schlafzimmer', 'Bad', 'Küche', 'Balkon', 'Keller', 'Sonstiges'];
+
 export const Step7Evidence = () => {
   const { evidenceTitle, evidenceSubtitle, isMoveIn } = useTransactionLabels();
   const { data, updateData, setCurrentStep } = useHandover();
   const [phase, setPhase] = useState<Phase>('floorplan');
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [locationDetail, setLocationDetail] = useState<string>('');
   const [pinPosition, setPinPosition] = useState<{ x: number; y: number } | null>(null);
   const [analysisStep, setAnalysisStep] = useState(0);
   const [currentResult, setCurrentResult] = useState<typeof AI_RESULTS[0] | null>(null);
@@ -68,7 +71,7 @@ export const Step7Evidence = () => {
     setPinPosition({ x, y });
 
     // Find nearest room
-    let nearest = data.rooms[0]?.name || 'Unbekannt';
+    let nearest = data.rooms[0]?.name || null;
     let minDist = Infinity;
     data.rooms.forEach(r => {
       const dist = Math.sqrt((r.x - x) ** 2 + (r.y - y) ** 2);
@@ -85,18 +88,20 @@ export const Step7Evidence = () => {
 
   const saveFinding = () => {
     if (!currentResult || !pinPosition || !selectedRoom) return;
-    const finding: Finding = {
+    const finding: Finding & { locationDetail?: string } = {
       id: Date.now().toString(),
       room: selectedRoom,
       pinX: pinPosition.x,
       pinY: pinPosition.y,
       ...currentResult,
       timestamp: new Date().toLocaleString('de-DE'),
+      locationDetail: locationDetail.trim() || undefined,
     };
     updateData({ findings: [...data.findings, finding] });
     setPhase('floorplan');
     setPinPosition(null);
     setSelectedRoom(null);
+    setLocationDetail('');
     setCurrentResult(null);
   };
 
@@ -205,7 +210,42 @@ export const Step7Evidence = () => {
   // Camera mock
   if (phase === 'camera') {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8">
+      <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8 gap-4">
+        {/* Room selector */}
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Raum *</label>
+            <div className="relative">
+              <select
+                value={selectedRoom || ''}
+                onChange={e => setSelectedRoom(e.target.value)}
+                className="w-full h-11 rounded-xl border border-border bg-background px-3 pr-8 text-sm font-medium appearance-none focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="" disabled>Raum auswählen …</option>
+                {/* Rooms from floor plan first */}
+                {data.rooms.length > 0 && data.rooms.map(r => (
+                  <option key={r.id} value={r.name}>{r.name}</option>
+                ))}
+                {/* Then standard rooms not already listed */}
+                {STANDARD_ROOMS.filter(sr => !data.rooms.some(r => r.name === sr)).map(sr => (
+                  <option key={sr} value={sr}>{sr}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Genaue Lage im Raum (optional)</label>
+            <input
+              type="text"
+              value={locationDetail}
+              onChange={e => setLocationDetail(e.target.value)}
+              placeholder="z. B. Decke hinten rechts, Wand neben Fenster"
+              className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -236,7 +276,7 @@ export const Step7Evidence = () => {
 
           {/* Room label */}
           <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-primary/80 text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
-            {selectedRoom}
+            {selectedRoom || '— Raum wählen —'}
           </div>
 
           {/* Bottom controls */}
@@ -244,21 +284,24 @@ export const Step7Evidence = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => { setPhase('floorplan'); setPinPosition(null); }}
+              onClick={() => { setPhase('floorplan'); setPinPosition(null); setLocationDetail(''); }}
               className="text-primary-foreground/70 hover:text-primary-foreground"
             >
               <X className="w-6 h-6" />
             </Button>
             <motion.button
               whileTap={{ scale: 0.9 }}
-              onClick={handleCapture}
-              className="w-16 h-16 rounded-full border-4 border-accent bg-accent/20 flex items-center justify-center"
+              onClick={() => { if (!selectedRoom) return; handleCapture(); }}
+              className={`w-16 h-16 rounded-full border-4 border-accent flex items-center justify-center transition-opacity ${selectedRoom ? 'bg-accent/20 opacity-100' : 'opacity-40 cursor-not-allowed bg-muted/20'}`}
             >
               <div className="w-12 h-12 rounded-full bg-accent" />
             </motion.button>
             <div className="w-10" /> {/* spacer */}
           </div>
         </motion.div>
+        {!selectedRoom && (
+          <p className="text-xs text-destructive font-medium">⚠ Bitte zuerst einen Raum auswählen</p>
+        )}
       </div>
     );
   }

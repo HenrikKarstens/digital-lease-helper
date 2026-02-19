@@ -1,17 +1,39 @@
 import { motion } from 'framer-motion';
-import { FileText, Send, CheckCircle2, Shield, Mail, Calendar, MapPin, Users, Download } from 'lucide-react';
+import { FileText, Send, CheckCircle2, Shield, Mail, Calendar, MapPin, Users, Download, Printer, X, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { generateMasterProtocol } from '@/lib/pdfGenerator';
+import { generateMasterProtocol, generateMasterProtocolBlob } from '@/lib/pdfGenerator';
 
 export const Step13Certificate = () => {
   const { data, updateData, setCurrentStep } = useHandover();
   const { ownerRole, clientRole, depositLabel, isSale } = useTransactionLabels();
   const [sending, setSending] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handlePreview = useCallback(() => {
+    try {
+      const blob = generateMasterProtocolBlob(data);
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+    } catch (e) {
+      toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
+    }
+  }, [data, toast]);
+
+  const handlePrint = useCallback(() => {
+    if (!previewUrl) return;
+    const win = window.open(previewUrl, '_blank');
+    win?.focus();
+  }, [previewUrl]);
+
+  const closePreview = useCallback(() => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+  }, [previewUrl]);
 
   const deposit = parseFloat(data.depositAmount) || 0;
   const defectsCost = data.findings.reduce((sum, f) => sum + f.recommendedWithholding, 0);
@@ -32,6 +54,28 @@ export const Step13Certificate = () => {
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
+      {/* PDF inline preview modal */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              <span className="font-semibold text-sm">Protokoll-Vorschau</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 rounded-xl">
+                <Printer className="w-4 h-4" />
+                Drucken / Speichern
+              </Button>
+              <Button size="icon" variant="ghost" onClick={closePreview} className="rounded-xl">
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+          <iframe src={previewUrl} className="flex-1 w-full border-0" title="Protokoll PDF Vorschau" />
+        </div>
+      )}
+
       <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-2 text-center">
         EstateTurn-Zertifikat
       </motion.h2>
@@ -94,7 +138,7 @@ export const Step13Certificate = () => {
             {data.signatureLandlord && data.signatureTenant && (
               <div className="flex items-center gap-2 text-success text-xs">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Beide Unterschriften vorhanden</span>
+                <span>Beide Unterschriften vorhanden · Digital signiert</span>
               </div>
             )}
           </div>
@@ -105,15 +149,23 @@ export const Step13Certificate = () => {
           </div>
         </motion.div>
 
-        {/* PDF Download */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+        {/* PDF actions */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.32 }} className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handlePreview}
+            className="flex-1 h-12 rounded-2xl font-semibold gap-2 border-primary/30"
+          >
+            <Eye className="w-4 h-4" />
+            Vorschau
+          </Button>
           <Button
             variant="outline"
             onClick={() => generateMasterProtocol(data)}
-            className="w-full h-12 rounded-2xl font-semibold gap-2 border-primary/30"
+            className="flex-1 h-12 rounded-2xl font-semibold gap-2 border-primary/30"
           >
             <Download className="w-4 h-4" />
-            Master-Protokoll als PDF herunterladen
+            Herunterladen
           </Button>
         </motion.div>
 
