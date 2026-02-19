@@ -399,6 +399,83 @@ export function generateMasterProtocol(data: HandoverData): void {
     doc.setFont('helvetica', 'normal');
   }
 
+  // ── §7b Aufforderungsschreiben (§ 281 BGB) ───────────────────────────────
+  const damageFindings = data.findings.filter(f => f.recommendedWithholding > 0);
+  if (damageFindings.length > 0 && !isSale) {
+    if (y > pageH - 80) { doc.addPage(); y = 36; }
+    y = sectionTitle(doc, '§7b  Aufforderungsschreiben zur Mängelbeseitigung (§ 281 BGB)', y, pageW);
+
+    // Letter header box
+    doc.setFillColor(238, 242, 255);
+    const letterStartY = y;
+    doc.roundedRect(14, letterStartY, pageW - 28, 8, 2, 2, 'F');
+    doc.setTextColor(...BRAND_COLOR);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Schriftliche Aufforderung zur Mängelbeseitigung', 18, letterStartY + 5.5);
+    y = letterStartY + 12;
+
+    // Salutation
+    doc.setTextColor(...TEXT_COLOR);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    const tenantName = data.tenantName || 'Mieter';
+    const landlordName = data.landlordName || 'Vermieter';
+    const address = data.propertyAddress || 'der o.g. Immobilie';
+    const deadline14 = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() + 14);
+      return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    })();
+    const deadline30 = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    })();
+
+    const intro = `An: ${tenantName}\nVon: ${landlordName}\nBetr.: Aufforderung zur Beseitigung von Mängeln an ${address}\n\nSehr geehrte Mieterin, sehr geehrter Mieter,\n\nim Rahmen der am ${date} durchgeführten Wohnungsübergabe wurden folgende Schäden festgestellt, die über den üblichen Mietgebrauch hinausgehen und daher gemäß § 538 BGB in Verbindung mit der BGH-Rechtsprechung (BGH VIII ZR 222/15) zu Lasten der Mieterseite gehen:`;
+    const introLines = doc.splitTextToSize(intro, pageW - 32);
+    if (y + introLines.length * 4 > pageH - 20) { doc.addPage(); y = 36; }
+    doc.text(introLines, 18, y);
+    y += introLines.length * 4 + 4;
+
+    // Damage table in letter
+    autoTable(doc, {
+      startY: y,
+      margin: { left: 18, right: 18 },
+      head: [['Nr.', 'Raum', 'Schadensbild', 'Geschätzter Einbehalt']],
+      body: damageFindings.map((f, idx) => [
+        `${idx + 1}.`,
+        f.room,
+        `${f.damageType} (${f.material})`,
+        `ca. ${f.recommendedWithholding} €`,
+      ]),
+      headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7.5 },
+      bodyStyles: { fontSize: 8 },
+      alternateRowStyles: { fillColor: [255, 248, 248] },
+      columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
+    });
+    y = (doc as any).lastAutoTable.finalY + 4;
+
+    // Demand paragraph
+    const demand = `Wir fordern Sie hiermit ausdrücklich auf, die oben aufgeführten Mängel bis spätestens ${deadline14} (Frist: 14 Tage gemäß § 281 BGB) fachgerecht und auf eigene Kosten zu beseitigen. Sofern Sie die Behebung durch einen Fachbetrieb beauftragen, bitten wir um Vorlage eines Kostenvoranschlags und eines Nachweises der Mängelbeseitigung (Fotos/Rechnung).\n\nWir weisen darauf hin, dass bei fruchtlosem Ablauf der gesetzten Frist ${landlordName} berechtigt ist, die Mängelbeseitigung auf Ihre Kosten zu veranlassen und entstandene Aufwendungen mit der hinterlegten Kaution zu verrechnen bzw. als Schadensersatz nach § 280 Abs. 1 BGB geltend zu machen.\n\nSollte eine einvernehmliche Lösung nicht erzielt werden, behalten wir uns vor, rechtliche Schritte einzuleiten. Für etwaige Rückfragen stehen wir bis zum ${deadline30} zur Verfügung.\n\nDiese Aufforderung ist Bestandteil des EstateTurn-Übergabeprotokolls (ID: ${protocolId}) und rechtlich bindend.`;
+    const demandLines = doc.splitTextToSize(demand, pageW - 32);
+    if (y + demandLines.length * 4 > pageH - 20) { doc.addPage(); y = 36; }
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...TEXT_COLOR);
+    doc.text(demandLines, 18, y);
+    y += demandLines.length * 4 + 6;
+
+    // Signature line in letter
+    doc.setDrawColor(180, 180, 200);
+    doc.line(18, y, 18 + 60, y);
+    doc.setFontSize(7);
+    doc.setTextColor(...MUTED_COLOR);
+    doc.text(`${landlordName} (Vermieter/in)`, 18, y + 4);
+    y += 12;
+  }
+
   // ── §8 Rechtsbelehrung ────────────────────────────────────────────────────
   if (y > pageH - 70) { doc.addPage(); y = 36; }
   y = sectionTitle(doc, '§8  Rechtsbelehrung & Anerkennungsklauseln', y, pageW);
