@@ -142,13 +142,18 @@ const FloorPlanEditor = ({ rooms, onChange }: { rooms: KonvaRoom[]; onChange: (r
               stroke={color}
               strokeWidth={isSelected ? 2.5 : 1.5}
             />
-            <foreignObject x={4} y={room.h / 2 - 14} width={room.w - 8} height={28}>
-              <div
-                style={{ fontSize: 10, fontWeight: 600, color, textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.2 }}
-              >
-                {room.name}
-              </div>
-            </foreignObject>
+            <text
+              x={room.w / 2}
+              y={room.h / 2 + 4}
+              textAnchor="middle"
+              fontSize={10}
+              fontWeight="600"
+              fill={color}
+              fontFamily="system-ui, sans-serif"
+              style={{ pointerEvents: 'none' }}
+            >
+              {room.name.length > 14 ? room.name.substring(0, 13) + '…' : room.name}
+            </text>
             {isSelected && (
               <circle cx={room.w / 2} cy={room.h - 10} r={4} fill={color} opacity={0.8} />
             )}
