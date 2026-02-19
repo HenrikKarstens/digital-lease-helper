@@ -61,123 +61,241 @@ function labelValue(doc: jsPDF, label: string, value: string, x: number, y: numb
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BEWEISANKER – pre-meeting evidence anchor document
+// VORAB-DOKUMENT / OFFLINE-PROTOKOLL – comprehensive pre-meeting document
 // ─────────────────────────────────────────────────────────────────────────────
+const STANDARD_ROOMS = [
+  'Flur', 'Wohnzimmer', 'Schlafzimmer', 'Kinderzimmer', 'Bad', 'Gäste-WC',
+  'Küche', 'Abstellraum', 'Balkon/Terrasse', 'Garten', 'Garage', 'Carport',
+  'Keller', 'Dachboden', 'Außenbereich', 'Sonstiges',
+];
+
+function drawWriteLine(doc: jsPDF, x: number, y: number, width: number): number {
+  doc.setDrawColor(190, 190, 210);
+  doc.line(x, y, x + width, y);
+  return y + 6;
+}
+
 export function generateBeweisanker(data: HandoverData): void {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const date = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
+  const isSale = data.transactionType === 'sale';
+  const isMoveIn = data.handoverDirection === 'move-in';
+  const ownerLabel = isSale ? 'Verkäufer' : 'Vermieter';
+  const clientLabel = isSale ? 'Käufer' : 'Mieter';
 
-  addHeader(doc, 'Beweisanker – Vorab-Dokument', date, pageW);
+  addHeader(doc, 'Vorab-Dokument / Offline-Protokoll', `Erstellt am ${date}`, pageW);
 
   let y = 36;
-
-  // ── Objekt & Parteien ──────────────────────────────────────────────────────
-  y = sectionTitle(doc, '§1  Stammdaten & Objekt', y, pageW);
   const col1 = 14, col2 = pageW / 2 + 2, colW = pageW / 2 - 16;
-  let leftY = y, rightY = y;
-  leftY = labelValue(doc, 'Objekt / Adresse', data.propertyAddress, col1, leftY, colW) + 4;
-  rightY = labelValue(doc, 'Übergabedatum', date, col2, rightY, colW) + 4;
-  leftY = labelValue(doc, 'Vertragsart', data.transactionType === 'sale' ? 'Kauf' : 'Miete', col1, leftY, colW) + 4;
-  rightY = labelValue(doc, 'Richtung', data.handoverDirection === 'move-in' ? 'Einzug' : 'Auszug', col2, rightY, colW) + 4;
-  y = Math.max(leftY, rightY) + 2;
 
-  // ── Vermieter / Verkäufer ──────────────────────────────────────────────────
-  y = sectionTitle(doc, '§2  Vermieter / Verkäufer', y, pageW);
-  leftY = y; rightY = y;
-  leftY = labelValue(doc, 'Name', data.landlordName, col1, leftY, colW) + 4;
-  rightY = labelValue(doc, 'E-Mail', data.landlordEmail, col2, rightY, colW) + 4;
-  y = Math.max(leftY, rightY) + 2;
+  // ── §1 Stammdaten & Parteien ───────────────────────────────────────────────
+  y = sectionTitle(doc, '§1  Stammdaten & Parteien', y, pageW);
 
-  // ── Mieter / Käufer ────────────────────────────────────────────────────────
-  y = sectionTitle(doc, '§3  Mieter / Käufer', y, pageW);
-  leftY = y; rightY = y;
-  leftY = labelValue(doc, 'Name', data.tenantName, col1, leftY, colW) + 4;
-  rightY = labelValue(doc, 'E-Mail', data.tenantEmail, col2, rightY, colW) + 4;
-  y = Math.max(leftY, rightY) + 2;
-
-  // ── Mietkonditionen ────────────────────────────────────────────────────────
-  y = sectionTitle(doc, '§4  Mietkonditionen (KI-Analyse)', y, pageW);
-  leftY = y; rightY = y;
-  leftY = labelValue(doc, 'Kaltmiete', data.coldRent ? `${data.coldRent} €` : '–', col1, leftY, colW) + 4;
-  rightY = labelValue(doc, 'NK-Vorauszahlung', data.nkAdvancePayment ? `${data.nkAdvancePayment} €` : '–', col2, rightY, colW) + 4;
-  leftY = labelValue(doc, 'Kaution', data.depositAmount ? `${data.depositAmount} €` : '–', col1, leftY, colW) + 4;
-  rightY = labelValue(doc, 'Vertragsbeginn', data.contractStart || '–', col2, rightY, colW) + 4;
-  y = Math.max(leftY, rightY) + 2;
-
-  // ── Vorschäden ─────────────────────────────────────────────────────────────
-  if (data.preDamages) {
-    y = sectionTitle(doc, '§5  Vorschäden (lt. Vor-Protokoll)', y, pageW);
-    doc.setTextColor(...TEXT_COLOR);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    const lines = doc.splitTextToSize(data.preDamages, pageW - 28);
-    doc.text(lines, col1, y);
-    y += lines.length * 4 + 6;
-  }
-
-  // ── Teilnehmer ─────────────────────────────────────────────────────────────
-  if (data.participants.length > 0) {
-    y = sectionTitle(doc, '§6  Anwesende Teilnehmer', y, pageW);
-    autoTable(doc, {
-      startY: y,
-      margin: { left: 14, right: 14 },
-      head: [['Name', 'Rolle', 'Anwesend', 'Unterschrift (vor Ort)']],
-      body: data.participants.map(p => [
-        p.name,
-        p.role,
-        p.present ? 'Ja' : 'Nein',
-        p.signature ? '✓ Digital hinterlegt' : '________________________',
-      ]),
-      headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
-      bodyStyles: { fontSize: 8, textColor: TEXT_COLOR },
-      alternateRowStyles: { fillColor: [248, 249, 255] },
-      columnStyles: { 3: { cellWidth: 55 } },
-    });
-    y = (doc as any).lastAutoTable.finalY + 6;
-  }
-
-  // ── Notizfelder für Begehung ────────────────────────────────────────────────
-  y = sectionTitle(doc, '§7  Notizfelder für die Begehung (Backup / handschriftlich)', y, pageW);
-  const noteLabels = ['Schlüsselübergabe (Anzahl / Typ)', 'Besondere Vereinbarungen', 'Abweichungen vom Protokoll', 'Sonstiges'];
-  noteLabels.forEach(label => {
-    if (y > pageH - 40) { doc.addPage(); y = 36; }
-    doc.setTextColor(...MUTED_COLOR);
-    doc.setFontSize(7);
-    doc.text(label, col1, y);
-    y += 3;
-    doc.setDrawColor(180, 180, 200);
-    doc.line(col1, y, pageW - 14, y); y += 6;
-    doc.line(col1, y, pageW - 14, y); y += 6;
-    doc.line(col1, y, pageW - 14, y); y += 10;
-  });
-
-  // ── Rechtsbelehrung ────────────────────────────────────────────────────────
-  if (y > pageH - 50) { doc.addPage(); y = 36; }
-  y = sectionTitle(doc, '§8  Rechtsbelehrung & Anerkennungsklausel', y, pageW);
-  doc.setFillColor(255, 248, 230);
-  doc.roundedRect(14, y, pageW - 28, 28, 2, 2, 'F');
-  doc.setTextColor(120, 80, 20);
+  // Info box
+  doc.setFillColor(238, 242, 255);
+  doc.roundedRect(14, y, pageW - 28, 7, 2, 2, 'F');
+  doc.setTextColor(...BRAND_COLOR);
   doc.setFontSize(7);
+  doc.setFont('helvetica', 'italic');
+  doc.text('Bereits aus der App übernommene Daten sind vorausgefüllt. Leere Felder bitte handschriftlich ergänzen.', 18, y + 4.5);
   doc.setFont('helvetica', 'normal');
-  const disclaimer = 'Dieses Beweisanker-Dokument dient als rechtssichere Grundlage für die Immobilienübergabe. Mit Unterzeichnung des finalen Übergabeprotokolls erkennen beide Parteien den dokumentierten Zustand der Immobilie als bindend an. Einwände gegen den Zustand sind innerhalb von 7 Tagen nach Übergabe schriftlich geltend zu machen (§ 548 BGB). Mängel, die bei der Übergabe nicht dokumentiert wurden, gelten als vom Mieter anerkannt, sofern dieser keinen Vorbehalt erklärt hat. Dieses Dokument ist urkundlich zu verwahren.';
-  const dlines = doc.splitTextToSize(disclaimer, pageW - 36);
-  doc.text(dlines, 18, y + 5);
-  y += 32;
+  y += 10;
 
-  // ── Unterschriftenfelder ───────────────────────────────────────────────────
-  if (y > pageH - 40) { doc.addPage(); y = 36; }
-  y = sectionTitle(doc, '§9  Bestätigung der Vollständigkeit', y, pageW);
-  const sigBoxW = (pageW - 28 - 8) / 2;
-  [[col1, data.landlordName || 'Vermieter / Verkäufer'], [col2 - 2, data.tenantName || 'Mieter / Käufer']].forEach(([x, name]) => {
-    doc.setDrawColor(180, 180, 200);
-    doc.rect(Number(x), y, sigBoxW, 18);
-    doc.setTextColor(...MUTED_COLOR);
-    doc.setFontSize(7);
-    doc.text('Unterschrift', Number(x) + 2, y + 23);
-    doc.text(String(name), Number(x) + 2, y + 27);
+  const fieldLineH = 12;
+  const drawField = (label: string, value: string, x: number, fy: number, w: number): number => {
+    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
+    doc.text(label, x, fy);
+    fy += 2.5;
+    if (value && value !== '–') {
+      doc.setTextColor(...TEXT_COLOR); doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      const vlines = doc.splitTextToSize(value, w - 2);
+      doc.text(vlines, x, fy);
+      fy += vlines.length * 4;
+    } else {
+      fy = drawWriteLine(doc, x, fy + 2, w - 4);
+    }
+    return fy + 2;
+  };
+
+  let lY = y, rY = y;
+  lY = drawField('Objekt / Adresse', data.propertyAddress, col1, lY, colW);
+  rY = drawField('Übergabedatum / Uhrzeit', date, col2, rY, colW);
+  lY = drawField('Vertragsart', isSale ? 'Kauf' : 'Miete', col1, lY, colW);
+  rY = drawField('Übergaberichtung', isMoveIn ? 'Einzug' : 'Auszug', col2, rY, colW);
+  y = Math.max(lY, rY) + 2;
+
+  // Parteien nebeneinander
+  lY = y; rY = y;
+  lY = drawField(`Name ${ownerLabel}`, data.landlordName, col1, lY, colW);
+  rY = drawField(`Name ${clientLabel}`, data.tenantName, col2, rY, colW);
+  lY = drawField(`E-Mail ${ownerLabel}`, data.landlordEmail, col1, lY, colW);
+  rY = drawField(`E-Mail ${clientLabel}`, data.tenantEmail, col2, rY, colW);
+  y = Math.max(lY, rY) + 2;
+
+  // Finanzdaten
+  lY = y; rY = y;
+  lY = drawField('Kaltmiete', data.coldRent ? `${data.coldRent} €` : '', col1, lY, colW);
+  rY = drawField('NK-Vorauszahlung', data.nkAdvancePayment ? `${data.nkAdvancePayment} €` : '', col2, rY, colW);
+  lY = drawField('Kaution', data.depositAmount ? `${data.depositAmount} €` : '', col1, lY, colW);
+  rY = drawField('Vertragsbeginn', data.contractStart, col2, rY, colW);
+  y = Math.max(lY, rY) + 4;
+
+  // ── §2 Teilnehmer ─────────────────────────────────────────────────────────
+  if (y > pageH - 50) { doc.addPage(); y = 36; }
+  y = sectionTitle(doc, '§2  Anwesende Teilnehmer', y, pageW);
+  const participantRows: string[][] = data.participants.length > 0
+    ? data.participants.map(p => [p.name, p.role, p.present ? '☑ Ja' : '☐ Ja', ''])
+    : [['', '', '☐ Ja', ''], ['', '', '☐ Ja', ''], ['', '', '☐ Ja', '']];
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 14, right: 14 },
+    head: [['Name', 'Rolle / Funktion', 'Anwesend', 'Handzeichen vor Ort']],
+    body: participantRows,
+    headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
+    bodyStyles: { fontSize: 8, textColor: TEXT_COLOR, minCellHeight: 10 },
+    alternateRowStyles: { fillColor: [248, 249, 255] },
+    columnStyles: { 2: { cellWidth: 22, halign: 'center' }, 3: { cellWidth: 45 } },
   });
+  y = (doc as any).lastAutoTable.finalY + 6;
+
+  // ── §3 Zählerstände ───────────────────────────────────────────────────────
+  if (y > pageH - 60) { doc.addPage(); y = 36; }
+  y = sectionTitle(doc, '§3  Zählerstände', y, pageW);
+  const meterRows: string[][] = data.meterReadings.length > 0
+    ? data.meterReadings.map(m => [m.medium, m.meterNumber || '', m.reading, m.unit, ''])
+    : [
+        ['Strom', '', '', 'kWh', ''],
+        ['Gas', '', '', 'm³', ''],
+        ['Wasser', '', '', 'm³', ''],
+        ['Heizung', '', '', 'MWh', ''],
+        ['Sonstiges', '', '', '', ''],
+      ];
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 14, right: 14 },
+    head: [['Typ / Medium', 'Zählernummer', 'Ablesewert (Zahl)', 'Einheit', 'Foto / Bemerkung']],
+    body: meterRows,
+    headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
+    bodyStyles: { fontSize: 8, textColor: TEXT_COLOR, minCellHeight: 10 },
+    alternateRowStyles: { fillColor: [248, 249, 255] },
+    columnStyles: { 2: { cellWidth: 38, halign: 'right' }, 3: { cellWidth: 18, halign: 'center' } },
+  });
+  y = (doc as any).lastAutoTable.finalY + 6;
+
+  // ── §4 Schlüssel-Übergabe ─────────────────────────────────────────────────
+  if (y > pageH - 60) { doc.addPage(); y = 36; }
+  y = sectionTitle(doc, '§4  Schlüssel-Übergabe', y, pageW);
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 14, right: 14 },
+    head: [['Schlüssel-Typ', `Anzahl ${ownerLabel} → ${clientLabel}`, 'Quittierung Empfang', 'Bemerkung']],
+    body: [
+      ['Haustürschlüssel', '', '☐ erhalten', ''],
+      ['Wohnungsschlüssel', '', '☐ erhalten', ''],
+      ['Kellerschlüssel', '', '☐ erhalten', ''],
+      ['Briefkastenschlüssel', '', '☐ erhalten', ''],
+      ['Garagenschlüssel / Chip', '', '☐ erhalten', ''],
+      ['Sonstige Schlüssel', '', '☐ erhalten', ''],
+    ],
+    headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
+    bodyStyles: { fontSize: 8, textColor: TEXT_COLOR, minCellHeight: 9 },
+    alternateRowStyles: { fillColor: [248, 249, 255] },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 }, 1: { cellWidth: 38, halign: 'center' }, 2: { cellWidth: 30, halign: 'center' } },
+  });
+  y = (doc as any).lastAutoTable.finalY + 6;
+
+  // ── §5 Raum-für-Raum-Checkliste ───────────────────────────────────────────
+  doc.addPage(); y = 36;
+  y = sectionTitle(doc, '§5  Raum-für-Raum-Checkliste', y, pageW);
+  doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'italic');
+  doc.text('Zustand je Raum beurteilen. Bitte handschriftlich Mängel oder Besonderheiten eintragen.', col1, y);
+  doc.setFont('helvetica', 'normal');
+  y += 5;
+
+  const roomCheckRows = STANDARD_ROOMS.map(room => [room, '☐ OK  ☐ Mängel', '', '']);
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 14, right: 14 },
+    head: [['Raum', 'Zustand', 'Mängel / Besonderheiten (handschriftlich)', 'Foto Nr.']],
+    body: roomCheckRows,
+    headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
+    bodyStyles: { fontSize: 8, textColor: TEXT_COLOR, minCellHeight: 12 },
+    alternateRowStyles: { fillColor: [248, 249, 255] },
+    columnStyles: {
+      0: { cellWidth: 38, fontStyle: 'bold' },
+      1: { cellWidth: 28, halign: 'center' },
+      2: { cellWidth: 100 },
+      3: { cellWidth: 14, halign: 'center' },
+    },
+  });
+  y = (doc as any).lastAutoTable.finalY + 6;
+
+  // ── §6 Besondere Vereinbarungen ────────────────────────────────────────────
+  if (y > pageH - 55) { doc.addPage(); y = 36; }
+  y = sectionTitle(doc, '§6  Besondere Vereinbarungen & Notizen', y, pageW);
+  const noteLabels = ['Schönheitsreparaturen / Renovierungsvereinbarung', 'Abweichungen vom Vertrag', 'Sonstige Absprachen'];
+  for (const label of noteLabels) {
+    if (y > pageH - 35) { doc.addPage(); y = 36; }
+    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.text(label, col1, y); y += 3;
+    y = drawWriteLine(doc, col1, y, pageW - 28);
+    y = drawWriteLine(doc, col1, y, pageW - 28);
+    y = drawWriteLine(doc, col1, y, pageW - 28);
+    y += 4;
+  }
+
+  // ── §7 Rechtsbelehrung ─────────────────────────────────────────────────────
+  if (y > pageH - 55) { doc.addPage(); y = 36; }
+  y = sectionTitle(doc, '§7  Rechtsbelehrung & Anerkennungsklausel', y, pageW);
+  doc.setFillColor(255, 248, 230);
+  const clauses = [
+    `Zustandsanerkennung (§ 536b BGB): Mit Unterzeichnung erkennen beide Parteien den zum Zeitpunkt der Übergabe festgestellten und dokumentierten Zustand der Immobilie als bindend an.`,
+    `Fristsetzung (§ 281 BGB): Mängelanzeigen sind innerhalb von 7 Tagen nach Übergabe schriftlich zu erklären. Danach gelten nicht gerügte Mängel als anerkannt, sofern kein Vorbehalt erklärt wurde.`,
+    `Verjährung (§ 548 BGB): Ansprüche wegen Verschlechterungen der Mietsache verjähren in 6 Monaten nach Rückgabe.`,
+    `Schlüssel: Die Rückgabe sämtlicher Schlüssel beendet die Sachherrschaft und das Mietverhältnis. Nicht zurückgegebene Schlüssel begründen Schadensersatzansprüche.`,
+    `Dieses Vorab-Dokument ist kein rechtskräftiges Übergabeprotokoll. Es dient als strukturierte Arbeitsgrundlage für die Begehung. Das finale Protokoll wird anschließend digital in der App EstateTurn erstellt und rechtssicher archiviert.`,
+  ];
+  const clines = clauses.flatMap(c => ['• ' + c, '']);
+  const clH = clines.length * 3.5 + 8;
+  const safeClH = Math.min(clH, pageH - y - 20);
+  doc.roundedRect(14, y, pageW - 28, safeClH, 2, 2, 'F');
+  doc.setTextColor(120, 80, 20); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+  doc.text(doc.splitTextToSize(clauses.map(c => '• ' + c).join('\n\n'), pageW - 36), 18, y + 5);
+  y += safeClH + 6;
+
+  // ── §8 Unterschriften ─────────────────────────────────────────────────────
+  if (y > pageH - 55) { doc.addPage(); y = 36; }
+  y = sectionTitle(doc, '§8  Unterschriften der Parteien', y, pageW);
+  const sigBoxW = (pageW - 28 - 8) / 2;
+  const sigBoxH = 30;
+
+  const parties = [
+    { x: col1, name: data.landlordName || ownerLabel, role: ownerLabel },
+    { x: col2 - 2, name: data.tenantName || clientLabel, role: clientLabel },
+  ];
+  for (const party of parties) {
+    doc.setDrawColor(160, 160, 190);
+    doc.rect(party.x, y, sigBoxW, sigBoxH);
+    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7);
+    doc.text(party.role, party.x + 2, y + 4);
+    doc.setTextColor(...TEXT_COLOR); doc.setFontSize(8.5); doc.setFont('helvetica', 'bold');
+    doc.text(party.name, party.x + 2, y + 10);
+    doc.setFont('helvetica', 'normal');
+    doc.setDrawColor(200, 200, 220);
+    doc.line(party.x + 2, y + sigBoxH - 8, party.x + sigBoxW - 4, y + sigBoxH - 8);
+    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
+    doc.text('Datum, Ort & Unterschrift', party.x + 2, y + sigBoxH - 3);
+  }
+  y += sigBoxH + 4;
+
+  // Datum/Ort Felder darunter
+  lY = y; rY = y;
+  for (const [xi, label] of [[col1, 'Ort, Datum (Vermieterseite)'], [col2 - 2, 'Ort, Datum (Mieterseite)']] as [number, string][]) {
+    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5); doc.text(label, xi, y);
+    drawWriteLine(doc, xi, y + 3, sigBoxW - 4);
+  }
+  y += 14;
 
   // Add page numbers
   const totalPages = (doc as any).internal.getNumberOfPages();
@@ -186,7 +304,7 @@ export function generateBeweisanker(data: HandoverData): void {
     addFooter(doc, i, totalPages, pageW, pageH);
   }
 
-  doc.save(`EstateTurn_Beweisanker_${date.replace(/\s/g, '_')}.pdf`);
+  doc.save(`EstateTurn_Vorabdokument_${date.replace(/\s/g, '_')}.pdf`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
