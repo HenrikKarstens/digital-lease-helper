@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Upload, Plus, CheckCircle2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ interface Props {
 
 type ScannerState = 'idle' | 'review';
 
-export const DocumentScanner = ({ onComplete }: Props) => {
+export const DocumentScanner = forwardRef<HTMLDivElement, Props>(({ onComplete }, ref) => {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -69,7 +69,7 @@ export const DocumentScanner = ({ onComplete }: Props) => {
   };
 
   return (
-    <div className="relative">
+    <div ref={ref} className="relative">
       {/* Hidden inputs – strictly separated */}
       <input
         ref={cameraInputRef}
@@ -243,4 +243,7 @@ export const DocumentScanner = ({ onComplete }: Props) => {
       )}
     </div>
   );
-};
+});
+
+DocumentScanner.displayName = 'DocumentScanner';
+
