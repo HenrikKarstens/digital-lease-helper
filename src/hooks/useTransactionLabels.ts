@@ -17,10 +17,8 @@ export const useTransactionLabels = () => {
     contractStartLabel: isSale ? 'Übergabedatum' : 'Vertragsbeginn',
     contractEndLabel: isSale ? 'Stichtag' : 'Vertragsende',
     cancellationTarget: isSale ? 'Vorbesitzer' : 'Altmieter',
-    evidenceTitle: isMoveIn ? 'Dokumentation des Zustands bei Einzug' : 'Beweissicherung',
-    evidenceSubtitle: isMoveIn
-      ? 'Dokumentieren Sie den aktuellen Zustand zum Schutz vor künftigen Forderungen'
-      : 'Tippen Sie auf den Grundriss, um einen Mangel zu dokumentieren',
+    evidenceTitle: 'Beweissicherung (Zustand & Mängel)',
+    evidenceSubtitle: 'Dokumentieren Sie hier alle Mängel, Schäden sowie neutrale Zustandsbesonderheiten.',
     isSale,
     isMoveIn,
   };

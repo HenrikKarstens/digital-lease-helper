@@ -212,30 +212,39 @@ export const Step7Evidence = () => {
 
           {/* ── Action buttons ── */}
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="grid grid-cols-2 gap-2">
+            className="space-y-2">
             <Button
               onClick={() => setPhase('camera')}
-              className="h-14 rounded-2xl gap-2 flex-col text-xs font-semibold"
+              className="w-full h-14 rounded-2xl gap-3 text-sm font-semibold justify-start px-5"
               variant="outline"
             >
-              <Camera className="w-5 h-5" />
-              Foto + KI-Analyse
+              <Camera className="w-5 h-5 shrink-0" />
+              <div className="text-left">
+                <div>Fotoerfassung (Mangel/Schaden)</div>
+                <div className="text-xs font-normal text-muted-foreground">Beweissicherung per Bild mit KI-Analyse</div>
+              </div>
             </Button>
             <Button
               onClick={() => { setManualType('defect'); setPhase('manual-entry'); }}
-              className="h-14 rounded-2xl gap-2 flex-col text-xs font-semibold"
+              className="w-full h-14 rounded-2xl gap-3 text-sm font-semibold justify-start px-5"
               variant="outline"
             >
-              <FileText className="w-5 h-5 text-amber-500" />
-              Manueller Mangel
+              <FileText className="w-5 h-5 text-amber-500 shrink-0" />
+              <div className="text-left">
+                <div>Manueller Eintrag (Mangel/Schaden)</div>
+                <div className="text-xs font-normal text-muted-foreground">Beschreibung ohne Foto</div>
+              </div>
             </Button>
             <Button
               onClick={() => { setManualType('note'); setPhase('manual-entry'); }}
-              className="h-14 rounded-2xl gap-2 flex-col text-xs font-semibold col-span-2"
+              className="w-full h-14 rounded-2xl gap-3 text-sm font-semibold justify-start px-5"
               variant="outline"
             >
-              <StickyNote className="w-4 h-4 text-primary" />
-              Besonderheit / Notiz (ohne Abzug)
+              <StickyNote className="w-5 h-5 text-primary shrink-0" />
+              <div className="text-left">
+                <div>Besonderheit / Notiz (Zustand)</div>
+                <div className="text-xs font-normal text-muted-foreground">Neutral – keine Kautionsrelevanz</div>
+              </div>
             </Button>
           </motion.div>
 
