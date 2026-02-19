@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { PenLine, AlertCircle, SkipForward, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { PenLine, AlertCircle, SkipForward, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,7 +29,6 @@ interface Props {
   onSkip: () => void;
 }
 
-// Manual form fields per doc type
 const getManualFields = (docType: string, isSale: boolean, ownerRole: string, clientRole: string) => {
   if (docType === 'main-contract') {
     return [
@@ -69,19 +68,17 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
   const { isSale, ownerRole, clientRole } = useTransactionLabels();
 
   const [mode, setMode] = useState<InputMode>('idle');
-  const [pages, setPages] = useState<PagePhoto[]>([]);
   const [analysisStepIdx, setAnalysisStepIdx] = useState(0);
   const [currentAnalyzingPage, setCurrentAnalyzingPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<Record<string, string> | null>(null);
   const [manualValues, setManualValues] = useState<Record<string, string>>({});
 
-  const handleScannerComplete = (scannedPages: PagePhoto[]) => {
-    setPages(scannedPages);
-  };
+  // ── Core analysis function – accepts pages directly to avoid stale closure ──
+  const runAnalysis = async (scannedPages: PagePhoto[]) => {
+    if (scannedPages.length === 0) return;
 
-  const handleAnalyze = async () => {
-    if (pages.length === 0) return;
+    console.log('[EstateTurn] Datei erhalten –', scannedPages.length, 'Seite(n)');
     setMode('analyzing');
     setError(null);
     setAnalysisStepIdx(0);
@@ -97,44 +94,76 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       const formData = new FormData();
       formData.append('transactionType', data.transactionType || 'rental');
       formData.append('documentType', docStep.id);
-      pages.forEach((page, idx) => {
+
+      scannedPages.forEach((page, idx) => {
         setCurrentAnalyzingPage(idx + 1);
         formData.append(`file_${idx}`, page.file);
       });
 
-      const { data: responseData, error: fnError } = await supabase.functions.invoke('analyze-contract', { body: formData });
+      console.log('[EstateTurn] Rufe Edge Function auf... (Dokument:', docStep.id, ')');
+
+      const { data: responseData, error: fnError } = await supabase.functions.invoke('analyze-contract', {
+        body: formData,
+      });
+
       clearInterval(interval);
       setAnalysisStepIdx(analysisStepLabels.length - 1);
+
+      console.log('[EstateTurn] Antwort von KI erhalten:', responseData, 'Fehler:', fnError);
 
       if (fnError) throw new Error(fnError.message);
       if (!responseData?.success) throw new Error(responseData?.error || 'Analyse fehlgeschlagen');
 
       const result = responseData.data;
-      const patch: Record<string, string> = {};
-      const fieldMap: Record<string, string> = {
-        propertyAddress: 'propertyAddress', landlordName: 'landlordName', landlordEmail: 'landlordEmail',
-        tenantName: 'tenantName', tenantEmail: 'tenantEmail', depositAmount: 'depositAmount',
-        coldRent: 'coldRent', nkAdvancePayment: 'nkAdvancePayment', contractStart: 'contractStart',
-        contractEnd: 'contractEnd', depositLegalCheck: 'depositLegalCheck',
-        renovationClauseAnalysis: 'renovationClauseAnalysis', preDamages: 'preDamages',
-      };
-      Object.entries(fieldMap).forEach(([src, dst]) => { if (result[src]) patch[dst] = result[src]; });
-      updateData(patch as any);
 
-      const summaryKey = {
+      // Map all returned fields into global state immediately
+      const fieldMap: Record<string, string> = {
+        propertyAddress: 'propertyAddress',
+        landlordName: 'landlordName',
+        landlordEmail: 'landlordEmail',
+        tenantName: 'tenantName',
+        tenantEmail: 'tenantEmail',
+        depositAmount: 'depositAmount',
+        coldRent: 'coldRent',
+        nkAdvancePayment: 'nkAdvancePayment',
+        contractStart: 'contractStart',
+        contractEnd: 'contractEnd',
+        depositLegalCheck: 'depositLegalCheck',
+        renovationClauseAnalysis: 'renovationClauseAnalysis',
+        preDamages: 'preDamages',
+      };
+
+      const patch: Record<string, string> = {};
+      Object.entries(fieldMap).forEach(([src, dst]) => {
+        if (result[src]) patch[dst] = result[src];
+      });
+      updateData(patch as any);
+      console.log('[EstateTurn] Daten in globalen State geschrieben:', Object.keys(patch));
+
+      const summaryKey = ({
         'main-contract': result.depositLegalCheck || result.renovationClauseAnalysis,
         'amendment': result.amendmentSummary,
         'handover-protocol': result.protocolSummary,
         'utility-bill': result.billSummary,
-      }[docStep.id];
+      } as Record<string, string>)[docStep.id];
+
       setAnalysisResult({ ...result, _summary: summaryKey || '' });
       setTimeout(() => setMode('done'), 500);
     } catch (err: any) {
       clearInterval(interval);
-      console.error('Analysis error:', err);
-      setError(err.message || 'Fehler bei der Analyse');
+      console.error('[EstateTurn] Analyse-Fehler:', err);
+      setError(
+        err.message?.includes('API') || err.message?.includes('Gemini') || err.message?.includes('500')
+          ? 'Verbindung zur KI fehlgeschlagen. Bitte versuche es erneut oder gib die Daten manuell ein.'
+          : err.message || 'Fehler bei der Analyse'
+      );
       setMode('idle');
     }
+  };
+
+  // Called by DocumentScanner when the user finishes scanning/uploading
+  const handleScannerComplete = (scannedPages: PagePhoto[]) => {
+    runAnalysis(scannedPages);
   };
 
   const handleManualSave = () => {
@@ -219,10 +248,13 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
         <DocumentAnalysisProgress
           currentPage={currentAnalyzingPage}
-          totalPages={pages.length}
+          totalPages={currentAnalyzingPage}
           steps={analysisStepLabels}
           currentStepIndex={analysisStepIdx}
         />
+        <p className="mt-4 text-sm text-muted-foreground animate-pulse text-center">
+          KI liest den Vertrag… Bitte warten.
+        </p>
       </div>
     );
   }
@@ -255,85 +287,63 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
         </div>
       </div>
 
+      {/* Error banner */}
       {error && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-3 mb-4 border border-destructive/30 flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-          <p className="text-xs text-destructive">{error}</p>
-        </motion.div>
-      )}
-
-      {pages.length === 0 ? (
-        <div className="grid grid-cols-1 gap-3">
-          <DocumentScanner onComplete={handleScannerComplete} />
-
-          <motion.button
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setMode('manual')}
-            className="glass-card rounded-2xl p-5 flex items-center gap-4 text-left w-full hover:border-primary/30 transition-colors"
-          >
-            <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-              <PenLine className="w-6 h-6 text-muted-foreground" />
-            </div>
-            <div>
-              <h4 className="font-semibold">Manuelle Eingabe</h4>
-              <p className="text-xs text-muted-foreground">Daten selbst im Formular eingeben</p>
-            </div>
-          </motion.button>
-        </div>
-      ) : (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold">Seiten im Stapel</span>
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
-                {pages.length}
-              </span>
-            </div>
-            <button
-              onClick={() => setPages([])}
-              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-2xl p-4 mb-4 border border-destructive/30 flex flex-col gap-3"
+        >
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <p className="text-xs text-destructive leading-relaxed">{error}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setError(null); setMode('manual'); }}
+              className="flex-1 rounded-xl text-xs h-9"
             >
-              Alle verwerfen
-            </button>
+              <PenLine className="w-3.5 h-3.5" />
+              Manuell eingeben
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setError(null)}
+              className="flex-1 rounded-xl text-xs h-9"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Erneut versuchen
+            </Button>
           </div>
-
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {pages.map((page, idx) => (
-              <motion.div
-                key={page.id}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="relative shrink-0"
-              >
-                <img
-                  src={page.dataUrl}
-                  alt={`Seite ${idx + 1}`}
-                  className="w-16 h-20 object-cover rounded-xl border-2 border-primary/30"
-                />
-                <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                  {idx + 1}
-                </span>
-                <button
-                  onClick={() => setPages(prev => prev.filter(p => p.id !== page.id))}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center"
-                >
-                  ×
-                </button>
-              </motion.div>
-            ))}
-          </div>
-
-          <Button onClick={handleAnalyze} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
-            KI-Analyse starten ({pages.length} {pages.length === 1 ? 'Seite' : 'Seiten'})
-            <ChevronRight className="w-5 h-5" />
-          </Button>
         </motion.div>
       )}
 
-      {docStep.optional && pages.length === 0 && (
+      <div className="grid grid-cols-1 gap-3">
+        {/* DocumentScanner handles camera + file upload; auto-triggers analysis on complete */}
+        <DocumentScanner onComplete={handleScannerComplete} />
+
+        <motion.button
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setMode('manual')}
+          className="glass-card rounded-2xl p-5 flex items-center gap-4 text-left w-full hover:border-primary/30 transition-colors"
+        >
+          <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center shrink-0">
+            <PenLine className="w-6 h-6 text-muted-foreground" />
+          </div>
+          <div>
+            <h4 className="font-semibold">Manuelle Eingabe</h4>
+            <p className="text-xs text-muted-foreground">Daten selbst im Formular eingeben</p>
+          </div>
+        </motion.button>
+      </div>
+
+      {docStep.optional && (
         <motion.button
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
