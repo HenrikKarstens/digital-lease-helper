@@ -1,14 +1,27 @@
-import { motion } from 'framer-motion';
-import { Camera, CheckCircle2, Plus, Gauge, Zap, Droplets, Flame, Edit3 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Camera, CheckCircle2, Plus, Gauge, Zap, Droplets, Flame, Edit3, Thermometer, HelpCircle, Trash2, PenLine, CalendarIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useHandover, MeterReading } from '@/context/HandoverContext';
 import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
+
+const METER_TYPES = [
+  { value: 'Strom', label: 'Strom', icon: Zap, unit: 'kWh' },
+  { value: 'Wasser', label: 'Wasser', icon: Droplets, unit: 'm³' },
+  { value: 'Gas', label: 'Gas', icon: Flame, unit: 'kWh' },
+  { value: 'Wärmemengenzähler', label: 'Wärmemengenzähler', icon: Thermometer, unit: 'kWh' },
+  { value: 'Sonstiges', label: 'Sonstiges', icon: HelpCircle, unit: '' },
+];
 
 const MEDIUM_ICONS: Record<string, React.ElementType> = {
   Strom: Zap,
   Wasser: Droplets,
   Gas: Flame,
+  Wärmemengenzähler: Thermometer,
+  Sonstiges: HelpCircle,
 };
 
 const AI_METER_RESULTS: MeterReading[] = [
@@ -17,18 +30,40 @@ const AI_METER_RESULTS: MeterReading[] = [
   { id: '3', medium: 'Gas', meterNumber: '991204', reading: '8.341,2', unit: 'kWh', maloId: 'DE00098765432109876543210987654' },
 ];
 
+const TODAY = format(new Date(), 'dd.MM.yyyy');
+
+interface ManualForm {
+  medium: string;
+  meterNumber: string;
+  reading: string;
+  unit: string;
+  maloId: string;
+  date: string;
+}
+
+const emptyForm = (): ManualForm => ({
+  medium: '',
+  meterNumber: '',
+  reading: '',
+  unit: '',
+  maloId: '',
+  date: TODAY,
+});
+
 export const Step8MeterScan = () => {
   const { data, updateData, setCurrentStep } = useHandover();
   const [scanning, setScanning] = useState(false);
   const [scanStep, setScanStep] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualForm, setManualForm] = useState<ManualForm>(emptyForm());
+  const [editForm, setEditForm] = useState<ManualForm | null>(null);
 
   const scanMessages = ['KI analysiert Zähler...', 'Erkenne Zählerstand...', 'Prüfe MaLo-ID...'];
 
   useEffect(() => {
     if (!scanning) return;
     if (scanStep >= scanMessages.length) {
-      // Add next meter result
       const nextIndex = data.meterReadings.length % AI_METER_RESULTS.length;
       const result = { ...AI_METER_RESULTS[nextIndex], id: Date.now().toString() };
       updateData({ meterReadings: [...data.meterReadings, result] });
@@ -40,19 +75,63 @@ export const Step8MeterScan = () => {
     return () => clearTimeout(timer);
   }, [scanning, scanStep]);
 
-  const startScan = () => {
-    setScanStep(0);
-    setScanning(true);
-  };
+  const startScan = () => { setScanStep(0); setScanning(true); };
 
   const updateMeter = (id: string, field: keyof MeterReading, value: string) => {
-    updateData({
-      meterReadings: data.meterReadings.map(m => m.id === id ? { ...m, [field]: value } : m),
-    });
+    updateData({ meterReadings: data.meterReadings.map(m => m.id === id ? { ...m, [field]: value } : m) });
   };
 
   const removeMeter = (id: string) => {
     updateData({ meterReadings: data.meterReadings.filter(m => m.id !== id) });
+    if (editingId === id) setEditingId(null);
+  };
+
+  const handleTypeChange = (value: string) => {
+    const found = METER_TYPES.find(t => t.value === value);
+    setManualForm(prev => ({ ...prev, medium: value, unit: found?.unit || '' }));
+  };
+
+  const handleAddManual = () => {
+    if (!manualForm.medium || !manualForm.reading) return;
+    const newMeter: MeterReading = {
+      id: Date.now().toString(),
+      medium: manualForm.medium,
+      meterNumber: manualForm.meterNumber,
+      reading: manualForm.reading,
+      unit: manualForm.unit,
+      maloId: manualForm.maloId,
+    };
+    updateData({ meterReadings: [...data.meterReadings, newMeter] });
+    setManualForm(emptyForm());
+    setShowManualForm(false);
+  };
+
+  const startEdit = (meter: MeterReading) => {
+    setEditingId(meter.id);
+    setEditForm({
+      medium: meter.medium,
+      meterNumber: meter.meterNumber,
+      reading: meter.reading,
+      unit: meter.unit,
+      maloId: meter.maloId,
+      date: TODAY,
+    });
+  };
+
+  const saveEdit = (id: string) => {
+    if (!editForm) return;
+    updateData({
+      meterReadings: data.meterReadings.map(m =>
+        m.id === id ? { ...m, medium: editForm.medium, meterNumber: editForm.meterNumber, reading: editForm.reading, unit: editForm.unit, maloId: editForm.maloId } : m
+      ),
+    });
+    setEditingId(null);
+    setEditForm(null);
+  };
+
+  const editTypeChange = (value: string) => {
+    const found = METER_TYPES.find(t => t.value === value);
+    setEditForm(prev => prev ? { ...prev, medium: value, unit: found?.unit || prev.unit } : prev);
   };
 
   return (
@@ -61,7 +140,7 @@ export const Step8MeterScan = () => {
         Zählererfassung
       </motion.h2>
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-muted-foreground text-center mb-6 text-sm">
-        Fotografieren Sie die Zähler – die KI erkennt die Werte automatisch
+        Scannen oder manuell erfassen – alle Werte haben gleiche Protokoll-Priorität
       </motion.p>
 
       {/* Scan animation */}
@@ -80,23 +159,150 @@ export const Step8MeterScan = () => {
         </motion.div>
       )}
 
-      {/* Scan button */}
+      {/* Action buttons */}
       {!scanning && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="w-full max-w-md mb-6">
-          <Button onClick={startScan} className="w-full h-14 rounded-2xl text-base font-semibold gap-2" size="lg">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="w-full max-w-md mb-6 grid grid-cols-2 gap-3">
+          <Button onClick={startScan} className="h-14 rounded-2xl font-semibold gap-2" size="lg">
             <Camera className="w-5 h-5" />
-            Zähler scannen
+            Scan
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => { setShowManualForm(true); setManualForm(emptyForm()); }}
+            className="h-14 rounded-2xl font-semibold gap-2"
+            size="lg"
+          >
+            <PenLine className="w-5 h-5" />
+            Manuell
           </Button>
         </motion.div>
       )}
 
+      {/* Manual entry form */}
+      <AnimatePresence>
+        {showManualForm && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            className="w-full max-w-md glass-card rounded-2xl p-5 mb-6 space-y-4"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-semibold text-sm flex items-center gap-2">
+                <Plus className="w-4 h-4 text-primary" />
+                Neuer Zähler
+              </h3>
+              <button onClick={() => setShowManualForm(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Type dropdown */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Zählertyp *</Label>
+              <Select value={manualForm.medium} onValueChange={handleTypeChange}>
+                <SelectTrigger className="rounded-xl h-11 bg-secondary/50 border-0 focus:ring-1">
+                  <SelectValue placeholder="Typ auswählen..." />
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-card border border-border rounded-xl shadow-lg">
+                  {METER_TYPES.map(t => (
+                    <SelectItem key={t.value} value={t.value} className="cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <t.icon className="w-4 h-4 text-muted-foreground" />
+                        {t.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Zählernummer</Label>
+              <Input
+                placeholder="z. B. 882341"
+                value={manualForm.meterNumber}
+                onChange={e => setManualForm(p => ({ ...p, meterNumber: e.target.value }))}
+                className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Zählerstand *</Label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  inputMode="decimal"
+                  value={manualForm.reading}
+                  onChange={e => setManualForm(p => ({ ...p, reading: e.target.value }))}
+                  className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Einheit</Label>
+                <Input
+                  placeholder="kWh / m³"
+                  value={manualForm.unit}
+                  onChange={e => setManualForm(p => ({ ...p, unit: e.target.value }))}
+                  className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                <CalendarIcon className="w-3 h-3" />
+                Ablesedatum
+              </Label>
+              <Input
+                placeholder={TODAY}
+                value={manualForm.date}
+                onChange={e => setManualForm(p => ({ ...p, date: e.target.value }))}
+                className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">MaLo-ID (optional)</Label>
+              <Input
+                placeholder="DE00..."
+                value={manualForm.maloId}
+                onChange={e => setManualForm(p => ({ ...p, maloId: e.target.value }))}
+                className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+              />
+            </div>
+
+            <Button
+              onClick={handleAddManual}
+              disabled={!manualForm.medium || !manualForm.reading}
+              className="w-full h-11 rounded-2xl font-semibold gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Zähler hinzufügen
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Meter list */}
       {data.meterReadings.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-md space-y-3">
-          <h3 className="text-sm font-semibold">Erfasste Zähler ({data.meterReadings.length})</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Erfasste Zähler ({data.meterReadings.length})</h3>
+            <button
+              onClick={() => { setShowManualForm(true); setManualForm(emptyForm()); }}
+              className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Zähler hinzufügen
+            </button>
+          </div>
+
           {data.meterReadings.map((meter) => {
             const Icon = MEDIUM_ICONS[meter.medium] || Gauge;
             const isEditing = editingId === meter.id;
+
             return (
               <motion.div key={meter.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -106,23 +312,58 @@ export const Step8MeterScan = () => {
                     </div>
                     <span className="font-semibold">{meter.medium}</span>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => setEditingId(isEditing ? null : meter.id)} className="gap-1 text-xs">
-                    <Edit3 className="w-3 h-3" />
-                    {isEditing ? 'Fertig' : 'Korrigieren'}
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => isEditing ? saveEdit(meter.id) : startEdit(meter)} className="gap-1 text-xs h-7 px-2">
+                      <Edit3 className="w-3 h-3" />
+                      {isEditing ? 'Speichern' : 'Korrigieren'}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => removeMeter(meter.id)} className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10">
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
                 </div>
-                {isEditing ? (
+
+                {isEditing && editForm ? (
                   <div className="space-y-2">
-                    <Input value={meter.meterNumber} onChange={e => updateMeter(meter.id, 'meterNumber', e.target.value)} placeholder="Zählernummer" className="rounded-xl text-sm" />
-                    <Input value={meter.reading} onChange={e => updateMeter(meter.id, 'reading', e.target.value)} placeholder="Zählerstand" className="rounded-xl text-sm" />
-                    <Input value={meter.maloId} onChange={e => updateMeter(meter.id, 'maloId', e.target.value)} placeholder="MaLo-ID" className="rounded-xl text-sm" />
-                    <Button variant="destructive" size="sm" onClick={() => removeMeter(meter.id)} className="w-full rounded-xl text-xs mt-1">Entfernen</Button>
+                    {/* Type selector in edit mode */}
+                    <Select value={editForm.medium} onValueChange={editTypeChange}>
+                      <SelectTrigger className="rounded-xl h-10 bg-secondary/50 border-0 text-sm focus:ring-1">
+                        <SelectValue placeholder="Zählertyp..." />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 bg-card border border-border rounded-xl shadow-lg">
+                        {METER_TYPES.map(t => (
+                          <SelectItem key={t.value} value={t.value} className="cursor-pointer">
+                            <div className="flex items-center gap-2">
+                              <t.icon className="w-4 h-4 text-muted-foreground" />
+                              {t.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input value={editForm.meterNumber} onChange={e => setEditForm(p => p ? { ...p, meterNumber: e.target.value } : p)} placeholder="Zählernummer" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input value={editForm.reading} onChange={e => setEditForm(p => p ? { ...p, reading: e.target.value } : p)} placeholder="Zählerstand" inputMode="decimal" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
+                      <Input value={editForm.unit} onChange={e => setEditForm(p => p ? { ...p, unit: e.target.value } : p)} placeholder="Einheit" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
+                    </div>
+                    <Input value={editForm.maloId} onChange={e => setEditForm(p => p ? { ...p, maloId: e.target.value } : p)} placeholder="MaLo-ID" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div><span className="text-muted-foreground text-xs">Zählernr.</span><p className="font-mono font-medium">{meter.meterNumber}</p></div>
-                    <div><span className="text-muted-foreground text-xs">Stand</span><p className="font-mono font-medium">{meter.reading} {meter.unit}</p></div>
-                    {meter.maloId && <div className="col-span-2"><span className="text-muted-foreground text-xs">MaLo-ID</span><p className="font-mono text-xs truncate">{meter.maloId}</p></div>}
+                    <div>
+                      <span className="text-muted-foreground text-xs">Zählernr.</span>
+                      <p className="font-mono font-medium">{meter.meterNumber || '–'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Stand</span>
+                      <p className="font-mono font-medium">{meter.reading} {meter.unit}</p>
+                    </div>
+                    {meter.maloId && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground text-xs">MaLo-ID</span>
+                        <p className="font-mono text-xs truncate">{meter.maloId}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </motion.div>
@@ -131,10 +372,24 @@ export const Step8MeterScan = () => {
         </motion.div>
       )}
 
+      {/* Empty state add button */}
+      {data.meterReadings.length === 0 && !scanning && !showManualForm && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="w-full max-w-md">
+          <button
+            onClick={() => { setShowManualForm(true); setManualForm(emptyForm()); }}
+            className="w-full glass-card rounded-2xl p-6 border-2 border-dashed border-border/60 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+          >
+            <Plus className="w-8 h-8" />
+            <span className="text-sm font-medium">Zähler manuell hinzufügen</span>
+          </button>
+        </motion.div>
+      )}
+
       {/* Navigation */}
       {data.meterReadings.length > 0 && !scanning && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-md mt-6">
           <Button onClick={() => setCurrentStep(10)} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+            <CheckCircle2 className="w-4 h-4" />
             Weiter zur Unterschrift
           </Button>
         </motion.div>
