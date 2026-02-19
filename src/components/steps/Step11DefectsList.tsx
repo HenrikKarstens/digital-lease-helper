@@ -88,8 +88,8 @@ export const Step11DefectsList = () => {
         ))}
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-          <Button onClick={() => setCurrentStep(isMoveIn ? 13 : 12)} className="w-full h-12 rounded-2xl font-semibold" size="lg">
-            {isMoveIn ? 'Weiter zur Finalisierung' : 'Weiter zur Kautionsberechnung'}
+          <Button onClick={() => setCurrentStep(isMoveIn ? 11 : 11)} className="w-full h-12 rounded-2xl font-semibold" size="lg">
+            {isMoveIn ? 'Weiter zur Detailanalyse' : 'Weiter zur Detailanalyse'}
           </Button>
         </motion.div>
       </div>

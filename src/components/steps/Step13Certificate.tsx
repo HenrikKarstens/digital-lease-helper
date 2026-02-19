@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
-import { FileText, Send, CheckCircle2, Shield, Mail, Calendar, MapPin, Users, Euro } from 'lucide-react';
+import { FileText, Send, CheckCircle2, Shield, Mail, Calendar, MapPin, Users, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { generateMasterProtocol } from '@/lib/pdfGenerator';
 
 export const Step13Certificate = () => {
   const { data, updateData, setCurrentStep } = useHandover();
@@ -102,6 +103,18 @@ export const Step13Certificate = () => {
             <Shield className="w-3.5 h-3.5 text-success" />
             <span>SHA-256 versiegelt • Rechtssicher nach dt. {isSale ? 'Kaufrecht' : 'Mietrecht'}</span>
           </div>
+        </motion.div>
+
+        {/* PDF Download */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+          <Button
+            variant="outline"
+            onClick={() => generateMasterProtocol(data)}
+            className="w-full h-12 rounded-2xl font-semibold gap-2 border-primary/30"
+          >
+            <Download className="w-4 h-4" />
+            Master-Protokoll als PDF herunterladen
+          </Button>
         </motion.div>
 
         {!data.protocolSent ? (
