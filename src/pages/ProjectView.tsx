@@ -17,7 +17,6 @@ import { Step6Participants } from '@/components/steps/Step6Participants';
 import { Step7Evidence } from '@/components/steps/Step7Evidence';
 import { Step8MeterScan } from '@/components/steps/Step8MeterScan';
 
-import { Step11DefectsList } from '@/components/steps/Step11DefectsList';
 import { Step10DefectAnalysis } from '@/components/steps/Step10DefectAnalysis';
 import { Step12Deposit } from '@/components/steps/Step12Deposit';
 import { Step13Certificate } from '@/components/steps/Step13Certificate';
@@ -117,11 +116,10 @@ const ProjectView = () => {
       case 7: return <Step6Participants />;
       case 8: return <Step7Evidence />;
       case 9: return <Step8MeterScan />;
-      case 10: return <Step11DefectsList />;
-      case 11: return <Step10DefectAnalysis />;
-      case 12: return <Step12Deposit />;
-      case 13: return <Step13Certificate />;
-      case 14: return <Step14Utility />;
+      case 10: return <Step10DefectAnalysis />;
+      case 11: return <Step12Deposit />;
+      case 12: return <Step13Certificate />;
+      case 13: return <Step14Utility />;
       default: return <Step1Hero />;
     }
   };
