@@ -428,7 +428,7 @@ export function generateMasterProtocol(data: HandoverData): void {
   const noteFindings = data.findings.filter(f => f.entryType === 'note');
 
   if (y > pageH - 80) { doc.addPage(); y = 36; }
-  y = sectionTitle(doc, '§6  Detailliertes Mängelverzeichnis', y, pageW);
+  y = sectionTitle(doc, '§6a  Festgestellte Mängel & Schäden', y, pageW);
   if (defectFindings.length > 0) {
     autoTable(doc, {
       startY: y,
@@ -477,7 +477,7 @@ export function generateMasterProtocol(data: HandoverData): void {
   // ── §6b Zusätzliche Feststellungen (Besonderheiten / Notizen) ─────────────
   if (noteFindings.length > 0) {
     if (y > pageH - 60) { doc.addPage(); y = 36; }
-    y = sectionTitle(doc, '§6b  Zusätzliche Feststellungen (Besonderheiten / Beweisanker)', y, pageW);
+    y = sectionTitle(doc, '§6b  Zusätzliche Feststellungen (Zustand / Besonderheiten)', y, pageW);
     autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
@@ -773,7 +773,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   const defectFindings2 = data.findings.filter(f => f.entryType !== 'note');
   const noteFindings2 = data.findings.filter(f => f.entryType === 'note');
 
-  y = sectionTitle(doc, '§6  Detailliertes Mängelverzeichnis', y, pageW);
+  y = sectionTitle(doc, '§6a  Festgestellte Mängel & Schäden', y, pageW);
   const unknownRoomWarning = defectFindings2.some(f => !f.room || f.room === 'Unbekannt');
   if (unknownRoomWarning) {
     doc.setFillColor(255, 240, 200);
@@ -821,7 +821,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   // §6b – Zusätzliche Feststellungen
   if (noteFindings2.length > 0) {
     if (y > pageH - 60) { doc.addPage(); y = 36; }
-    y = sectionTitle(doc, '§6b  Zusätzliche Feststellungen (Besonderheiten / Beweisanker)', y, pageW);
+    y = sectionTitle(doc, '§6b  Zusätzliche Feststellungen (Zustand / Besonderheiten)', y, pageW);
     autoTable(doc, {
       startY: y, margin: { left: 14, right: 14 },
       head: [['Raum', 'Lage', 'Feststellung', 'Zeitstempel']],
