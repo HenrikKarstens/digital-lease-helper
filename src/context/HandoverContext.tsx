@@ -99,6 +99,11 @@ export interface HandoverData {
   nkVorauszahlung: number;
   nkPrognose: number;
   nkRisiko: 'niedrig' | 'mittel' | 'hoch';
+  // Step 12 – Zinsberechnung & Zahlungsanweisung
+  depositPaymentDate: string;      // Datum der Kautionszahlung
+  depositInterestRate: number;     // Zinssatz in % (z.B. 1.5)
+  payeeIban: string;               // IBAN des Empfängers
+  payeeAccountHolder: string;      // Kontoinhaber des Empfängers
   // Step 13
   protocolSent: boolean;
 }
@@ -132,6 +137,10 @@ const defaultData: HandoverData = {
   nkVorauszahlung: 150,
   nkPrognose: 210,
   nkRisiko: 'hoch',
+  depositPaymentDate: '',
+  depositInterestRate: 1.5,
+  payeeIban: '',
+  payeeAccountHolder: '',
   protocolSent: false,
 };
 
