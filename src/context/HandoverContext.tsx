@@ -6,6 +6,7 @@ export interface Participant {
   role: string;
   email?: string;
   present: boolean;
+  signature?: string | null;
 }
 
 export interface Finding {
