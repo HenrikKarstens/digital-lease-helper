@@ -23,8 +23,7 @@ interface Project {
 
 const STEP_LABELS = [
   'Start', 'Art', 'Rolle', 'Richtung', 'Einstieg', 'Validierung', 'Grundriss',
-  'Teilnehmer', 'Beweis', 'Zähler', 'Signatur', 'NK-Check', 'Mängel',
-  'Kaution', 'Zertifikat', 'Utility'
+  'Teilnehmer', 'Beweis', 'Zähler', 'Mängel', 'Kaution', 'Protokoll', 'Abschluss'
 ];
 
 const statusConfig = {
@@ -155,7 +154,7 @@ const Dashboard = () => {
                     <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-success rounded-full transition-all"
-                        style={{ width: `${Math.round((guestProject.step / 15) * 100)}%` }}
+                        style={{ width: `${Math.round((guestProject.step / 13) * 100)}%` }}
                       />
                     </div>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -240,7 +239,7 @@ const Dashboard = () => {
             {projects.map((project, i) => {
               const config = statusConfig[project.status as keyof typeof statusConfig] || statusConfig.active;
               const StatusIcon = config.icon;
-              const progress = Math.round((project.current_step / 15) * 100);
+              const progress = Math.round((project.current_step / 13) * 100);
 
               return (
                 <motion.div
