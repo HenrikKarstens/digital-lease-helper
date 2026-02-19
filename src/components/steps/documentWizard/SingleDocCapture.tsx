@@ -282,6 +282,7 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
 
       {pages.length === 0 ? (
         <div className="grid grid-cols-1 gap-3">
+          {/* Kamera: öffnet direkt die Kamera, kein Dateisystem */}
           <motion.button initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} whileTap={{ scale: 0.98 }}
             onClick={() => cameraInputRef.current?.click()}
             className="glass-card rounded-2xl p-5 flex items-center gap-4 text-left w-full border-2 border-primary/20 hover:border-primary/50 transition-colors"
@@ -291,10 +292,11 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
             </div>
             <div>
               <h4 className="font-semibold">Foto aufnehmen</h4>
-              <p className="text-xs text-muted-foreground">Mehrere Seiten nacheinander scannen</p>
+              <p className="text-xs text-muted-foreground">Kamera öffnet direkt – Seite für Seite scannen</p>
             </div>
           </motion.button>
 
+          {/* Upload: öffnet den Dateimanager, keine Kamera */}
           <motion.button initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} whileTap={{ scale: 0.98 }}
             onClick={() => fileInputRef.current?.click()}
             className="glass-card rounded-2xl p-5 flex items-center gap-4 text-left w-full hover:border-primary/30 transition-colors"
@@ -304,7 +306,7 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
             </div>
             <div>
               <h4 className="font-semibold">PDF / Bild hochladen</h4>
-              <p className="text-xs text-muted-foreground">PDF, JPG, PNG unterstützt</p>
+              <p className="text-xs text-muted-foreground">PDF, JPG, PNG aus dem Speicher wählen</p>
             </div>
           </motion.button>
 
@@ -322,20 +324,74 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
           </motion.button>
         </div>
       ) : (
+        /* ── Scanner-Modus: Seiten im Stapel ── */
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-          <div className="relative bg-muted/30 rounded-2xl border-2 border-dashed border-primary/30 p-6 flex flex-col items-center gap-3">
-            <div className="absolute top-2 left-2 w-5 h-5 border-t-2 border-l-2 border-primary/60 rounded-tl-lg" />
-            <div className="absolute top-2 right-2 w-5 h-5 border-t-2 border-r-2 border-primary/60 rounded-tr-lg" />
-            <div className="absolute bottom-2 left-2 w-5 h-5 border-b-2 border-l-2 border-primary/60 rounded-bl-lg" />
-            <div className="absolute bottom-2 right-2 w-5 h-5 border-b-2 border-r-2 border-primary/60 rounded-br-lg" />
-            <PageGallery pages={pages} onRemove={id => setPages(prev => prev.filter(p => p.id !== id))} onAdd={() => cameraInputRef.current?.click()} />
+          {/* Seiten-Stapel Header */}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold">Seiten im Stapel</span>
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                {pages.length}
+              </span>
+            </div>
+            <button
+              onClick={() => setPages([])}
+              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+            >
+              Alle verwerfen
+            </button>
           </div>
+
+          {/* Miniatur-Vorschau der Seiten */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {pages.map((page, idx) => (
+              <motion.div
+                key={page.id}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="relative shrink-0"
+              >
+                <img
+                  src={page.dataUrl}
+                  alt={`Seite ${idx + 1}`}
+                  className="w-16 h-20 object-cover rounded-xl border-2 border-primary/30"
+                />
+                <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                  {idx + 1}
+                </span>
+                <button
+                  onClick={() => setPages(prev => prev.filter(p => p.id !== page.id))}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center"
+                >
+                  ×
+                </button>
+              </motion.div>
+            ))}
+
+            {/* Weitere Seite aufnehmen – Plus-Kachel */}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={() => cameraInputRef.current?.click()}
+              className="shrink-0 w-16 h-20 rounded-xl border-2 border-dashed border-primary/40 flex flex-col items-center justify-center gap-1 text-primary hover:bg-primary/5 transition-colors"
+            >
+              <Camera className="w-5 h-5" />
+              <span className="text-[9px] font-medium">+ Seite</span>
+            </motion.button>
+          </div>
+
+          {/* Aktions-Buttons */}
           <Button onClick={handleAnalyze} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
-            KI-Analyse starten
+            KI-Analyse starten ({pages.length} {pages.length === 1 ? 'Seite' : 'Seiten'})
             <ChevronRight className="w-5 h-5" />
           </Button>
-          <button onClick={() => setPages([])} className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-2">
-            Seiten verwerfen und neu beginnen
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center justify-center gap-1.5"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            PDF oder Bild hinzufügen
           </button>
         </motion.div>
       )}
