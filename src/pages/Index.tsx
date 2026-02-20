@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { useHandover } from '@/context/HandoverContext';
 import { useStepConfig } from '@/hooks/useStepConfig';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -6,20 +7,22 @@ import { Step1Hero } from '@/components/steps/Step1Hero';
 import { Step1aTransactionType } from '@/components/steps/Step1aTransactionType';
 import { Step2Role } from '@/components/steps/Step2Role';
 import { Step1cDirection } from '@/components/steps/Step1cDirection';
-import { Step3SmartEntry } from '@/components/steps/Step3SmartEntry';
-import { Step4Validation } from '@/components/steps/Step4Validation';
-import { Step5FloorPlan } from '@/components/steps/Step5FloorPlan';
-import { Step6Participants } from '@/components/steps/Step6Participants';
-import { Step7Evidence } from '@/components/steps/Step7Evidence';
-import { Step8MeterScan } from '@/components/steps/Step8MeterScan';
-import { Step10DefectAnalysis } from '@/components/steps/Step10DefectAnalysis';
-import { Step12Deposit } from '@/components/steps/Step12Deposit';
-import { Step13Certificate } from '@/components/steps/Step13Certificate';
-import { Step14Utility } from '@/components/steps/Step14Utility';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const COMPONENT_MAP: Record<string, React.FC> = {
+// Heavy steps – lazy loaded
+const Step3SmartEntry = lazy(() => import('@/components/steps/Step3SmartEntry').then(m => ({ default: m.Step3SmartEntry })));
+const Step4Validation = lazy(() => import('@/components/steps/Step4Validation').then(m => ({ default: m.Step4Validation })));
+const Step5FloorPlan = lazy(() => import('@/components/steps/Step5FloorPlan').then(m => ({ default: m.Step5FloorPlan })));
+const Step6Participants = lazy(() => import('@/components/steps/Step6Participants').then(m => ({ default: m.Step6Participants })));
+const Step7Evidence = lazy(() => import('@/components/steps/Step7Evidence').then(m => ({ default: m.Step7Evidence })));
+const Step8MeterScan = lazy(() => import('@/components/steps/Step8MeterScan').then(m => ({ default: m.Step8MeterScan })));
+const Step10DefectAnalysis = lazy(() => import('@/components/steps/Step10DefectAnalysis').then(m => ({ default: m.Step10DefectAnalysis })));
+const Step12Deposit = lazy(() => import('@/components/steps/Step12Deposit').then(m => ({ default: m.Step12Deposit })));
+const Step13Certificate = lazy(() => import('@/components/steps/Step13Certificate').then(m => ({ default: m.Step13Certificate })));
+const Step14Utility = lazy(() => import('@/components/steps/Step14Utility').then(m => ({ default: m.Step14Utility })));
+
+const COMPONENT_MAP: Record<string, React.ComponentType> = {
   Step1Hero,
   Step1aTransactionType,
   Step2Role,
@@ -35,6 +38,12 @@ const COMPONENT_MAP: Record<string, React.FC> = {
   Step13Certificate,
   Step14Utility,
 };
+
+const StepLoader = () => (
+  <div className="min-h-[60vh] flex items-center justify-center">
+    <div className="w-6 h-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+  </div>
+);
 
 const Index = () => {
   const { currentStep, setCurrentStep } = useHandover();
@@ -61,7 +70,9 @@ const Index = () => {
       )}
       <div className="max-w-lg mx-auto">
         <PageTransition keyProp={currentStep}>
-          <StepComponent />
+          <Suspense fallback={<StepLoader />}>
+            <StepComponent />
+          </Suspense>
         </PageTransition>
       </div>
     </div>

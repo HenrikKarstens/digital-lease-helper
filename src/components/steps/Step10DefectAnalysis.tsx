@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2, ArrowRight, Euro, ChevronDown, ChevronUp,
@@ -20,7 +21,7 @@ interface ExpandedCardProps {
   finding: Finding;
 }
 
-const ExpandedCard = ({ finding }: ExpandedCardProps) => {
+const ExpandedCard = memo(({ finding }: ExpandedCardProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
@@ -79,7 +80,8 @@ const ExpandedCard = ({ finding }: ExpandedCardProps) => {
       </div>
     </motion.div>
   );
-};
+});
+ExpandedCard.displayName = 'ExpandedCard';
 
 export const Step10DefectAnalysis = () => {
   const { data, updateData, goToStepById } = useHandover();
