@@ -495,59 +495,95 @@ export function generateMasterProtocol(data: HandoverData): void {
     y += 7;
   }
 
-  // ── §6 Detailliertes Mängelverzeichnis ────────────────────────────────────
+  // ── §6a  Mängel / Zustandsdokumentation ────────────────────────────────────
   const defectFindings = data.findings.filter(f => f.entryType !== 'note');
   const noteFindings = data.findings.filter(f => f.entryType === 'note');
 
   if (y > pageH - 80) { doc.addPage(); y = 36; }
-  y = sectionTitle(doc, '§6a  Festgestellte Mängel & Schäden', y, pageW);
-  if (defectFindings.length > 0) {
-    autoTable(doc, {
-      startY: y,
-      margin: { left: 14, right: 14 },
-      head: [['Raum', 'Lage', 'Material', 'Schaden', 'Zeitwert %', 'Einbehalt €', 'Maßnahme']],
-      body: defectFindings.map(f => [
-        f.room || '⚠ Unbekannt',
-        (f as any).locationDetail || '–',
-        f.material,
-        f.damageType,
-        `${f.timeValueDeduction}%`,
-        f.recommendedWithholding > 0 ? `${f.recommendedWithholding} €` : '–',
-        f.remediationOption === 'self'
-          ? `Selbst behoben (${f.remediationParty || '–'})`
-          : f.remediationOption === 'notice'
-            ? `Aufforderung bis ${f.remediationDeadline || '–'}`
-            : '–',
-      ]),
-      headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7 },
-      bodyStyles: { fontSize: 7 },
-      alternateRowStyles: { fillColor: [255, 248, 248] },
-      columnStyles: { 4: { halign: 'center' }, 5: { halign: 'right', fontStyle: 'bold' } },
-    });
-    y = (doc as any).lastAutoTable.finalY + 4;
 
-    // BGH references
-    doc.setTextColor(...MUTED_COLOR);
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'italic');
-    defectFindings.forEach(f => {
-      if (f.bghReference) {
-        doc.text(`• ${f.room || 'Unbekannt'} / ${f.damageType}: ${f.bghReference} – ${f.description}`, col1, y);
-        y += 3.5;
-        if (y > pageH - 20) { doc.addPage(); y = 36; }
-      }
-    });
-    doc.setFont('helvetica', 'normal');
-    y += 2;
+  if (isMoveIn) {
+    // ── Einzug: Einheitliche Tabelle ohne monetäre Spalten ──
+    y = sectionTitle(doc, '§6  Dokumentierte Mängel & Zustandsbesonderheiten bei Übergabe', y, pageW);
+    if (data.findings.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: 14, right: 14 },
+        head: [['Raum', 'Lage', 'Material', 'Feststellung', 'Zeitstempel']],
+        body: data.findings.map(f => [
+          f.room || '–',
+          (f as any).locationDetail || '–',
+          f.material || '–',
+          f.description || f.damageType,
+          f.timestamp,
+        ]),
+        headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7 },
+        bodyStyles: { fontSize: 7 },
+        alternateRowStyles: { fillColor: [248, 249, 255] },
+      });
+      y = (doc as any).lastAutoTable.finalY + 4;
+      doc.setTextColor(...MUTED_COLOR);
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Dokumentation des Ist-Zustands zur Beweissicherung bei Einzug. Keine Kautionsabzüge.', col1, y);
+      doc.setFont('helvetica', 'normal');
+      y += 7;
+    } else {
+      doc.setTextColor(...SUCCESS_COLOR);
+      doc.setFontSize(8);
+      doc.text('✓ Keine Mängel oder Besonderheiten dokumentiert.', col1, y);
+      y += 8;
+    }
   } else {
-    doc.setTextColor(...SUCCESS_COLOR);
-    doc.setFontSize(8);
-    doc.text('✓ Keine Mängel dokumentiert.', col1, y);
-    y += 8;
+    // ── Auszug / Kauf: Voller Mängel-Report mit Einbehalt ──
+    y = sectionTitle(doc, '§6a  Festgestellte Mängel & Schäden', y, pageW);
+    if (defectFindings.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: 14, right: 14 },
+        head: [['Raum', 'Lage', 'Material', 'Schaden', 'Zeitwert %', 'Einbehalt €', 'Maßnahme']],
+        body: defectFindings.map(f => [
+          f.room || '⚠ Unbekannt',
+          (f as any).locationDetail || '–',
+          f.material,
+          f.damageType,
+          `${f.timeValueDeduction}%`,
+          f.recommendedWithholding > 0 ? `${f.recommendedWithholding} €` : '–',
+          f.remediationOption === 'self'
+            ? `Selbst behoben (${f.remediationParty || '–'})`
+            : f.remediationOption === 'notice'
+              ? `Aufforderung bis ${f.remediationDeadline || '–'}`
+              : '–',
+        ]),
+        headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7 },
+        bodyStyles: { fontSize: 7 },
+        alternateRowStyles: { fillColor: [255, 248, 248] },
+        columnStyles: { 4: { halign: 'center' }, 5: { halign: 'right', fontStyle: 'bold' } },
+      });
+      y = (doc as any).lastAutoTable.finalY + 4;
+
+      // BGH references
+      doc.setTextColor(...MUTED_COLOR);
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'italic');
+      defectFindings.forEach(f => {
+        if (f.bghReference) {
+          doc.text(`• ${f.room || 'Unbekannt'} / ${f.damageType}: ${f.bghReference} – ${f.description}`, col1, y);
+          y += 3.5;
+          if (y > pageH - 20) { doc.addPage(); y = 36; }
+        }
+      });
+      doc.setFont('helvetica', 'normal');
+      y += 2;
+    } else {
+      doc.setTextColor(...SUCCESS_COLOR);
+      doc.setFontSize(8);
+      doc.text('✓ Keine Mängel dokumentiert.', col1, y);
+      y += 8;
+    }
   }
 
-  // ── §6b Zusätzliche Feststellungen (Besonderheiten / Notizen) ─────────────
-  if (noteFindings.length > 0) {
+  // ── §6b Zusätzliche Feststellungen (nur bei Auszug/Kauf, da bei Einzug alles in §6 vereint) ──
+  if (!isMoveIn && noteFindings.length > 0) {
     if (y > pageH - 60) { doc.addPage(); y = 36; }
     y = sectionTitle(doc, '§6b  Zusätzliche Feststellungen (Zustand / Besonderheiten)', y, pageW);
     autoTable(doc, {
@@ -574,7 +610,7 @@ export function generateMasterProtocol(data: HandoverData): void {
   }
 
   // ── §7 Kautions-Abrechnung ────────────────────────────────────────────────
-  if (!isSale) {
+  if (!isSale && !isMoveIn) {
     const depositType = data.depositType || 'cash';
     const isGuarantee = depositType === 'guarantee';
     const isPledged = depositType === 'pledged-account';
@@ -707,7 +743,7 @@ export function generateMasterProtocol(data: HandoverData): void {
 
   // ── §7b Aufforderungsschreiben (§ 281 BGB) ───────────────────────────────
   const damageFindings = data.findings.filter(f => f.recommendedWithholding > 0);
-  if (damageFindings.length > 0 && !isSale) {
+  if (damageFindings.length > 0 && !isSale && !isMoveIn) {
     if (y > pageH - 80) { doc.addPage(); y = 36; }
 
     const isReletting7b = data.immediateReletting === true;
