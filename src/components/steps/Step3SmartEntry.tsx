@@ -61,26 +61,28 @@ export const Step3SmartEntry = () => {
           </div>
         </div>
 
-        {/* Doc step indicators */}
-        <div className="flex gap-2 mt-3">
-          {docSteps.map((doc, i) => (
-            <motion.div
-              key={doc.id}
-              className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-all ${
-                i === currentDocIdx
-                  ? 'bg-primary/10 border border-primary/30'
-                  : i < currentDocIdx
-                  ? 'bg-success/10 border border-success/20'
-                  : 'bg-muted/30 border border-transparent'
-              }`}
-            >
-              <span className="text-base">{doc.icon}</span>
-              <span className="text-[9px] font-medium text-center leading-tight px-1 truncate w-full text-center">
-                {i < currentDocIdx ? '✓' : doc.optional ? `${doc.title.substring(0, 8)}…` : doc.title.substring(0, 8)}
-              </span>
-            </motion.div>
-          ))}
-        </div>
+        {/* Doc step indicators – hide when only one doc */}
+        {docSteps.length > 1 && (
+          <div className="flex gap-2 mt-3">
+            {docSteps.map((doc, i) => (
+              <motion.div
+                key={doc.id}
+                className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-all ${
+                  i === currentDocIdx
+                    ? 'bg-primary/10 border border-primary/30'
+                    : i < currentDocIdx
+                    ? 'bg-success/10 border border-success/20'
+                    : 'bg-muted/30 border border-transparent'
+                }`}
+              >
+                <span className="text-base">{doc.icon}</span>
+                <span className="text-[9px] font-medium text-center leading-tight px-1 truncate w-full text-center">
+                  {i < currentDocIdx ? '✓' : doc.optional ? `${doc.title.substring(0, 8)}…` : doc.title.substring(0, 8)}
+                </span>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Main capture area */}

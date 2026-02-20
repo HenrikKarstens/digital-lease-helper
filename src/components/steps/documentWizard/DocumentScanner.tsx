@@ -13,15 +13,35 @@ type ScannerState = 'idle' | 'review';
 export const DocumentScanner = ({ onComplete }: Props) => {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [state, setState] = useState<ScannerState>('idle');
   const [capturedImages, setCapturedImages] = useState<PagePhoto[]>([]);
   const [lastCaptured, setLastCaptured] = useState<PagePhoto | null>(null);
 
+  // Abort any in-flight file reads on unmount
+  const cleanup = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
+
+  // Cleanup on unmount
+  useState(() => {
+    return () => cleanup();
+  });
+
   const processFile = useCallback((file: File): Promise<PagePhoto> => {
-    return new Promise(resolve => {
+    // Create a new AbortController per batch
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    return new Promise((resolve, reject) => {
+      if (controller.signal.aborted) return reject(new DOMException('Aborted', 'AbortError'));
       const reader = new FileReader();
+      const onAbort = () => { reader.abort(); reject(new DOMException('Aborted', 'AbortError')); };
+      controller.signal.addEventListener('abort', onAbort);
       reader.onload = e => {
+        controller.signal.removeEventListener('abort', onAbort);
         resolve({
           id: crypto.randomUUID(),
           dataUrl: e.target?.result as string,
@@ -29,6 +49,7 @@ export const DocumentScanner = ({ onComplete }: Props) => {
           file,
         });
       };
+      reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(file);
     });
   }, []);

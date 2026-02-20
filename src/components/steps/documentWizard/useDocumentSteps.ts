@@ -9,13 +9,18 @@ export const useDocumentSteps = (): DocStep[] => {
 
   const isMoveIn = data.handoverDirection === 'move-in';
 
+  // For rental move-in: only show the main contract
+  const isRentalMoveIn = !isSale && isMoveIn;
+
   const allSteps: DocStep[] = [
     {
       id: 'main-contract',
       title: contractLabel,
-      subtitle: isSale
-        ? 'Kaufvertrag oder notarielle Urkunde'
-        : 'Hauptmietvertrag inkl. aller Anlagen',
+      subtitle: isRentalMoveIn
+        ? 'Laden Sie Ihren neuen Mietvertrag hoch, um Stammdaten automatisch zu erfassen.'
+        : isSale
+          ? 'Kaufvertrag oder notarielle Urkunde'
+          : 'Hauptmietvertrag inkl. aller Anlagen',
       icon: '📄',
       optional: false,
     },
@@ -25,6 +30,7 @@ export const useDocumentSteps = (): DocStep[] => {
       subtitle: 'Mietanpassungen, NK-Änderungen, Sondervereinbarungen',
       icon: '📝',
       optional: true,
+      relevantFor: 'move-out',
     },
     {
       id: 'handover-protocol',
@@ -42,12 +48,14 @@ export const useDocumentSteps = (): DocStep[] => {
       subtitle: 'Letzte NK-Abrechnung zur Puffer-Prüfung',
       icon: '💡',
       optional: true,
+      relevantFor: 'move-out',
     },
   ];
 
-  // Hide handover-protocol for move-in (only relevant for move-out)
+  // For rental move-in: only main-contract. For move-in generally: hide move-out-only steps.
   const steps = allSteps.filter(s => {
-    if (s.id === 'handover-protocol' && isMoveIn) return false;
+    if (isRentalMoveIn && s.id !== 'main-contract') return false;
+    if (s.relevantFor === 'move-out' && isMoveIn) return false;
     return true;
   });
 
