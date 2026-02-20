@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion';
 import {
   Zap, Leaf, TrendingDown, Euro, ArrowRight, FileText, CheckCircle2,
-  PartyPopper, Info, Users, ExternalLink, Building2
+  PartyPopper, Info, Users, ExternalLink, Building2, Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState, useMemo } from 'react';
@@ -36,6 +38,7 @@ const GRUNDVERSORGER_DB: Record<string, { name: string; pricePerKwh: number; gru
 // Check24 competitor tariff simulation (cheapest)
 const CHECK24_BEST_PRICE_PER_KWH = 0.2890;
 const CHECK24_BEST_GRUNDPREIS = 95;
+const CHECK24_AFFILIATE_ID = 'ESTATETURN_PARTNER'; // Platzhalter für Partner-ID
 
 function extractPlz(address: string): string {
   const match = address.match(/\b(\d{5})\b/);
@@ -69,6 +72,9 @@ export const Step14Utility = () => {
   const { data, resetData } = useHandover();
   const { cancellationTarget } = useTransactionLabels();
   const [cancellation, setCancellation] = useState(false);
+  const [dsgvoConsent, setDsgvoConsent] = useState(false);
+  const [manualKwhEdit, setManualKwhEdit] = useState(false);
+  const [manualKwh, setManualKwh] = useState<number | null>(null);
   const { toast } = useToast();
 
   // Room count from context
@@ -82,11 +88,12 @@ export const Step14Utility = () => {
   const plz = extractPlz(data.propertyAddress);
   const grundversorger = lookupGrundversorger(plz);
 
-  // Estimated consumption
-  const estimatedKwh = useMemo(
+  // Estimated consumption (heuristic or manual override)
+  const heuristicKwh = useMemo(
     () => estimateConsumption(roomCount, persons),
     [roomCount, persons]
   );
+  const estimatedKwh = manualKwh ?? heuristicKwh;
 
   // Price calculations
   const grundversorgerJahr = grundversorger
@@ -95,18 +102,27 @@ export const Step14Utility = () => {
   const check24Jahr = Math.round(CHECK24_BEST_GRUNDPREIS + estimatedKwh * CHECK24_BEST_PRICE_PER_KWH);
   const ersparnis = grundversorgerJahr - check24Jahr;
 
-  // Check24 deep link
+  // Check24 deep link with affiliate
   const buildCheck24Link = () => {
     const params = new URLSearchParams({
       zipcode: plz || '10115',
-      usage: String(estimatedKwh),
+      totalConsumption: String(estimatedKwh),
+      affiliate_id: CHECK24_AFFILIATE_ID,
     });
-    if (stromMeter?.meterNumber) params.set('meternumber', stromMeter.meterNumber);
-    // Use handover date as desired delivery start
-    const deliveryDate = data.contractEnd || new Date().toISOString().split('T')[0];
-    params.set('deliverydate', deliveryDate);
+    if (stromMeter?.meterNumber) params.set('meterNumber', stromMeter.meterNumber);
+    // Format moving date as DD.MM.YYYY
+    const rawDate = data.contractEnd || new Date().toISOString().split('T')[0];
+    const [y, m, d] = rawDate.split('-');
+    const movingDate = d && m && y ? `${d}.${m}.${y}` : rawDate;
+    params.set('movingDate', movingDate);
     return `https://www.check24.de/strom/vergleich/?${params.toString()}`;
   };
+
+  const movingDateFormatted = (() => {
+    const rawDate = data.contractEnd || new Date().toISOString().split('T')[0];
+    const [y, m, d] = rawDate.split('-');
+    return d && m && y ? `${d}.${m}.${y}` : rawDate;
+  })();
 
   const handleCancellation = () => {
     setCancellation(true);
@@ -169,8 +185,38 @@ export const Step14Utility = () => {
 
               <div className="bg-primary/10 rounded-xl p-3 flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Prognostizierter Jahresverbrauch</span>
-                <span className="text-lg font-bold text-primary">{estimatedKwh.toLocaleString('de-DE')} kWh</span>
+                {manualKwhEdit ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      className="w-24 h-8 text-right text-sm font-bold"
+                      value={manualKwh ?? heuristicKwh}
+                      onChange={(e) => setManualKwh(Number(e.target.value) || null)}
+                      onBlur={() => setManualKwhEdit(false)}
+                      onKeyDown={(e) => e.key === 'Enter' && setManualKwhEdit(false)}
+                      autoFocus
+                    />
+                    <span className="text-sm font-bold text-primary">kWh</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setManualKwhEdit(true)}
+                    className="flex items-center gap-1.5 group cursor-pointer"
+                    title="Klicken zum manuellen Überschreiben"
+                  >
+                    <span className="text-lg font-bold text-primary">{estimatedKwh.toLocaleString('de-DE')} kWh</span>
+                    <Pencil className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                )}
               </div>
+              {manualKwh !== null && (
+                <button
+                  onClick={() => { setManualKwh(null); setManualKwhEdit(false); }}
+                  className="text-[10px] text-primary underline cursor-pointer"
+                >
+                  Zurück zur Schätzung ({heuristicKwh.toLocaleString('de-DE')} kWh)
+                </button>
+              )}
             </div>
           </motion.div>
 
@@ -229,21 +275,47 @@ export const Step14Utility = () => {
               </p>
             </div>
 
+            {/* DSGVO Consent */}
+            <div className="flex items-start gap-2.5 mb-3">
+              <Checkbox
+                id="dsgvo-check24"
+                checked={dsgvoConsent}
+                onCheckedChange={(v) => setDsgvoConsent(v === true)}
+                className="mt-0.5"
+              />
+              <label htmlFor="dsgvo-check24" className="text-[11px] text-muted-foreground leading-tight cursor-pointer">
+                Ich stimme zu, dass meine Daten (PLZ, geschätzter Verbrauch, Zählernummer) zum Zwecke des Tarifvergleichs an Check24 übertragen werden.{' '}
+                <a href="/datenschutz" className="underline text-primary">Datenschutzerklärung</a>.
+              </label>
+            </div>
+
             {/* Check24 CTA */}
-            <Button
-              asChild
-              className="w-full h-12 rounded-2xl font-semibold gap-2 bg-success hover:bg-success/90 text-success-foreground"
-              size="lg"
-            >
-              <a href={buildCheck24Link()} target="_blank" rel="noopener noreferrer">
+            {dsgvoConsent ? (
+              <Button
+                asChild
+                className="w-full h-12 rounded-2xl font-semibold gap-2 bg-[#00893e] hover:bg-[#006e32] text-white"
+                size="lg"
+              >
+                <a href={buildCheck24Link()} target="_blank" rel="noopener noreferrer">
+                  <Zap className="w-5 h-5" />
+                  Tarife vergleichen auf Check24
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </Button>
+            ) : (
+              <Button
+                disabled
+                className="w-full h-12 rounded-2xl font-semibold gap-2"
+                size="lg"
+              >
                 <Zap className="w-5 h-5" />
                 Tarife vergleichen auf Check24
                 <ExternalLink className="w-4 h-4" />
-              </a>
-            </Button>
+              </Button>
+            )}
 
             <p className="text-[10px] text-muted-foreground text-center mt-2">
-              PLZ {plz || '–'} · {estimatedKwh.toLocaleString('de-DE')} kWh · Zähler-Nr. {stromMeter?.meterNumber || '–'}
+              PLZ {plz || '–'} · {estimatedKwh.toLocaleString('de-DE')} kWh · Zähler: {stromMeter?.meterNumber || '–'} · Umzug: {movingDateFormatted}
             </p>
           </motion.div>
 
