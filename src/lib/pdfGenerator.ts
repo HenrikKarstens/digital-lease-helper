@@ -556,6 +556,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       y += 7;
     } else {
       // ── Bar-Kaution oder verpfändetes Konto ──
+      const isReletting = data.immediateReletting === true;
       y = sectionTitle(doc, '§7  Kautions-Abrechnung (§ 551 BGB)', y, pageW);
       const tableBody7: string[][] = [];
 
@@ -569,7 +570,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       }
 
       tableBody7.push(
-        [`- Mängelkosten (${defectFindings.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
+        [`- ${isReletting ? 'Endgültiger Schadensersatz' : 'Mängelkosten'} (${defectFindings.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
         [hasNkData ? '- NK-Puffer (KI-Prognose, 3 Mon.)' : '- NK-Puffer (Standardwert)', `- ${nkBuffer.toFixed(2)} €`],
         ['= Auszuzahlender Endbetrag', `${payoutFinal.toFixed(2)} €`],
       );
@@ -604,11 +605,14 @@ export function generateMasterProtocol(data: HandoverData): void {
       y += 6;
       doc.setFont('helvetica', 'normal');
 
-      // ── §7c Zahlungsanweisung (14 Tage Frist) ──────────────────────────────
+      // ── §7c Zahlungsanweisung ──────────────────────────────
       if (payoutFinal > 0 && (data.payeeIban || data.payeeAccountHolder)) {
         if (y > pageH - 50) { doc.addPage(); y = 36; }
         y = sectionTitle(doc, '§7c  Zahlungsanweisung', y, pageW);
-        const deadline14 = (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
+        const isRelettingPay = data.immediateReletting === true;
+        const deadline14pay = isRelettingPay
+          ? 'sofort fällig'
+          : (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
         const payeeHolder = data.payeeAccountHolder || data.tenantName || 'Mieter';
         const payeeIban = data.payeeIban || '(IBAN nicht angegeben)';
 
@@ -617,7 +621,9 @@ export function generateMasterProtocol(data: HandoverData): void {
         doc.setTextColor(...TEXT_COLOR);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        const paymentText = `Der Betrag in Höhe von ${payoutFinal.toFixed(2)} € ist bis zum ${deadline14} auf das folgende Konto zu überweisen: ${payeeHolder}, IBAN: ${payeeIban}.`;
+        const paymentText = isRelettingPay
+          ? `Der Betrag in Höhe von ${payoutFinal.toFixed(2)} € ist sofort fällig (Anschlussvermietung – § 281 Abs. 2 BGB) und auf das folgende Konto zu überweisen: ${payeeHolder}, IBAN: ${payeeIban}.`
+          : `Der Betrag in Höhe von ${payoutFinal.toFixed(2)} € ist bis zum ${deadline14pay} auf das folgende Konto zu überweisen: ${payeeHolder}, IBAN: ${payeeIban}.`;
         const paymentLines = doc.splitTextToSize(paymentText, pageW - 36);
         doc.text(paymentLines, 18, y + 6);
         y += 26;
@@ -638,77 +644,104 @@ export function generateMasterProtocol(data: HandoverData): void {
   const damageFindings = data.findings.filter(f => f.recommendedWithholding > 0);
   if (damageFindings.length > 0 && !isSale) {
     if (y > pageH - 80) { doc.addPage(); y = 36; }
-    y = sectionTitle(doc, '§7b  Aufforderungsschreiben zur Mängelbeseitigung (§ 281 BGB)', y, pageW);
 
-    // Letter header box
-    doc.setFillColor(238, 242, 255);
-    const letterStartY = y;
-    doc.roundedRect(14, letterStartY, pageW - 28, 8, 2, 2, 'F');
-    doc.setTextColor(...BRAND_COLOR);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Schriftliche Aufforderung zur Mängelbeseitigung', 18, letterStartY + 5.5);
-    y = letterStartY + 12;
+    const isReletting7b = data.immediateReletting === true;
+    const relettingDateStr = data.relettingDate
+      ? new Date(data.relettingDate).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      : '(Datum nicht angegeben)';
 
-    // Salutation
-    doc.setTextColor(...TEXT_COLOR);
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
-    const tenantName = data.tenantName || 'Mieter';
-    const landlordName = data.landlordName || 'Vermieter';
-    const address = data.propertyAddress || 'der o.g. Immobilie';
-    const deadline14 = (() => {
-      const d = new Date();
-      d.setDate(d.getDate() + 14);
-      return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    })();
-    const deadline30 = (() => {
-      const d = new Date();
-      d.setDate(d.getDate() + 30);
-      return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    })();
+    if (isReletting7b) {
+      // ── Schadensersatzforderung (Anschlussvermietung) ──
+      y = sectionTitle(doc, '§7b  Schadensersatzforderung (§ 281 Abs. 2 BGB – Anschlussvermietung)', y, pageW);
+      doc.setFillColor(255, 248, 230);
+      const seTotalCost = damageFindings.reduce((s, f) => s + f.recommendedWithholding, 0);
+      const seText = `Aufgrund der unmittelbaren Anschlussvermietung zum ${relettingDateStr} ist eine Fristsetzung zur Mängelbeseitigung gemäß § 281 Abs. 2 BGB entbehrlich. Die festgestellten Schäden (${damageFindings.map(f => f.damageType).join(', ')}) werden daher unmittelbar als Schadensersatz in Geld in Höhe von ${seTotalCost.toFixed(2)} € mit der Kaution verrechnet.\n\nDer Anspruch auf Schadensersatz statt der Leistung ergibt sich aus § 280 Abs. 1, 3 i.V.m. § 281 Abs. 2 BGB, da dem Vermieter aufgrund des kurzfristigen Nachmietereinzugs die Gewährung einer Nachbesserungsfrist nicht zumutbar ist.`;
+      const seLines = doc.splitTextToSize(seText, pageW - 36);
+      const seH = seLines.length * 4 + 10;
+      doc.roundedRect(14, y, pageW - 28, seH, 2, 2, 'F');
+      doc.setTextColor(120, 80, 20);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(seLines, 18, y + 6);
+      y += seH + 4;
 
-    const intro = `An: ${tenantName}\nVon: ${landlordName}\nBetr.: Aufforderung zur Beseitigung von Mängeln an ${address}\n\nSehr geehrte Mieterin, sehr geehrter Mieter,\n\nim Rahmen der am ${date} durchgeführten Wohnungsübergabe wurden folgende Schäden festgestellt, die über den üblichen Mietgebrauch hinausgehen und daher gemäß § 538 BGB in Verbindung mit der BGH-Rechtsprechung (BGH VIII ZR 222/15) zu Lasten der Mieterseite gehen:`;
-    const introLines = doc.splitTextToSize(intro, pageW - 32);
-    if (y + introLines.length * 4 > pageH - 20) { doc.addPage(); y = 36; }
-    doc.text(introLines, 18, y);
-    y += introLines.length * 4 + 4;
+      // Damage table
+      autoTable(doc, {
+        startY: y,
+        margin: { left: 18, right: 18 },
+        head: [['Nr.', 'Raum', 'Schadensbild', 'Endgültiger Schadensersatz']],
+        body: damageFindings.map((f, idx) => [
+          `${idx + 1}.`,
+          f.room,
+          `${f.damageType} (${f.material})`,
+          `${f.recommendedWithholding} €`,
+        ]),
+        headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7.5 },
+        bodyStyles: { fontSize: 8 },
+        alternateRowStyles: { fillColor: [255, 248, 248] },
+        columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
+      });
+      y = (doc as any).lastAutoTable.finalY + 6;
+    } else {
+      // ── Standard: Aufforderungsschreiben (14-Tage-Frist) ──
+      y = sectionTitle(doc, '§7b  Aufforderungsschreiben zur Mängelbeseitigung (§ 281 BGB)', y, pageW);
+      doc.setFillColor(238, 242, 255);
+      const letterStartY = y;
+      doc.roundedRect(14, letterStartY, pageW - 28, 8, 2, 2, 'F');
+      doc.setTextColor(...BRAND_COLOR);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Schriftliche Aufforderung zur Mängelbeseitigung', 18, letterStartY + 5.5);
+      y = letterStartY + 12;
 
-    // Damage table in letter
-    autoTable(doc, {
-      startY: y,
-      margin: { left: 18, right: 18 },
-      head: [['Nr.', 'Raum', 'Schadensbild', 'Geschätzter Einbehalt']],
-      body: damageFindings.map((f, idx) => [
-        `${idx + 1}.`,
-        f.room,
-        `${f.damageType} (${f.material})`,
-        `ca. ${f.recommendedWithholding} €`,
-      ]),
-      headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7.5 },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: [255, 248, 248] },
-      columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
-    });
-    y = (doc as any).lastAutoTable.finalY + 4;
+      const tenantName = data.tenantName || 'Mieter';
+      const landlordName = data.landlordName || 'Vermieter';
+      const address = data.propertyAddress || 'der o.g. Immobilie';
+      const deadline14 = (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
+      const deadline30 = (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
 
-    // Demand paragraph
-    const demand = `Wir fordern Sie hiermit ausdrücklich auf, die oben aufgeführten Mängel bis spätestens ${deadline14} (Frist: 14 Tage gemäß § 281 BGB) fachgerecht und auf eigene Kosten zu beseitigen. Sofern Sie die Behebung durch einen Fachbetrieb beauftragen, bitten wir um Vorlage eines Kostenvoranschlags und eines Nachweises der Mängelbeseitigung (Fotos/Rechnung).\n\nWir weisen darauf hin, dass bei fruchtlosem Ablauf der gesetzten Frist ${landlordName} berechtigt ist, die Mängelbeseitigung auf Ihre Kosten zu veranlassen und entstandene Aufwendungen mit der hinterlegten Kaution zu verrechnen bzw. als Schadensersatz nach § 280 Abs. 1 BGB geltend zu machen.\n\nSollte eine einvernehmliche Lösung nicht erzielt werden, behalten wir uns vor, rechtliche Schritte einzuleiten. Für etwaige Rückfragen stehen wir bis zum ${deadline30} zur Verfügung.\n\nDiese Aufforderung ist Bestandteil des EstateTurn-Übergabeprotokolls (ID: ${protocolId}) und rechtlich bindend.`;
-    const demandLines = doc.splitTextToSize(demand, pageW - 32);
-    if (y + demandLines.length * 4 > pageH - 20) { doc.addPage(); y = 36; }
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...TEXT_COLOR);
-    doc.text(demandLines, 18, y);
-    y += demandLines.length * 4 + 6;
+      doc.setTextColor(...TEXT_COLOR);
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      const intro = `An: ${tenantName}\nVon: ${landlordName}\nBetr.: Aufforderung zur Beseitigung von Mängeln an ${address}\n\nSehr geehrte Mieterin, sehr geehrter Mieter,\n\nim Rahmen der am ${date} durchgeführten Wohnungsübergabe wurden folgende Schäden festgestellt, die über den üblichen Mietgebrauch hinausgehen und daher gemäß § 538 BGB in Verbindung mit der BGH-Rechtsprechung (BGH VIII ZR 222/15) zu Lasten der Mieterseite gehen:`;
+      const introLines = doc.splitTextToSize(intro, pageW - 32);
+      if (y + introLines.length * 4 > pageH - 20) { doc.addPage(); y = 36; }
+      doc.text(introLines, 18, y);
+      y += introLines.length * 4 + 4;
 
-    // Signature line in letter
-    doc.setDrawColor(180, 180, 200);
-    doc.line(18, y, 18 + 60, y);
-    doc.setFontSize(7);
-    doc.setTextColor(...MUTED_COLOR);
-    doc.text(`${landlordName} (Vermieter/in)`, 18, y + 4);
-    y += 12;
+      autoTable(doc, {
+        startY: y,
+        margin: { left: 18, right: 18 },
+        head: [['Nr.', 'Raum', 'Schadensbild', 'Geschätzter Einbehalt']],
+        body: damageFindings.map((f, idx) => [
+          `${idx + 1}.`,
+          f.room,
+          `${f.damageType} (${f.material})`,
+          `ca. ${f.recommendedWithholding} €`,
+        ]),
+        headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7.5 },
+        bodyStyles: { fontSize: 8 },
+        alternateRowStyles: { fillColor: [255, 248, 248] },
+        columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
+      });
+      y = (doc as any).lastAutoTable.finalY + 4;
+
+      const demand = `Wir fordern Sie hiermit ausdrücklich auf, die oben aufgeführten Mängel bis spätestens ${deadline14} (Frist: 14 Tage gemäß § 281 BGB) fachgerecht und auf eigene Kosten zu beseitigen. Sofern Sie die Behebung durch einen Fachbetrieb beauftragen, bitten wir um Vorlage eines Kostenvoranschlags und eines Nachweises der Mängelbeseitigung (Fotos/Rechnung).\n\nWir weisen darauf hin, dass bei fruchtlosem Ablauf der gesetzten Frist ${landlordName} berechtigt ist, die Mängelbeseitigung auf Ihre Kosten zu veranlassen und entstandene Aufwendungen mit der hinterlegten Kaution zu verrechnen bzw. als Schadensersatz nach § 280 Abs. 1 BGB geltend zu machen.\n\nSollte eine einvernehmliche Lösung nicht erzielt werden, behalten wir uns vor, rechtliche Schritte einzuleiten. Für etwaige Rückfragen stehen wir bis zum ${deadline30} zur Verfügung.\n\nDiese Aufforderung ist Bestandteil des EstateTurn-Übergabeprotokolls (ID: ${protocolId}) und rechtlich bindend.`;
+      const demandLines = doc.splitTextToSize(demand, pageW - 32);
+      if (y + demandLines.length * 4 > pageH - 20) { doc.addPage(); y = 36; }
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...TEXT_COLOR);
+      doc.text(demandLines, 18, y);
+      y += demandLines.length * 4 + 6;
+
+      doc.setDrawColor(180, 180, 200);
+      doc.line(18, y, 18 + 60, y);
+      doc.setFontSize(7);
+      doc.setTextColor(...MUTED_COLOR);
+      doc.text(`${landlordName} (Vermieter/in)`, 18, y + 4);
+      y += 12;
+    }
   }
 
   // ── §8 Rechtsbelehrung ────────────────────────────────────────────────────
@@ -997,8 +1030,9 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     if (interest2 > 0) {
       tableBody7b.push([`+ Erwirtschaftete Zinsen (${(data.depositInterestRate || 1.5).toFixed(2)}% p.a., § 551 Abs. 3 BGB)`, `+ ${interest2.toFixed(2)} €`]);
     }
+    const isReletting2 = data.immediateReletting === true;
     tableBody7b.push(
-      [`- Mängelkosten (${defectFindings2.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
+      [`- ${isReletting2 ? 'Endgültiger Schadensersatz' : 'Mängelkosten'} (${defectFindings2.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
       [hasNkData ? '- NK-Puffer (KI-Prognose, 3 Mon.)' : '- NK-Puffer (Standardwert)', `- ${nkBuffer.toFixed(2)} €`],
       ['= Auszuzahlender Endbetrag', `${payoutFinal2.toFixed(2)} €`],
     );
@@ -1025,13 +1059,18 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     if (payoutFinal2 > 0 && (data.payeeIban || data.payeeAccountHolder)) {
       if (y > pageH - 50) { doc.addPage(); y = 36; }
       y = sectionTitle(doc, '§7c  Zahlungsanweisung', y, pageW);
-      const deadline28b = (() => { const d = new Date(); d.setDate(d.getDate() + 28); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
+      const isRelettingPay2 = data.immediateReletting === true;
+      const deadline28b = isRelettingPay2
+        ? 'sofort fällig'
+        : (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
       const payeeHolder2 = data.payeeAccountHolder || data.tenantName || 'Mieter';
       const payeeIban2 = data.payeeIban || '(IBAN nicht angegeben)';
       doc.setFillColor(238, 242, 255);
       doc.roundedRect(14, y, pageW - 28, 22, 2, 2, 'F');
       doc.setTextColor(...TEXT_COLOR); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-      const payText2 = `Der Betrag in Höhe von ${payoutFinal2.toFixed(2)} € ist bis zum ${deadline28b} auf das folgende Konto zu überweisen: ${payeeHolder2}, IBAN: ${payeeIban2}.`;
+      const payText2 = isRelettingPay2
+        ? `Der Betrag in Höhe von ${payoutFinal2.toFixed(2)} € ist sofort fällig (Anschlussvermietung – § 281 Abs. 2 BGB) und auf das folgende Konto zu überweisen: ${payeeHolder2}, IBAN: ${payeeIban2}.`
+        : `Der Betrag in Höhe von ${payoutFinal2.toFixed(2)} € ist bis zum ${deadline28b} auf das folgende Konto zu überweisen: ${payeeHolder2}, IBAN: ${payeeIban2}.`;
       doc.text(doc.splitTextToSize(payText2, pageW - 36), 18, y + 6);
       y += 26;
       doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'italic');
@@ -1044,41 +1083,70 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   const damageFindings = defectFindings2.filter(f => f.recommendedWithholding > 0);
   if (damageFindings.length > 0 && !isSale) {
     if (y > pageH - 80) { doc.addPage(); y = 36; }
-    y = sectionTitle(doc, '§7b  Aufforderungsschreiben zur Mängelbeseitigung (§ 281 BGB)', y, pageW);
-    doc.setFillColor(238, 242, 255);
-    doc.roundedRect(14, y, pageW - 28, 8, 2, 2, 'F');
-    doc.setTextColor(...BRAND_COLOR); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-    doc.text('Schriftliche Aufforderung zur Mängelbeseitigung', 18, y + 5.5);
-    y += 12;
-    const tenantName = data.tenantName || 'Mieter';
-    const landlordName2 = data.landlordName || 'Vermieter';
-    const address = data.propertyAddress || 'der o.g. Immobilie';
-    const deadline14 = (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
-    const deadline30 = (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
-    doc.setTextColor(...TEXT_COLOR); doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
-    const intro = `An: ${tenantName}\nVon: ${landlordName2}\nBetr.: Aufforderung zur Beseitigung von Mängeln an ${address}\n\nSehr geehrte Mieterin, sehr geehrter Mieter,\n\nim Rahmen der am ${date} durchgeführten Wohnungsübergabe wurden folgende Schäden festgestellt, die über den üblichen Mietgebrauch hinausgehen und daher gemäß § 538 BGB in Verbindung mit der BGH-Rechtsprechung (${bghRef}) zu Lasten der Mieterseite gehen:`;
-    const introLines = doc.splitTextToSize(intro, pageW - 32);
-    if (y + introLines.length * 4 > pageH - 20) { doc.addPage(); y = 36; }
-    doc.text(introLines, 18, y); y += introLines.length * 4 + 4;
-    autoTable(doc, {
-      startY: y, margin: { left: 18, right: 18 },
-      head: [['Nr.', 'Raum', 'Lage', 'Schadensbild', 'Einbehalt']],
-      body: damageFindings.map((f, idx) => [`${idx + 1}.`, f.room || '⚠ Unbekannt', (f as any).locationDetail || '–', `${f.damageType} (${f.material})`, `ca. ${f.recommendedWithholding} €`]),
-      headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7.5 },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: [255, 248, 248] },
-      columnStyles: { 4: { halign: 'right', fontStyle: 'bold' } },
-    });
-    y = (doc as any).lastAutoTable.finalY + 4;
-    const demand = `Wir fordern Sie hiermit ausdrücklich auf, die oben aufgeführten Mängel bis spätestens ${deadline14} (Frist: 14 Tage gemäß § 281 BGB) fachgerecht und auf eigene Kosten zu beseitigen.\n\nWir weisen darauf hin, dass bei fruchtlosem Ablauf der gesetzten Frist ${landlordName2} berechtigt ist, die Mängelbeseitigung auf Ihre Kosten zu veranlassen und entstandene Aufwendungen mit der hinterlegten Kaution zu verrechnen bzw. als Schadensersatz nach § 280 Abs. 1 BGB geltend zu machen.\n\nSollte eine einvernehmliche Lösung nicht erzielt werden, behalten wir uns vor, rechtliche Schritte einzuleiten. Für etwaige Rückfragen stehen wir bis zum ${deadline30} zur Verfügung.\n\nDiese Aufforderung ist Bestandteil des EstateTurn-Übergabeprotokolls (ID: ${protocolId}) und rechtlich bindend.`;
-    const demandLines = doc.splitTextToSize(demand, pageW - 32);
-    if (y + demandLines.length * 4 > pageH - 20) { doc.addPage(); y = 36; }
-    doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_COLOR);
-    doc.text(demandLines, 18, y); y += demandLines.length * 4 + 6;
-    doc.setDrawColor(180, 180, 200);
-    doc.line(18, y, 18 + 60, y);
-    doc.setFontSize(7); doc.setTextColor(...MUTED_COLOR);
-    doc.text(`${landlordName2} (Vermieter/in)`, 18, y + 4); y += 12;
+
+    const isReletting7b2 = data.immediateReletting === true;
+    const relettingDateStr2 = data.relettingDate
+      ? new Date(data.relettingDate).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      : '(Datum nicht angegeben)';
+
+    if (isReletting7b2) {
+      y = sectionTitle(doc, '§7b  Schadensersatzforderung (§ 281 Abs. 2 BGB – Anschlussvermietung)', y, pageW);
+      doc.setFillColor(255, 248, 230);
+      const seTotalCost2 = damageFindings.reduce((s, f) => s + f.recommendedWithholding, 0);
+      const seText2 = `Aufgrund der unmittelbaren Anschlussvermietung zum ${relettingDateStr2} ist eine Fristsetzung zur Mängelbeseitigung gemäß § 281 Abs. 2 BGB entbehrlich. Die festgestellten Schäden (${damageFindings.map(f => f.damageType).join(', ')}) werden daher unmittelbar als Schadensersatz in Geld in Höhe von ${seTotalCost2.toFixed(2)} € mit der Kaution verrechnet.\n\nDer Anspruch auf Schadensersatz statt der Leistung ergibt sich aus § 280 Abs. 1, 3 i.V.m. § 281 Abs. 2 BGB, da dem Vermieter aufgrund des kurzfristigen Nachmietereinzugs die Gewährung einer Nachbesserungsfrist nicht zumutbar ist.`;
+      const seLines2 = doc.splitTextToSize(seText2, pageW - 36);
+      const seH2 = seLines2.length * 4 + 10;
+      doc.roundedRect(14, y, pageW - 28, seH2, 2, 2, 'F');
+      doc.setTextColor(120, 80, 20); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+      doc.text(seLines2, 18, y + 6);
+      y += seH2 + 4;
+      autoTable(doc, {
+        startY: y, margin: { left: 18, right: 18 },
+        head: [['Nr.', 'Raum', 'Schadensbild', 'Endgültiger Schadensersatz']],
+        body: damageFindings.map((f, idx) => [`${idx + 1}.`, f.room || '–', `${f.damageType} (${f.material})`, `${f.recommendedWithholding} €`]),
+        headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7.5 },
+        bodyStyles: { fontSize: 8 },
+        alternateRowStyles: { fillColor: [255, 248, 248] },
+        columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
+      });
+      y = (doc as any).lastAutoTable.finalY + 6;
+    } else {
+      y = sectionTitle(doc, '§7b  Aufforderungsschreiben zur Mängelbeseitigung (§ 281 BGB)', y, pageW);
+      doc.setFillColor(238, 242, 255);
+      doc.roundedRect(14, y, pageW - 28, 8, 2, 2, 'F');
+      doc.setTextColor(...BRAND_COLOR); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+      doc.text('Schriftliche Aufforderung zur Mängelbeseitigung', 18, y + 5.5);
+      y += 12;
+      const tenantName = data.tenantName || 'Mieter';
+      const landlordName2 = data.landlordName || 'Vermieter';
+      const address = data.propertyAddress || 'der o.g. Immobilie';
+      const deadline14 = (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
+      const deadline30 = (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
+      doc.setTextColor(...TEXT_COLOR); doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+      const intro = `An: ${tenantName}\nVon: ${landlordName2}\nBetr.: Aufforderung zur Beseitigung von Mängeln an ${address}\n\nSehr geehrte Mieterin, sehr geehrter Mieter,\n\nim Rahmen der am ${date} durchgeführten Wohnungsübergabe wurden folgende Schäden festgestellt, die über den üblichen Mietgebrauch hinausgehen und daher gemäß § 538 BGB in Verbindung mit der BGH-Rechtsprechung (${bghRef}) zu Lasten der Mieterseite gehen:`;
+      const introLines = doc.splitTextToSize(intro, pageW - 32);
+      if (y + introLines.length * 4 > pageH - 20) { doc.addPage(); y = 36; }
+      doc.text(introLines, 18, y); y += introLines.length * 4 + 4;
+      autoTable(doc, {
+        startY: y, margin: { left: 18, right: 18 },
+        head: [['Nr.', 'Raum', 'Lage', 'Schadensbild', 'Einbehalt']],
+        body: damageFindings.map((f, idx) => [`${idx + 1}.`, f.room || '⚠ Unbekannt', (f as any).locationDetail || '–', `${f.damageType} (${f.material})`, `ca. ${f.recommendedWithholding} €`]),
+        headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7.5 },
+        bodyStyles: { fontSize: 8 },
+        alternateRowStyles: { fillColor: [255, 248, 248] },
+        columnStyles: { 4: { halign: 'right', fontStyle: 'bold' } },
+      });
+      y = (doc as any).lastAutoTable.finalY + 4;
+      const demand = `Wir fordern Sie hiermit ausdrücklich auf, die oben aufgeführten Mängel bis spätestens ${deadline14} (Frist: 14 Tage gemäß § 281 BGB) fachgerecht und auf eigene Kosten zu beseitigen.\n\nWir weisen darauf hin, dass bei fruchtlosem Ablauf der gesetzten Frist ${landlordName2} berechtigt ist, die Mängelbeseitigung auf Ihre Kosten zu veranlassen und entstandene Aufwendungen mit der hinterlegten Kaution zu verrechnen bzw. als Schadensersatz nach § 280 Abs. 1 BGB geltend zu machen.\n\nDiese Aufforderung ist Bestandteil des EstateTurn-Übergabeprotokolls (ID: ${protocolId}) und rechtlich bindend.`;
+      const demandLines = doc.splitTextToSize(demand, pageW - 32);
+      if (y + demandLines.length * 4 > pageH - 20) { doc.addPage(); y = 36; }
+      doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_COLOR);
+      doc.text(demandLines, 18, y); y += demandLines.length * 4 + 6;
+      doc.setDrawColor(180, 180, 200);
+      doc.line(18, y, 18 + 60, y);
+      doc.setFontSize(7); doc.setTextColor(...MUTED_COLOR);
+      doc.text(`${landlordName2} (Vermieter/in)`, 18, y + 4); y += 12;
+    }
   }
 
   if (y > pageH - 70) { doc.addPage(); y = 36; }

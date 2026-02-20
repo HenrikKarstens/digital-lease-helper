@@ -109,6 +109,9 @@ export interface HandoverData {
   depositInterestRate: number;      // Zinssatz in % (z.B. 1.5)
   payeeIban: string;                // IBAN des Empfängers
   payeeAccountHolder: string;       // Kontoinhaber des Empfängers
+  // Step 10 – Anschlussvermietung
+  immediateReletting: boolean;       // Sofortige Anschlussvermietung (Einzug < 7 Tage)
+  relettingDate: string;             // Datum des Neueinzugs
   // Step 13
   protocolSent: boolean;
 }
@@ -149,6 +152,8 @@ const defaultData: HandoverData = {
   depositInterestRate: 1.5,
   payeeIban: '',
   payeeAccountHolder: '',
+  immediateReletting: false,
+  relettingDate: '',
   protocolSent: false,
 };
 
