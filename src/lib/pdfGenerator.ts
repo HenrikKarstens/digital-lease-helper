@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { HandoverData } from '@/context/HandoverContext';
+import { createThumbnail } from '@/lib/imageUtils';
 
 const BRAND_COLOR: [number, number, number] = [79, 70, 229]; // indigo-600
 const BRAND_LIGHT: [number, number, number] = [238, 242, 255];
@@ -440,6 +441,58 @@ export function generateMasterProtocol(data: HandoverData): void {
     doc.setFontSize(8);
     doc.text('Keine Zähler erfasst.', col1, y);
     y += 8;
+  }
+
+  // ── §5b Schlüsselübergabe ─────────────────────────────────────────────────
+  if (data.keyEntries && data.keyEntries.length > 0) {
+    if (y > pageH - 60) { doc.addPage(); y = 36; }
+    y = sectionTitle(doc, '§5b  Schlüsselübergabe', y, pageW);
+    autoTable(doc, {
+      startY: y,
+      margin: { left: 14, right: 14 },
+      head: [['Schlüssel-Typ', 'Anzahl', 'Notiz']],
+      body: data.keyEntries.map(k => [k.type, String(k.count), k.note || '–']),
+      headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
+      bodyStyles: { fontSize: 8, textColor: TEXT_COLOR },
+      alternateRowStyles: { fillColor: [248, 249, 255] },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 55 }, 1: { cellWidth: 20, halign: 'center' } },
+    });
+    y = (doc as any).lastAutoTable.finalY + 4;
+
+    const totalKeys = data.keyEntries.reduce((s, k) => s + k.count, 0);
+    doc.setTextColor(...MUTED_COLOR);
+    doc.setFontSize(7);
+    doc.text(`Gesamtanzahl übergebener Schlüssel: ${totalKeys}`, col1, y);
+    y += 4;
+
+    // Embed key bundle photo
+    if (data.keyBundlePhotoUrl) {
+      if (y > pageH - 60) { doc.addPage(); y = 36; }
+      try {
+        const imgW = 60;
+        const imgH = 45;
+        doc.addImage(data.keyBundlePhotoUrl, 'JPEG', col1, y, imgW, imgH);
+        doc.setDrawColor(200, 200, 215);
+        doc.rect(col1, y, imgW, imgH);
+        doc.setTextColor(...MUTED_COLOR);
+        doc.setFontSize(6.5);
+        doc.text('Beweisfoto: Schlüsselbund bei Übergabe', col1 + imgW + 4, y + 6);
+        y += imgH + 6;
+      } catch {
+        doc.setTextColor(...MUTED_COLOR);
+        doc.setFontSize(7);
+        doc.text('Beweisfoto: Konnte nicht eingebettet werden.', col1, y);
+        y += 6;
+      }
+    }
+
+    // Legal note
+    doc.setTextColor(...MUTED_COLOR);
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Der Mieter versichert, alle in seinem Besitz befindlichen Schlüssel (inkl. Duplikate) zurückgegeben zu haben.', col1, y);
+    doc.setFont('helvetica', 'normal');
+    y += 7;
   }
 
   // ── §6 Detailliertes Mängelverzeichnis ────────────────────────────────────

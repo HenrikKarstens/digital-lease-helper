@@ -63,6 +63,13 @@ export interface CapturedDocument {
 
 export type DepositType = 'cash' | 'guarantee' | 'pledged-account';
 
+export interface KeyEntry {
+  id: string;
+  type: string;
+  count: number;
+  note: string;
+}
+
 export interface HandoverData {
   // Step 1a/1b
   transactionType: 'rental' | 'sale' | null;
@@ -95,6 +102,9 @@ export interface HandoverData {
   findings: Finding[];
   // Step 8
   meterReadings: MeterReading[];
+  // Step 9 – Schlüssel
+  keyEntries: KeyEntry[];
+  keyBundlePhotoUrl: string | null;
   // Step 9
   signatureLandlord: string | null;
   signatureTenant: string | null;
@@ -141,6 +151,8 @@ const defaultData: HandoverData = {
   attendancePhotoUrl: null,
   findings: [],
   meterReadings: [],
+  keyEntries: [],
+  keyBundlePhotoUrl: null,
   signatureLandlord: null,
   signatureTenant: null,
   nkVorauszahlung: 150,
@@ -198,7 +210,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
     } else {
       const MASTER_ORDER = [
         'hero', 'transaction-type', 'role', 'direction', 'smart-entry', 'validation',
-        'floor-plan', 'participants', 'evidence', 'meters', 'defect-analysis',
+        'floor-plan', 'participants', 'evidence', 'meters', 'keys', 'defect-analysis',
         'deposit', 'certificate', 'utility'
       ];
       const masterIdx = MASTER_ORDER.indexOf(stepId);

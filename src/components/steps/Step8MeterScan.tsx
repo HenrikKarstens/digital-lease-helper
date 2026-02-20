@@ -402,7 +402,7 @@ export const Step8MeterScan = () => {
       {/* Navigation */}
       {data.meterReadings.length > 0 && !scanning && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-md mt-6">
-          <Button onClick={() => goToStepById('defect-analysis')} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+          <Button onClick={() => goToStepById('keys')} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
             <CheckCircle2 className="w-4 h-4" />
             Weiter zur Unterschrift
           </Button>
