@@ -324,6 +324,8 @@ export function generateMasterProtocol(data: HandoverData): void {
   const hasNkData = data.nkVorauszahlung > 0 || data.nkPrognose > 0;
   const nkBuffer = hasNkData ? Math.max(0, (data.nkPrognose - data.nkVorauszahlung) * 3) : 180;
   const payout = Math.max(0, deposit - defectsCost - nkBuffer);
+  const hasRestforderung = (defectsCost + nkBuffer) > deposit && deposit > 0;
+  const restforderungAmount = hasRestforderung ? (defectsCost + nkBuffer) - deposit : 0;
 
   const isMoveIn = data.handoverDirection === 'move-in';
 
@@ -629,6 +631,7 @@ export function generateMasterProtocol(data: HandoverData): void {
     const pledgedBalance = isPledged ? (parseFloat(data.pledgedAccountBalance || '0') || 0) : 0;
     const baseAmount = isCash ? deposit + interest : isPledged ? pledgedBalance : 0;
     const payoutFinal = isGuarantee ? 0 : Math.max(0, baseAmount - defectsCost - nkBuffer);
+    const restforderungFinal = !isGuarantee && (defectsCost + nkBuffer) > baseAmount ? (defectsCost + nkBuffer) - baseAmount : 0;
 
     if (y > pageH - 80) { doc.addPage(); y = 36; }
 
@@ -673,7 +676,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       tableBody7.push(
         [`- ${isReletting ? 'Endgültiger Schadensersatz' : 'Mängelkosten'} (${defectFindings.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
         [hasNkData ? '- NK-Puffer (KI-Prognose, 3 Mon.)' : '- NK-Puffer (Standardwert)', `- ${nkBuffer.toFixed(2)} €`],
-        ['= Auszuzahlender Endbetrag', `${payoutFinal.toFixed(2)} €`],
+        [restforderungFinal > 0 ? '= Offene Restforderung' : '= Auszuzahlender Endbetrag', restforderungFinal > 0 ? `${restforderungFinal.toFixed(2)} €` : `${payoutFinal.toFixed(2)} €`],
       );
       autoTable(doc, {
         startY: y,
@@ -687,12 +690,21 @@ export function generateMasterProtocol(data: HandoverData): void {
       });
       y = (doc as any).lastAutoTable.finalY + 4;
 
-      doc.setFillColor(230, 255, 240);
-      doc.roundedRect(14, y, pageW - 28, 10, 2, 2, 'F');
-      doc.setTextColor(...SUCCESS_COLOR);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Auszahlungsbetrag: ${payoutFinal.toFixed(2)} €`, pageW / 2, y + 6.5, { align: 'center' });
+      if (restforderungFinal > 0) {
+        doc.setFillColor(255, 235, 235);
+        doc.roundedRect(14, y, pageW - 28, 10, 2, 2, 'F');
+        doc.setTextColor(...DANGER_COLOR);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Offene Restforderung: ${restforderungFinal.toFixed(2)} €`, pageW / 2, y + 6.5, { align: 'center' });
+      } else {
+        doc.setFillColor(230, 255, 240);
+        doc.roundedRect(14, y, pageW - 28, 10, 2, 2, 'F');
+        doc.setTextColor(...SUCCESS_COLOR);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Auszahlungsbetrag: ${payoutFinal.toFixed(2)} €`, pageW / 2, y + 6.5, { align: 'center' });
+      }
       y += 14;
 
       // Legal basis
@@ -736,6 +748,44 @@ export function generateMasterProtocol(data: HandoverData): void {
         doc.setFont('helvetica', 'normal');
         y += 7;
       }
+    }
+
+    // ── §7d Zahlungsaufforderung (nur bei Restforderung) ──────────────
+    if (restforderungFinal > 0 && (data.payeeIban || data.payeeAccountHolder)) {
+      if (y > pageH - 80) { doc.addPage(); y = 36; }
+      y = sectionTitle(doc, '§7d  Zahlungsaufforderung (§ 280 Abs. 1 BGB)', y, pageW);
+      const deadline14rest = (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
+      const payeeHolder7d = data.payeeAccountHolder || data.landlordName || 'Vermieter';
+      const payeeIban7d = data.payeeIban || '(IBAN nicht angegeben)';
+
+      doc.setFillColor(255, 240, 240);
+      const restText = `Die oben aufgeführten Mängel und Einbehalte übersteigen die hinterlegte Kautionssumme von ${deposit.toFixed(2)} €. Wir fordern Sie hiermit auf, den Differenzbetrag in Höhe von ${restforderungFinal.toFixed(2)} € bis spätestens zum ${deadline14rest} auf das unten genannte Konto zu überweisen. Der Anspruch ergibt sich aus § 280 Abs. 1 BGB.`;
+      const restLines = doc.splitTextToSize(restText, pageW - 36);
+      const restH = restLines.length * 4 + 10;
+      doc.roundedRect(14, y, pageW - 28, restH, 2, 2, 'F');
+      doc.setTextColor(...DANGER_COLOR);
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(restLines, 18, y + 6);
+      y += restH + 4;
+
+      // Bankdaten prominent
+      doc.setFillColor(238, 242, 255);
+      doc.roundedRect(14, y, pageW - 28, 16, 2, 2, 'F');
+      doc.setTextColor(...TEXT_COLOR);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Empfänger:', 18, y + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${payeeHolder7d}  ·  IBAN: ${payeeIban7d}`, 18, y + 11);
+      y += 20;
+
+      doc.setTextColor(...MUTED_COLOR);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'italic');
+      doc.text(`Verwendungszweck: Nachforderung gemäß EstateTurn-Übergabeprotokoll · Objekt: ${data.propertyAddress || '–'}`, col1, y);
+      doc.setFont('helvetica', 'normal');
+      y += 7;
     }
   }
 
@@ -925,7 +975,8 @@ export function generateMasterProtocol(data: HandoverData): void {
     .replace(/[^a-zA-Z0-9äöüÄÖÜß]/g, '')
     .substring(0, 30);
   const safeDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  doc.save(`EstateTurn_Protokoll_${safeAddress}_${safeDate}_${protocolId}.pdf`);
+  const forderungSuffix = hasRestforderung ? '_Forderung' : '';
+  doc.save(`EstateTurn_Protokoll_${safeAddress}_${safeDate}${forderungSuffix}_${protocolId}.pdf`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -944,6 +995,8 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   const hasNkData = data.nkVorauszahlung > 0 || data.nkPrognose > 0;
   const nkBuffer = hasNkData ? Math.max(0, (data.nkPrognose - data.nkVorauszahlung) * 3) : 180;
   const payout = Math.max(0, deposit - defectsCost - nkBuffer);
+  const hasRestforderungBlob = (defectsCost + nkBuffer) > deposit && deposit > 0;
+  const restforderungAmountBlob = hasRestforderungBlob ? (defectsCost + nkBuffer) - deposit : 0;
 
   const isMoveIn = data.handoverDirection === 'move-in';
 
@@ -1133,6 +1186,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     const interest2 = calcInterest2(deposit, data.depositInterestRate || 1.5, data.depositPaymentDate || '');
     const gross2 = deposit + interest2;
     const payoutFinal2 = Math.max(0, gross2 - defectsCost - nkBuffer);
+    const restforderungFinal2 = (defectsCost + nkBuffer) > gross2 ? (defectsCost + nkBuffer) - gross2 : 0;
 
     if (y > pageH - 80) { doc.addPage(); y = 36; }
     y = sectionTitle(doc, '§7  Kautions-Abrechnung (§ 551 BGB)', y, pageW);
@@ -1146,7 +1200,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     tableBody7b.push(
       [`- ${isReletting2 ? 'Endgültiger Schadensersatz' : 'Mängelkosten'} (${defectFindings2.length} Posten)`, `- ${defectsCost.toFixed(2)} €`],
       [hasNkData ? '- NK-Puffer (KI-Prognose, 3 Mon.)' : '- NK-Puffer (Standardwert)', `- ${nkBuffer.toFixed(2)} €`],
-      ['= Auszuzahlender Endbetrag', `${payoutFinal2.toFixed(2)} €`],
+      [restforderungFinal2 > 0 ? '= Offene Restforderung' : '= Auszuzahlender Endbetrag', restforderungFinal2 > 0 ? `${restforderungFinal2.toFixed(2)} €` : `${payoutFinal2.toFixed(2)} €`],
     );
     autoTable(doc, {
       startY: y, margin: { left: 14, right: 14 },
@@ -1158,10 +1212,17 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
       columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
     });
     y = (doc as any).lastAutoTable.finalY + 4;
-    doc.setFillColor(230, 255, 240);
-    doc.roundedRect(14, y, pageW - 28, 10, 2, 2, 'F');
-    doc.setTextColor(...SUCCESS_COLOR); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-    doc.text(`Auszahlungsbetrag: ${payoutFinal2.toFixed(2)} €`, pageW / 2, y + 6.5, { align: 'center' });
+    if (restforderungFinal2 > 0) {
+      doc.setFillColor(255, 235, 235);
+      doc.roundedRect(14, y, pageW - 28, 10, 2, 2, 'F');
+      doc.setTextColor(...DANGER_COLOR); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+      doc.text(`Offene Restforderung: ${restforderungFinal2.toFixed(2)} €`, pageW / 2, y + 6.5, { align: 'center' });
+    } else {
+      doc.setFillColor(230, 255, 240);
+      doc.roundedRect(14, y, pageW - 28, 10, 2, 2, 'F');
+      doc.setTextColor(...SUCCESS_COLOR); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+      doc.text(`Auszahlungsbetrag: ${payoutFinal2.toFixed(2)} €`, pageW / 2, y + 6.5, { align: 'center' });
+    }
     y += 14;
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'italic');
     doc.text(`Berechnung gemäß BGH VIII ZR 71/05 (NK-Puffer) & ${bghRef} (Zeitwert-Abzug, § 538 BGB). Zinsen gemäß § 551 Abs. 3 BGB.`, col1, y);
@@ -1187,6 +1248,35 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
       y += 26;
       doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'italic');
       doc.text('Verwendungszweck: Kautionsrückzahlung gemäß EstateTurn-Übergabeprotokoll · Objekt: ' + (data.propertyAddress || '–'), col1, y);
+      doc.setFont('helvetica', 'normal'); y += 7;
+    }
+    // ── §7d Zahlungsaufforderung (nur bei Restforderung) ──────────────
+    if (restforderungFinal2 > 0 && (data.payeeIban || data.payeeAccountHolder)) {
+      if (y > pageH - 80) { doc.addPage(); y = 36; }
+      y = sectionTitle(doc, '§7d  Zahlungsaufforderung (§ 280 Abs. 1 BGB)', y, pageW);
+      const deadline14rest2 = (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
+      const payeeHolder7d2 = data.payeeAccountHolder || data.landlordName || 'Vermieter';
+      const payeeIban7d2 = data.payeeIban || '(IBAN nicht angegeben)';
+
+      doc.setFillColor(255, 240, 240);
+      const restText2 = `Die oben aufgeführten Mängel und Einbehalte übersteigen die hinterlegte Kautionssumme von ${deposit.toFixed(2)} €. Wir fordern Sie hiermit auf, den Differenzbetrag in Höhe von ${restforderungFinal2.toFixed(2)} € bis spätestens zum ${deadline14rest2} auf das unten genannte Konto zu überweisen. Der Anspruch ergibt sich aus § 280 Abs. 1 BGB.`;
+      const restLines2 = doc.splitTextToSize(restText2, pageW - 36);
+      const restH2 = restLines2.length * 4 + 10;
+      doc.roundedRect(14, y, pageW - 28, restH2, 2, 2, 'F');
+      doc.setTextColor(...DANGER_COLOR); doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+      doc.text(restLines2, 18, y + 6);
+      y += restH2 + 4;
+
+      doc.setFillColor(238, 242, 255);
+      doc.roundedRect(14, y, pageW - 28, 16, 2, 2, 'F');
+      doc.setTextColor(...TEXT_COLOR); doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.text('Empfänger:', 18, y + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${payeeHolder7d2}  ·  IBAN: ${payeeIban7d2}`, 18, y + 11);
+      y += 20;
+
+      doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'italic');
+      doc.text(`Verwendungszweck: Nachforderung gemäß EstateTurn-Übergabeprotokoll · Objekt: ${data.propertyAddress || '–'}`, col1, y);
       doc.setFont('helvetica', 'normal'); y += 7;
     }
   }

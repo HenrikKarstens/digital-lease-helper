@@ -50,7 +50,9 @@ export const Step12Deposit = () => {
   const pledgedBalance = isPledged ? (parseFloat(data.pledgedAccountBalance) || 0) : 0;
   const baseAmount = isCash ? deposit + interest : isPledged ? pledgedBalance : 0;
   const totalDeductions = isGuarantee ? 0 : defectsCost + nkBuffer;
-  const payout = Math.max(0, baseAmount - totalDeductions);
+  const saldo = baseAmount - totalDeductions; // kann negativ sein
+  const payout = Math.max(0, saldo);
+  const restforderung = saldo < 0 ? Math.abs(saldo) : 0; // Forderung > Kaution
   const withheld = Math.min(baseAmount, totalDeductions);
   const days = daysBetween(data.depositPaymentDate);
   const paymentDeadline = calcPaymentDeadline(2); // 14 Tage
@@ -237,12 +239,14 @@ export const Step12Deposit = () => {
               <span className="font-semibold">- {nkBuffer.toFixed(2)} €</span>
             </div>
 
-            <div className="flex justify-between items-center py-3 bg-primary/5 rounded-xl px-3 -mx-1">
+            <div className={`flex justify-between items-center py-3 rounded-xl px-3 -mx-1 ${restforderung > 0 ? 'bg-destructive/10' : 'bg-primary/5'}`}>
               <div className="flex items-center gap-2">
-                <Euro className="w-5 h-5 text-primary" />
-                <span className="font-bold text-lg">Auszuzahlender Endbetrag</span>
+                <Euro className={`w-5 h-5 ${restforderung > 0 ? 'text-destructive' : 'text-primary'}`} />
+                <span className="font-bold text-lg">{restforderung > 0 ? 'Offene Restforderung' : 'Auszuzahlender Endbetrag'}</span>
               </div>
-              <span className="font-bold text-2xl text-primary">{payout.toFixed(2)} €</span>
+              <span className={`font-bold text-2xl ${restforderung > 0 ? 'text-destructive' : 'text-primary'}`}>
+                {restforderung > 0 ? restforderung.toFixed(2) : payout.toFixed(2)} €
+              </span>
             </div>
 
             {!isSale && (
@@ -281,7 +285,23 @@ export const Step12Deposit = () => {
           </motion.div>
         )}
 
-        {payout === 0 && baseAmount > 0 && !isGuarantee && (
+        {/* ── Restforderung Warnung ── */}
+        {restforderung > 0 && !isGuarantee && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+            className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 flex items-start gap-3"
+          >
+            <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-destructive">Kaution reicht nicht aus</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Die Forderungen übersteigen die hinterlegte Kaution um <strong>{restforderung.toFixed(2)} €</strong>. 
+                Ein Mahnschreiben (§ 280 Abs. 1 BGB) wird automatisch erstellt und dem Protokoll beigefügt.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {payout === 0 && baseAmount > 0 && !isGuarantee && restforderung === 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
             className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 flex items-start gap-3"
           >
@@ -294,14 +314,18 @@ export const Step12Deposit = () => {
         )}
 
         {/* ── Zahlungsanweisung / IBAN (nicht bei Bürgschaft) ── */}
-        {!isSale && !isGuarantee && payout > 0 && (
+        {!isSale && !isGuarantee && (payout > 0 || restforderung > 0) && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="glass-card rounded-2xl p-5 space-y-3">
             <div className="flex items-center gap-2 mb-1">
               <CreditCard className="w-4 h-4 text-primary" />
-              <h3 className="font-semibold text-sm">Zahlungsanweisung (§ 7c)</h3>
+              <h3 className="font-semibold text-sm">
+                {restforderung > 0 ? 'Zahlungsaufforderung (§ 7d)' : 'Zahlungsanweisung (§ 7c)'}
+              </h3>
             </div>
             <p className="text-xs text-muted-foreground">
-              Bankdaten des Empfängers (i.d.R. Mieter beim Auszug) für das Protokoll erfassen.
+              {restforderung > 0
+                ? `Bankdaten des ${ownerRole}s für die Zahlungsaufforderung an den Mieter.`
+                : 'Bankdaten des Empfängers (i.d.R. Mieter beim Auszug) für das Protokoll erfassen.'}
             </p>
             <div className="space-y-2">
               <div>
@@ -309,7 +333,7 @@ export const Step12Deposit = () => {
                 <Input
                   value={data.payeeAccountHolder}
                   onChange={e => updateData({ payeeAccountHolder: e.target.value })}
-                  placeholder={data.tenantName || 'Vor- und Nachname'}
+                  placeholder={restforderung > 0 ? (data.landlordName || ownerRole) : (data.tenantName || 'Vor- und Nachname')}
                   className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
                 />
               </div>
@@ -325,10 +349,21 @@ export const Step12Deposit = () => {
               </div>
             </div>
             {data.payeeIban && data.payeeAccountHolder && (
-              <div className="bg-secondary/40 rounded-xl p-3 text-xs text-foreground/80 leading-relaxed">
-                Der Betrag in Höhe von <strong>{payout.toFixed(2)} €</strong> ist bis zum{' '}
-                <strong>{paymentDeadline}</strong> auf das folgende Konto zu überweisen:{' '}
-                <strong>{data.payeeAccountHolder}</strong>, IBAN: <strong>{data.payeeIban}</strong>.
+              <div className={`rounded-xl p-3 text-xs leading-relaxed ${restforderung > 0 ? 'bg-destructive/10 text-foreground/80' : 'bg-secondary/40 text-foreground/80'}`}>
+                {restforderung > 0 ? (
+                  <>
+                    Der Differenzbetrag in Höhe von <strong>{restforderung.toFixed(2)} €</strong> ist bis zum{' '}
+                    <strong>{paymentDeadline}</strong> auf das Konto des {ownerRole}s zu überweisen:{' '}
+                    <strong>{data.payeeAccountHolder}</strong>, IBAN: <strong>{data.payeeIban}</strong>.
+                    <span className="block mt-1 text-muted-foreground">Rechtsgrundlage: § 280 Abs. 1 BGB</span>
+                  </>
+                ) : (
+                  <>
+                    Der Betrag in Höhe von <strong>{payout.toFixed(2)} €</strong> ist bis zum{' '}
+                    <strong>{paymentDeadline}</strong> auf das folgende Konto zu überweisen:{' '}
+                    <strong>{data.payeeAccountHolder}</strong>, IBAN: <strong>{data.payeeIban}</strong>.
+                  </>
+                )}
               </div>
             )}
           </motion.div>
