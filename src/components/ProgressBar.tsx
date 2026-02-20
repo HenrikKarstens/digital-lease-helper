@@ -1,16 +1,12 @@
 import { useHandover } from '@/context/HandoverContext';
+import { useStepConfig } from '@/hooks/useStepConfig';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Home } from 'lucide-react';
 
-const STEPS = [
-  'Start', 'Art', 'Rolle', 'Richtung', 'Einstieg', 'Validierung', 'Grundriss', 'Teilnehmer', 'Beweis',
-  'Zähler', 'Mängel', 'Kaution', 'Protokoll', 'Abschluss'
-];
-
-
 export const ProgressBar = () => {
   const { currentStep } = useHandover();
+  const { steps } = useStepConfig();
   const navigate = useNavigate();
 
   return (
@@ -25,11 +21,11 @@ export const ProgressBar = () => {
             Projekte
           </button>
           <span className="text-xs font-medium text-muted-foreground">
-            Phase {Math.min(currentStep, 13)}/{STEPS.length - 1} · {STEPS[currentStep] || 'Start'}
+            Phase {Math.min(currentStep, steps.length - 1)}/{steps.length - 1} · {steps[currentStep]?.label || 'Start'}
           </span>
         </div>
         <div className="flex gap-0.5">
-          {STEPS.map((_, i) => {
+          {steps.map((_, i) => {
             const isCompleted = i < currentStep;
             const isCurrent = i === currentStep;
 

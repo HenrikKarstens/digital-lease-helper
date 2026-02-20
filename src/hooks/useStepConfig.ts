@@ -1,0 +1,67 @@
+import { useHandover } from '@/context/HandoverContext';
+
+export interface StepDef {
+  id: string;
+  label: string;
+  component: string; // component key used in ProjectView
+}
+
+// All possible steps with their IDs
+const ALL_STEPS: StepDef[] = [
+  { id: 'hero',              label: 'Start',       component: 'Step1Hero' },
+  { id: 'transaction-type',  label: 'Art',         component: 'Step1aTransactionType' },
+  { id: 'role',              label: 'Rolle',       component: 'Step2Role' },
+  { id: 'direction',         label: 'Richtung',    component: 'Step1cDirection' },
+  { id: 'smart-entry',       label: 'Einstieg',    component: 'Step3SmartEntry' },
+  { id: 'validation',        label: 'Validierung', component: 'Step4Validation' },
+  { id: 'floor-plan',        label: 'Grundriss',   component: 'Step5FloorPlan' },
+  { id: 'participants',      label: 'Teilnehmer',  component: 'Step6Participants' },
+  { id: 'evidence',          label: 'Beweis',       component: 'Step7Evidence' },
+  { id: 'meters',            label: 'Zähler',       component: 'Step8MeterScan' },
+  { id: 'defect-analysis',   label: 'Mängel',       component: 'Step10DefectAnalysis' },
+  { id: 'deposit',           label: 'Kaution',      component: 'Step12Deposit' },
+  { id: 'certificate',       label: 'Protokoll',    component: 'Step13Certificate' },
+  { id: 'utility',           label: 'Abschluss',    component: 'Step14Utility' },
+];
+
+/**
+ * Returns the filtered list of steps based on transactionType and handoverDirection.
+ *
+ * Rental Move-In:  No defect-analysis, no deposit → ~10 steps
+ * Rental Move-Out: Full flow → 14 steps
+ * Sale (both):     No deposit, no direction step → ~11 steps
+ */
+export function getFilteredSteps(
+  transactionType: 'rental' | 'sale' | null,
+  handoverDirection: 'move-in' | 'move-out' | null
+): StepDef[] {
+  return ALL_STEPS.filter(step => {
+    // Sale: no direction step (simultaneous), no deposit/kaution
+    if (transactionType === 'sale') {
+      if (step.id === 'direction') return false;
+      if (step.id === 'deposit') return false;
+    }
+
+    // Rental Move-In: no defect-analysis (only evidence for condition), no deposit
+    if (transactionType === 'rental' && handoverDirection === 'move-in') {
+      if (step.id === 'defect-analysis') return false;
+      if (step.id === 'deposit') return false;
+    }
+
+    return true;
+  });
+}
+
+export const useStepConfig = () => {
+  const { data } = useHandover();
+  const steps = getFilteredSteps(data.transactionType, data.handoverDirection);
+
+  return {
+    steps,
+    totalSteps: steps.length,
+    /** Given a filtered index, return the step definition */
+    getStep: (index: number) => steps[index] || steps[0],
+    /** Find the filtered index for a given step ID */
+    findIndex: (id: string) => steps.findIndex(s => s.id === id),
+  };
+};

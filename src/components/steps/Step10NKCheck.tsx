@@ -5,7 +5,7 @@ import { useHandover } from '@/context/HandoverContext';
 import { useState, useEffect } from 'react';
 
 export const Step10NKCheck = () => {
-  const { data, updateData, setCurrentStep } = useHandover();
+  const { data, updateData, goToStepById } = useHandover();
   const [uploaded, setUploaded] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
@@ -107,7 +107,7 @@ export const Step10NKCheck = () => {
               </div>
             </motion.div>
 
-            <Button onClick={() => setCurrentStep(12)} className="w-full h-12 rounded-2xl font-semibold" size="lg">
+            <Button onClick={() => goToStepById('certificate')} className="w-full h-12 rounded-2xl font-semibold" size="lg">
               Weiter zur Mängelübersicht
             </Button>
           </>

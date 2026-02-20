@@ -25,7 +25,7 @@ const features = [
 ];
 
 export const Step1Hero = () => {
-  const { setCurrentStep } = useHandover();
+  const { goToStepById } = useHandover();
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
@@ -80,7 +80,7 @@ export const Step1Hero = () => {
         className="w-full max-w-md"
       >
         <Button
-          onClick={() => setCurrentStep(1)}
+          onClick={() => goToStepById('transaction-type')}
           className="w-full h-14 rounded-2xl text-base font-semibold bg-primary hover:bg-primary/90 gap-2"
           size="lg"
         >

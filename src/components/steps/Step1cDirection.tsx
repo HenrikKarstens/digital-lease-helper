@@ -3,11 +3,11 @@ import { LogIn, LogOut } from 'lucide-react';
 import { useHandover } from '@/context/HandoverContext';
 
 export const Step1cDirection = () => {
-  const { updateData, setCurrentStep } = useHandover();
+  const { updateData, goToStepById } = useHandover();
 
   const select = (direction: 'move-in' | 'move-out') => {
     updateData({ handoverDirection: direction });
-    setCurrentStep(4);
+    goToStepById('smart-entry');
   };
 
   return (

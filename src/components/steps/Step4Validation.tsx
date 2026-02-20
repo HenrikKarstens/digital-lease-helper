@@ -66,7 +66,7 @@ const EditableRow = ({ label, value, onSave, filled }: EditableRowProps) => {
 };
 
 export const Step4Validation = () => {
-  const { data, updateData, setCurrentStep } = useHandover();
+  const { data, updateData, goToStepById } = useHandover();
   const { ownerRole, clientRole, depositLabel, contractStartLabel, contractEndLabel } = useTransactionLabels();
 
   const rows: { key: keyof typeof data; label: string }[] = [
@@ -92,7 +92,7 @@ export const Step4Validation = () => {
         { id: '2', name: data.tenantName || clientRole, role: clientRole, email: data.tenantEmail, present: true },
       ]
     });
-    setCurrentStep(6);
+    goToStepById('floor-plan');
   };
 
   return (

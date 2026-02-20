@@ -34,7 +34,7 @@ const DEPOSIT_TYPES: { value: DepositType; label: string; icon: React.ReactNode;
 ];
 
 export const Step12Deposit = () => {
-  const { data, updateData, setCurrentStep } = useHandover();
+  const { data, updateData, goToStepById } = useHandover();
   const { depositLabel, ownerRole, isSale } = useTransactionLabels();
 
   const deposit = parseFloat(data.depositAmount) || 0;
@@ -368,7 +368,7 @@ export const Step12Deposit = () => {
         )}
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-          <Button onClick={() => setCurrentStep(12)} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+          <Button onClick={() => goToStepById('certificate')} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
             <CheckCircle2 className="w-4 h-4" />
             Weiter zum Master-Protokoll
           </Button>

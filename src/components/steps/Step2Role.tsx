@@ -4,12 +4,12 @@ import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 
 export const Step2Role = () => {
-  const { updateData, setCurrentStep } = useHandover();
+  const { updateData, goToStepById } = useHandover();
   const { ownerLabel, clientLabel, ownerRole, clientRole, isSale } = useTransactionLabels();
 
   const selectRole = (role: 'landlord' | 'tenant') => {
     updateData({ role });
-    setCurrentStep(3); // -> Step1cDirection
+    goToStepById('direction');
   };
 
   const options = [

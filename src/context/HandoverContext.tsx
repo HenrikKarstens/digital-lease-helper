@@ -161,6 +161,7 @@ interface HandoverContextType {
   data: HandoverData;
   currentStep: number;
   setCurrentStep: (step: number) => void;
+  goToStepById: (stepId: string) => void;
   updateData: (partial: Partial<HandoverData>) => void;
   resetData: () => void;
   loadProject: (savedData: Partial<HandoverData>, step: number) => void;
@@ -186,8 +187,37 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
     setCurrentStep(step);
   };
 
+  // Navigate by step ID using the filtered step config
+  // If the target step is filtered out, advance to the next available step in the master order
+  const goToStepById = (stepId: string) => {
+    const { getFilteredSteps } = require('@/hooks/useStepConfig');
+    const steps = getFilteredSteps(data.transactionType, data.handoverDirection);
+    const idx = steps.findIndex((s: { id: string }) => s.id === stepId);
+    if (idx >= 0) {
+      setCurrentStep(idx);
+    } else {
+      // Step filtered out: find the next step in master order after the requested one
+      const MASTER_ORDER = [
+        'hero', 'transaction-type', 'role', 'direction', 'smart-entry', 'validation',
+        'floor-plan', 'participants', 'evidence', 'meters', 'defect-analysis',
+        'deposit', 'certificate', 'utility'
+      ];
+      const masterIdx = MASTER_ORDER.indexOf(stepId);
+      // Find the next step that exists in the filtered list
+      for (let i = masterIdx + 1; i < MASTER_ORDER.length; i++) {
+        const nextIdx = steps.findIndex((s: { id: string }) => s.id === MASTER_ORDER[i]);
+        if (nextIdx >= 0) {
+          setCurrentStep(nextIdx);
+          return;
+        }
+      }
+      // Fallback: go to last step
+      setCurrentStep(steps.length - 1);
+    }
+  };
+
   return (
-    <HandoverContext.Provider value={{ data, currentStep, setCurrentStep, updateData, resetData, loadProject }}>
+    <HandoverContext.Provider value={{ data, currentStep, setCurrentStep, goToStepById, updateData, resetData, loadProject }}>
       {children}
     </HandoverContext.Provider>
   );

@@ -70,7 +70,9 @@ function estimateConsumption(rooms: number, persons: number): number {
 
 export const Step14Utility = () => {
   const { data, resetData } = useHandover();
-  const { cancellationTarget } = useTransactionLabels();
+  const { cancellationTarget, isMoveIn, isSale } = useTransactionLabels();
+  const showCheck24 = isMoveIn || isSale; // Check24 for move-in and sale (new occupant)
+  const showCancellation = !isMoveIn && !isSale; // Cancellation only for rental move-out
   const [cancellation, setCancellation] = useState(false);
   const [dsgvoConsent, setDsgvoConsent] = useState(false);
   const [manualKwhEdit, setManualKwhEdit] = useState(false);
@@ -144,7 +146,8 @@ export const Step14Utility = () => {
 
         <div className="w-full max-w-md space-y-4">
 
-          {/* ── Verbrauchsschätzung ── */}
+          {/* ── Verbrauchsschätzung (only for move-in / sale) ── */}
+          {showCheck24 && (<>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
             className="glass-card rounded-2xl p-5"
           >
@@ -318,8 +321,10 @@ export const Step14Utility = () => {
               PLZ {plz || '–'} · {estimatedKwh.toLocaleString('de-DE')} kWh · Zähler: {stromMeter?.meterNumber || '–'} · Umzug: {movingDateFormatted}
             </p>
           </motion.div>
+          </>)}
 
-          {/* ── Kündigung for old tenant ── */}
+          {/* ── Kündigung for old tenant (only move-out rental) ── */}
+          {showCancellation && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
             className="glass-card rounded-2xl p-5"
           >
@@ -342,6 +347,7 @@ export const Step14Utility = () => {
               </div>
             )}
           </motion.div>
+          )}
 
           {/* ── Completion ── */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}

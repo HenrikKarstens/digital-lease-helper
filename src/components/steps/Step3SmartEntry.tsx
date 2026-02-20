@@ -7,7 +7,7 @@ import { useDocumentSteps } from './documentWizard/useDocumentSteps';
 import { SingleDocCapture } from './documentWizard/SingleDocCapture';
 
 export const Step3SmartEntry = () => {
-  const { setCurrentStep } = useHandover();
+  const { goToStepById } = useHandover();
   const docSteps = useDocumentSteps();
   const [currentDocIdx, setCurrentDocIdx] = useState(0);
   const [skippedAll, setSkippedAll] = useState(false);
@@ -17,8 +17,7 @@ export const Step3SmartEntry = () => {
   const handleDocDone = () => {
     const next = currentDocIdx + 1;
     if (next >= docSteps.length) {
-      // All docs done → go to validation (step 5)
-      setCurrentStep(5);
+      goToStepById('validation');
     } else {
       setCurrentDocIdx(next);
     }
@@ -29,7 +28,7 @@ export const Step3SmartEntry = () => {
   };
 
   if (!currentDoc) {
-    setCurrentStep(5);
+    goToStepById('validation');
     return null;
   }
 
@@ -107,7 +106,7 @@ export const Step3SmartEntry = () => {
       {/* Skip all button */}
       <div className="px-4 pt-4">
         <button
-          onClick={() => setCurrentStep(5)}
+          onClick={() => goToStepById('validation')}
           className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
         >
           Alle Schritte überspringen → Manuelle Eingabe

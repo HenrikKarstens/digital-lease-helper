@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useHandover, HandoverData } from '@/context/HandoverContext';
+import { useStepConfig } from '@/hooks/useStepConfig';
 import { saveGuestProject } from '@/hooks/useGuestStorage';
 import { ProgressBar } from '@/components/ProgressBar';
 import { PageTransition } from '@/components/PageTransition';
@@ -16,7 +17,6 @@ import { Step5FloorPlan } from '@/components/steps/Step5FloorPlan';
 import { Step6Participants } from '@/components/steps/Step6Participants';
 import { Step7Evidence } from '@/components/steps/Step7Evidence';
 import { Step8MeterScan } from '@/components/steps/Step8MeterScan';
-
 import { Step10DefectAnalysis } from '@/components/steps/Step10DefectAnalysis';
 import { Step12Deposit } from '@/components/steps/Step12Deposit';
 import { Step13Certificate } from '@/components/steps/Step13Certificate';
@@ -25,10 +25,28 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
+const COMPONENT_MAP: Record<string, React.FC> = {
+  Step1Hero,
+  Step1aTransactionType,
+  Step2Role,
+  Step1cDirection,
+  Step3SmartEntry,
+  Step4Validation,
+  Step5FloorPlan,
+  Step6Participants,
+  Step7Evidence,
+  Step8MeterScan,
+  Step10DefectAnalysis,
+  Step12Deposit,
+  Step13Certificate,
+  Step14Utility,
+};
+
 const ProjectView = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const { data, currentStep, setCurrentStep, updateData, loadProject } = useHandover();
+  const { steps, getStep } = useStepConfig();
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -38,7 +56,6 @@ const ProjectView = () => {
   // Load project on mount
   useEffect(() => {
     if (isGuest) {
-      // Guest: data already loaded in Dashboard or fresh start
       setLoading(false);
       return;
     }
@@ -63,19 +80,17 @@ const ProjectView = () => {
     load();
   }, [id, user]);
 
-  // Auto-save: localStorage for guests, cloud for authenticated users
+  // Auto-save
   useEffect(() => {
     if (loading) return;
 
     if (isGuest) {
-      // Guest: debounced save to localStorage
       const timeout = setTimeout(() => {
         saveGuestProject(data, currentStep);
       }, 500);
       return () => clearTimeout(timeout);
     }
 
-    // Authenticated: debounced save to cloud
     if (!id) return;
     const timeout = setTimeout(() => {
       supabase
@@ -104,25 +119,8 @@ const ProjectView = () => {
     );
   }
 
-  const getStepComponent = () => {
-    switch (currentStep) {
-      case 0: return <Step1Hero />;
-      case 1: return <Step1aTransactionType />;
-      case 2: return <Step2Role />;
-      case 3: return <Step1cDirection />;
-      case 4: return <Step3SmartEntry />;
-      case 5: return <Step4Validation />;
-      case 6: return <Step5FloorPlan />;
-      case 7: return <Step6Participants />;
-      case 8: return <Step7Evidence />;
-      case 9: return <Step8MeterScan />;
-      case 10: return <Step10DefectAnalysis />;
-      case 11: return <Step12Deposit />;
-      case 12: return <Step13Certificate />;
-      case 13: return <Step14Utility />;
-      default: return <Step1Hero />;
-    }
-  };
+  const currentStepDef = getStep(currentStep);
+  const StepComponent = COMPONENT_MAP[currentStepDef.component] || Step1Hero;
 
   return (
     <div className="min-h-screen bg-background">
@@ -142,7 +140,7 @@ const ProjectView = () => {
       )}
       <div className="max-w-lg mx-auto">
         <PageTransition keyProp={currentStep}>
-          {getStepComponent()}
+          <StepComponent />
         </PageTransition>
       </div>
     </div>

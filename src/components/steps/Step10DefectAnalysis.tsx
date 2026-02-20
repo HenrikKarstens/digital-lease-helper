@@ -82,7 +82,7 @@ const ExpandedCard = ({ finding }: ExpandedCardProps) => {
 };
 
 export const Step10DefectAnalysis = () => {
-  const { data, updateData, setCurrentStep } = useHandover();
+  const { data, updateData, goToStepById } = useHandover();
   const { isMoveIn } = useTransactionLabels();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -112,7 +112,7 @@ export const Step10DefectAnalysis = () => {
       remediationDeadline: f.recommendedWithholding > 0 && !isReletting ? deadline : undefined,
     }));
     updateData({ findings: updatedFindings });
-    setCurrentStep(11);
+    goToStepById('deposit');
   };
 
   return (
