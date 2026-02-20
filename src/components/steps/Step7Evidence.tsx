@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MapPin, Camera, X, CheckCircle2, Crosshair, Clock, Compass,
@@ -7,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useHandover, Finding, EntryType } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -611,7 +612,7 @@ interface FindingCardProps {
   onEdit: () => void;
   onDelete: () => void;
 }
-const FindingCard = ({ f, onEdit, onDelete }: FindingCardProps) => {
+const FindingCard = memo(({ f, onEdit, onDelete }: FindingCardProps) => {
   const isNote = f.entryType === 'note';
   return (
     <motion.div
@@ -653,4 +654,5 @@ const FindingCard = ({ f, onEdit, onDelete }: FindingCardProps) => {
       </div>
     </motion.div>
   );
-};
+});
+FindingCard.displayName = 'FindingCard';

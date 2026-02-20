@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import { getFilteredSteps as getFilteredStepsImported } from '@/hooks/useStepConfig';
 
 export interface Participant {
   id: string;
@@ -173,37 +174,34 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
   const [data, setData] = useState<HandoverData>(defaultData);
   const [currentStep, setCurrentStep] = useState(0);
 
-  const updateData = (partial: Partial<HandoverData>) => {
+  const updateData = useCallback((partial: Partial<HandoverData>) => {
     setData(prev => ({ ...prev, ...partial }));
-  };
+  }, []);
 
-  const resetData = () => {
+  const resetData = useCallback(() => {
     setData(defaultData);
     setCurrentStep(0);
-  };
+  }, []);
 
-  const loadProject = (savedData: Partial<HandoverData>, step: number) => {
+  const loadProject = useCallback((savedData: Partial<HandoverData>, step: number) => {
     setData({ ...defaultData, ...savedData });
     setCurrentStep(step);
-  };
+  }, []);
 
   // Navigate by step ID using the filtered step config
   // If the target step is filtered out, advance to the next available step in the master order
-  const goToStepById = (stepId: string) => {
-    const { getFilteredSteps } = require('@/hooks/useStepConfig');
-    const steps = getFilteredSteps(data.transactionType, data.handoverDirection);
+  const goToStepById = useCallback((stepId: string) => {
+    const steps = getFilteredStepsImported(data.transactionType, data.handoverDirection);
     const idx = steps.findIndex((s: { id: string }) => s.id === stepId);
     if (idx >= 0) {
       setCurrentStep(idx);
     } else {
-      // Step filtered out: find the next step in master order after the requested one
       const MASTER_ORDER = [
         'hero', 'transaction-type', 'role', 'direction', 'smart-entry', 'validation',
         'floor-plan', 'participants', 'evidence', 'meters', 'defect-analysis',
         'deposit', 'certificate', 'utility'
       ];
       const masterIdx = MASTER_ORDER.indexOf(stepId);
-      // Find the next step that exists in the filtered list
       for (let i = masterIdx + 1; i < MASTER_ORDER.length; i++) {
         const nextIdx = steps.findIndex((s: { id: string }) => s.id === MASTER_ORDER[i]);
         if (nextIdx >= 0) {
@@ -211,13 +209,16 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
       }
-      // Fallback: go to last step
       setCurrentStep(steps.length - 1);
     }
-  };
+  }, [data.transactionType, data.handoverDirection]);
+
+  const contextValue = useMemo(() => ({
+    data, currentStep, setCurrentStep, goToStepById, updateData, resetData, loadProject
+  }), [data, currentStep, goToStepById, updateData, resetData, loadProject]);
 
   return (
-    <HandoverContext.Provider value={{ data, currentStep, setCurrentStep, goToStepById, updateData, resetData, loadProject }}>
+    <HandoverContext.Provider value={contextValue}>
       {children}
     </HandoverContext.Provider>
   );
