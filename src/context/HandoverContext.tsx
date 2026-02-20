@@ -60,6 +60,8 @@ export interface CapturedDocument {
   analysisSummary?: string;
 }
 
+export type DepositType = 'cash' | 'guarantee' | 'pledged-account';
+
 export interface HandoverData {
   // Step 1a/1b
   transactionType: 'rental' | 'sale' | null;
@@ -99,11 +101,14 @@ export interface HandoverData {
   nkVorauszahlung: number;
   nkPrognose: number;
   nkRisiko: 'niedrig' | 'mittel' | 'hoch';
-  // Step 12 – Zinsberechnung & Zahlungsanweisung
-  depositPaymentDate: string;      // Datum der Kautionszahlung
-  depositInterestRate: number;     // Zinssatz in % (z.B. 1.5)
-  payeeIban: string;               // IBAN des Empfängers
-  payeeAccountHolder: string;      // Kontoinhaber des Empfängers
+  // Step 12 – Kautionsart, Zinsberechnung & Zahlungsanweisung
+  depositType: DepositType;
+  guaranteeNumber: string;          // Bürgschaftsurkunde Nr.
+  pledgedAccountBalance: string;    // Aktueller Stand inkl. Zinsen laut Sparbuch
+  depositPaymentDate: string;       // Datum der Kautionszahlung
+  depositInterestRate: number;      // Zinssatz in % (z.B. 1.5)
+  payeeIban: string;                // IBAN des Empfängers
+  payeeAccountHolder: string;       // Kontoinhaber des Empfängers
   // Step 13
   protocolSent: boolean;
 }
@@ -137,6 +142,9 @@ const defaultData: HandoverData = {
   nkVorauszahlung: 150,
   nkPrognose: 210,
   nkRisiko: 'hoch',
+  depositType: 'cash',
+  guaranteeNumber: '',
+  pledgedAccountBalance: '',
   depositPaymentDate: '',
   depositInterestRate: 1.5,
   payeeIban: '',
