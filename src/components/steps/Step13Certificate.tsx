@@ -38,7 +38,9 @@ export const Step13Certificate = () => {
   const deposit = parseFloat(data.depositAmount) || 0;
   const defectsCost = data.findings.reduce((sum, f) => sum + f.recommendedWithholding, 0);
   const nkBuffer = (data.nkPrognose - data.nkVorauszahlung) * 3;
-  const payout = Math.max(0, deposit - defectsCost - nkBuffer);
+  const saldo = deposit - defectsCost - nkBuffer;
+  const payout = Math.max(0, saldo);
+  const restforderung = saldo < 0 ? Math.abs(saldo) : 0;
 
   const handleSend = () => {
     setSending(true);
@@ -131,8 +133,10 @@ export const Step13Certificate = () => {
               </div>
               {!isMoveIn && !isSale && (
               <div>
-                <p className="text-xs text-muted-foreground">Auszahlung</p>
-                <p className="font-bold text-lg text-primary">{payout.toFixed(0)} €</p>
+                <p className="text-xs text-muted-foreground">{restforderung > 0 ? 'Restforderung' : 'Auszahlung'}</p>
+                <p className={`font-bold text-lg ${restforderung > 0 ? 'text-destructive' : 'text-primary'}`}>
+                  {restforderung > 0 ? restforderung.toFixed(0) : payout.toFixed(0)} €
+                </p>
               </div>
               )}
             </div>
