@@ -6,7 +6,7 @@ import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export const Step11DefectsList = () => {
-  const { data, setCurrentStep } = useHandover();
+  const { data, goToStepById } = useHandover();
   const { isMoveIn } = useTransactionLabels();
   const totalCost = data.findings.reduce((sum, f) => sum + f.recommendedWithholding, 0);
 
@@ -88,7 +88,7 @@ export const Step11DefectsList = () => {
         ))}
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-          <Button onClick={() => setCurrentStep(isMoveIn ? 11 : 11)} className="w-full h-12 rounded-2xl font-semibold" size="lg">
+          <Button onClick={() => goToStepById('deposit')} className="w-full h-12 rounded-2xl font-semibold" size="lg">
             {isMoveIn ? 'Weiter zur Detailanalyse' : 'Weiter zur Detailanalyse'}
           </Button>
         </motion.div>

@@ -324,8 +324,20 @@ export function generateMasterProtocol(data: HandoverData): void {
   const nkBuffer = hasNkData ? Math.max(0, (data.nkPrognose - data.nkVorauszahlung) * 3) : 180;
   const payout = Math.max(0, deposit - defectsCost - nkBuffer);
 
+  const isMoveIn = data.handoverDirection === 'move-in';
+
+  // Dynamic title based on context
+  let protocolTitle: string;
+  if (isSale) {
+    protocolTitle = 'Übergabeprotokoll (Kauf)';
+  } else if (isMoveIn) {
+    protocolTitle = 'Einzugsprotokoll & Zustandsbericht';
+  } else {
+    protocolTitle = 'Übergabeprotokoll (Miete)';
+  }
+
   // ── Titelseite ────────────────────────────────────────────────────────────
-  addHeader(doc, isSale ? 'Übergabeprotokoll (Kauf)' : 'Übergabeprotokoll (Miete)', `${date} · ID: ${protocolId}`, pageW);
+  addHeader(doc, protocolTitle, `${date} · ID: ${protocolId}`, pageW);
 
   let y = 36;
 
@@ -844,7 +856,18 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   const nkBuffer = hasNkData ? Math.max(0, (data.nkPrognose - data.nkVorauszahlung) * 3) : 180;
   const payout = Math.max(0, deposit - defectsCost - nkBuffer);
 
-  addHeader(doc, isSale ? 'Übergabeprotokoll (Kauf)' : 'Übergabeprotokoll (Miete)', `${date} · ID: ${protocolId}`, pageW);
+  const isMoveIn = data.handoverDirection === 'move-in';
+
+  let protocolTitle: string;
+  if (isSale) {
+    protocolTitle = 'Übergabeprotokoll (Kauf)';
+  } else if (isMoveIn) {
+    protocolTitle = 'Einzugsprotokoll & Zustandsbericht';
+  } else {
+    protocolTitle = 'Übergabeprotokoll (Miete)';
+  }
+
+  addHeader(doc, protocolTitle, `${date} · ID: ${protocolId}`, pageW);
 
   let y = 36;
   const col1 = 14, col2 = pageW / 2 + 2, colW = pageW / 2 - 16;

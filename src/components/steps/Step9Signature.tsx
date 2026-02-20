@@ -117,7 +117,7 @@ const SignaturePad = ({ label, value, onSave }: SignaturePadProps) => {
 };
 
 export const Step9Signature = () => {
-  const { data, updateData, setCurrentStep } = useHandover();
+  const { data, updateData, goToStepById } = useHandover();
   const { ownerRole, clientRole } = useTransactionLabels();
   const bothSigned = data.signatureLandlord && data.signatureTenant;
 
@@ -157,7 +157,7 @@ export const Step9Signature = () => {
 
         {bothSigned && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <Button onClick={() => setCurrentStep(11)} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+            <Button onClick={() => goToStepById('deposit')} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
               <Shield className="w-4 h-4" />
               Weiter zum NK-Check
             </Button>

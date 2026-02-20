@@ -8,7 +8,7 @@ import { SignaturePad } from '@/components/SignaturePad';
 import { generateBeweisanker } from '@/lib/pdfGenerator';
 
 export const Step6Participants = () => {
-  const { data, updateData, setCurrentStep } = useHandover();
+  const { data, updateData, goToStepById } = useHandover();
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState('');
   const [openSigId, setOpenSigId] = useState<string | null>(null);
@@ -199,7 +199,7 @@ export const Step6Participants = () => {
           </Button>
         </div>
 
-        <Button onClick={() => setCurrentStep(8)} className="w-full h-13 rounded-2xl text-base font-semibold gap-2" size="lg">
+        <Button onClick={() => goToStepById('evidence')} className="w-full h-13 rounded-2xl text-base font-semibold gap-2" size="lg">
           Weiter zur Beweissicherung
           <ArrowRight className="w-5 h-5" />
         </Button>

@@ -8,8 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { generateMasterProtocol, generateMasterProtocolBlob } from '@/lib/pdfGenerator';
 
 export const Step13Certificate = () => {
-  const { data, updateData, setCurrentStep } = useHandover();
-  const { ownerRole, clientRole, depositLabel, isSale } = useTransactionLabels();
+  const { data, updateData, goToStepById } = useHandover();
+  const { ownerRole, clientRole, depositLabel, isSale, isMoveIn } = useTransactionLabels();
   const [sending, setSending] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { toast } = useToast();
@@ -89,7 +89,7 @@ export const Step13Certificate = () => {
         >
           <div className="text-center mb-4 pb-4 border-b border-border/30">
             <FileText className="w-8 h-8 text-primary mx-auto mb-2" />
-            <h3 className="text-lg font-bold">{isSale ? 'Übergabeprotokoll (Kauf)' : 'Übergabeprotokoll'}</h3>
+            <h3 className="text-lg font-bold">{isSale ? 'Übergabeprotokoll (Kauf)' : isMoveIn ? 'Einzugsprotokoll & Zustandsbericht' : 'Übergabeprotokoll'}</h3>
             <p className="text-xs text-muted-foreground font-mono mt-1">
               ID: ET-{Date.now().toString(36).toUpperCase()}
             </p>
@@ -120,19 +120,21 @@ export const Step13Certificate = () => {
               </div>
             </div>
 
-            <div className="bg-secondary/30 rounded-xl p-3 grid grid-cols-3 gap-2 text-center">
+            <div className={`bg-secondary/30 rounded-xl p-3 grid ${(!isMoveIn && !isSale) ? 'grid-cols-3' : 'grid-cols-2'} gap-2 text-center`}>
               <div>
-                <p className="text-xs text-muted-foreground">Mängel</p>
+                <p className="text-xs text-muted-foreground">{isMoveIn ? 'Befunde' : 'Mängel'}</p>
                 <p className="font-bold text-lg">{data.findings.length}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Zähler</p>
                 <p className="font-bold text-lg">{data.meterReadings.length}</p>
               </div>
+              {!isMoveIn && !isSale && (
               <div>
                 <p className="text-xs text-muted-foreground">Auszahlung</p>
                 <p className="font-bold text-lg text-primary">{payout.toFixed(0)} €</p>
               </div>
+              )}
             </div>
 
             {data.signatureLandlord && data.signatureTenant && (
@@ -194,7 +196,7 @@ export const Step13Certificate = () => {
               <Mail className="w-3.5 h-3.5" />
               <span>{data.landlordEmail || 'email@beispiel.de'}, {data.tenantEmail || 'email@beispiel.de'}</span>
             </div>
-            <Button onClick={() => setCurrentStep(13)} className="w-full h-12 rounded-2xl font-semibold gap-2 mt-4" size="lg">
+            <Button onClick={() => goToStepById('utility')} className="w-full h-12 rounded-2xl font-semibold gap-2 mt-4" size="lg">
               Weiter zum Utility-Switch
             </Button>
           </motion.div>

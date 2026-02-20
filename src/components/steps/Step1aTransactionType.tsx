@@ -3,11 +3,11 @@ import { Home, Building } from 'lucide-react';
 import { useHandover } from '@/context/HandoverContext';
 
 export const Step1aTransactionType = () => {
-  const { updateData, setCurrentStep } = useHandover();
+  const { updateData, goToStepById } = useHandover();
 
   const select = (type: 'rental' | 'sale') => {
     updateData({ transactionType: type });
-    setCurrentStep(2);
+    goToStepById('role');
   };
 
   return (

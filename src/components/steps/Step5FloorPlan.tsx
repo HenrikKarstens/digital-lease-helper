@@ -2,10 +2,10 @@ import { useEffect } from 'react';
 import { useHandover } from '@/context/HandoverContext';
 
 export const Step5FloorPlan = () => {
-  const { setCurrentStep } = useHandover();
+  const { goToStepById } = useHandover();
 
   useEffect(() => {
-    setCurrentStep(7);
+    goToStepById('participants');
   }, []);
 
   return null;
