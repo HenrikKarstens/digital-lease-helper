@@ -90,7 +90,7 @@ const RoomDropdown = ({ value, onChange, floorPlanRooms }: RoomDropdownProps) =>
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export const Step7Evidence = () => {
-  const { evidenceTitle, evidenceSubtitle } = useTransactionLabels();
+  const { evidenceTitle, evidenceSubtitle, isMoveIn } = useTransactionLabels();
   const { data, updateData, goToStepById } = useHandover();
 
   const [phase, setPhase] = useState<Phase>('list');
@@ -205,9 +205,9 @@ export const Step7Evidence = () => {
     return (
       <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
         <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="text-2xl font-bold mb-1 text-center">{evidenceTitle}</motion.h2>
+          className="text-2xl font-bold mb-1 text-center">{isMoveIn ? 'Zustandsdokumentation (Einzug)' : evidenceTitle}</motion.h2>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.08 }}
-          className="text-muted-foreground text-center mb-6 text-sm">{evidenceSubtitle}</motion.p>
+          className="text-muted-foreground text-center mb-6 text-sm">{isMoveIn ? 'Dokumentieren Sie den Ist-Zustand der Immobilie bei Einzug.' : evidenceSubtitle}</motion.p>
 
         <div className="w-full max-w-md space-y-4">
 
@@ -221,8 +221,8 @@ export const Step7Evidence = () => {
             >
               <Camera className="w-5 h-5 shrink-0" />
               <div className="text-left">
-                <div>Fotoerfassung (Mangel/Schaden)</div>
-                <div className="text-xs font-normal text-muted-foreground">Beweissicherung per Bild mit KI-Analyse</div>
+                <div>{isMoveIn ? 'Fotoerfassung (Vorhandener Mangel / Zustand)' : 'Fotoerfassung (Mangel/Schaden)'}</div>
+                <div className="text-xs font-normal text-muted-foreground">{isMoveIn ? 'Ist-Zustand per Bild dokumentieren' : 'Beweissicherung per Bild mit KI-Analyse'}</div>
               </div>
             </Button>
             <Button
@@ -232,8 +232,8 @@ export const Step7Evidence = () => {
             >
               <FileText className="w-5 h-5 text-amber-500 shrink-0" />
               <div className="text-left">
-                <div>Manueller Eintrag (Mangel/Schaden)</div>
-                <div className="text-xs font-normal text-muted-foreground">Beschreibung ohne Foto</div>
+                <div>{isMoveIn ? 'Manueller Eintrag (Vorhandener Mangel / Zustand)' : 'Manueller Eintrag (Mangel/Schaden)'}</div>
+                <div className="text-xs font-normal text-muted-foreground">{isMoveIn ? 'Zustand ohne Foto dokumentieren' : 'Beschreibung ohne Foto'}</div>
               </div>
             </Button>
             <Button
@@ -277,8 +277,8 @@ export const Step7Evidence = () => {
             </motion.div>
           )}
 
-          {/* ── Total ── */}
-          {defects.length > 0 && (
+          {/* ── Total (nur bei Auszug) ── */}
+          {defects.length > 0 && !isMoveIn && (
             <motion.div
               key={totalWithholding}
               initial={{ scale: 1.02 }}
@@ -477,22 +477,24 @@ export const Step7Evidence = () => {
               <p className="text-xs text-muted-foreground mb-1">BGH-Referenz</p>
               <p className="text-sm font-mono font-medium">{currentResult.bghReference}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-secondary/60 rounded-xl p-3">
-                <p className="text-xs text-muted-foreground mb-1">Zeitwert-Abzug</p>
-                <p className="text-lg font-bold">{currentResult.timeValueDeduction}%</p>
-              </div>
-              <div className="bg-primary/10 rounded-xl p-3">
-                <p className="text-xs text-muted-foreground mb-1">Empfohlener Einbehalt</p>
-                <div className="flex items-center gap-1">
-                  <Euro className="w-4 h-4 text-primary" />
-                  <p className="text-lg font-bold text-primary">{currentResult.recommendedWithholding}</p>
+            {!isMoveIn && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-secondary/60 rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Zeitwert-Abzug</p>
+                  <p className="text-lg font-bold">{currentResult.timeValueDeduction}%</p>
+                </div>
+                <div className="bg-primary/10 rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Empfohlener Einbehalt</p>
+                  <div className="flex items-center gap-1">
+                    <Euro className="w-4 h-4 text-primary" />
+                    <p className="text-lg font-bold text-primary">{currentResult.recommendedWithholding}</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
             <div className="bg-secondary/40 rounded-xl p-3">
               <p className="text-xs text-muted-foreground mb-1">Bewertung</p>
-              <p className="text-sm">{currentResult.description}</p>
+              <p className="text-sm">{isMoveIn ? 'Dokumentation des Ist-Zustands zur Beweissicherung bei Einzug.' : currentResult.description}</p>
             </div>
             {locationDetail && (
               <div className="text-xs text-muted-foreground flex items-center gap-1.5">
