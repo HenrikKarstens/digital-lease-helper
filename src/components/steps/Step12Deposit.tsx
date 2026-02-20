@@ -222,7 +222,9 @@ export const Step12Deposit = () => {
             <div className="flex justify-between items-center py-2 border-b border-border/30 text-destructive">
               <div className="flex items-center gap-2">
                 <ArrowDown className="w-3 h-3" />
-                <span className="text-sm">Mängelkosten ({data.findings.filter(f => f.entryType !== 'note').length} Posten)</span>
+                <span className="text-sm">
+                  {data.immediateReletting ? 'Endgültiger Schadensersatz' : 'Mängelkosten'} ({data.findings.filter(f => f.entryType !== 'note').length} Posten)
+                </span>
               </div>
               <span className="font-semibold">- {defectsCost.toFixed(2)} €</span>
             </div>
@@ -246,7 +248,11 @@ export const Step12Deposit = () => {
             {!isSale && (
               <p className="text-xs text-muted-foreground flex items-start gap-1.5 pt-1">
                 <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                Empfohlenes Zahlungsziel: <strong className="ml-1">{paymentDeadline}</strong> (14 Tage nach Übergabe für den unstrittigen Teil)
+                {data.immediateReletting ? (
+                  <>Zahlungsziel: <strong className="ml-1">Sofort fällig</strong> (Anschlussvermietung – keine Fristsetzung gem. § 281 Abs. 2 BGB)</>
+                ) : (
+                  <>Empfohlenes Zahlungsziel: <strong className="ml-1">{paymentDeadline}</strong> (14 Tage nach Übergabe für den unstrittigen Teil)</>
+                )}
               </p>
             )}
           </motion.div>

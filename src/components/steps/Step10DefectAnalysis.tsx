@@ -1,9 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2, ArrowRight, Euro, ChevronDown, ChevronUp,
-  TrendingDown, Shield, Camera, AlertTriangle
+  TrendingDown, Shield, Camera, AlertTriangle, CalendarClock, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { useHandover, Finding } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState } from 'react';
@@ -95,14 +97,19 @@ export const Step10DefectAnalysis = () => {
   // Auto-apply § 281 BGB logic to all findings when proceeding
   const handleContinue = () => {
     const deadline = addWeeksToDate(2);
+    const isReletting = data.immediateReletting;
     const updatedFindings = data.findings.map(f => ({
       ...f,
       legalClassification: f.recommendedWithholding > 0
         ? ('Schaden' as const)
         : ('Normalverschleiß' as const),
-      remediationOption: f.recommendedWithholding > 0 ? ('notice' as const) : undefined,
-      remediationParty: f.recommendedWithholding > 0 ? 'Mieterseite' : undefined,
-      remediationDeadline: f.recommendedWithholding > 0 ? deadline : undefined,
+      remediationOption: f.recommendedWithholding > 0
+        ? (isReletting ? undefined : ('notice' as const))
+        : undefined,
+      remediationParty: f.recommendedWithholding > 0
+        ? (isReletting ? undefined : 'Mieterseite')
+        : undefined,
+      remediationDeadline: f.recommendedWithholding > 0 && !isReletting ? deadline : undefined,
     }));
     updateData({ findings: updatedFindings });
     setCurrentStep(11);
@@ -240,6 +247,51 @@ export const Step10DefectAnalysis = () => {
           </motion.div>
         )}
 
+        {/* ── Anschlussvermietung Checkbox ── */}
+        {damageFindings.length > 0 && !isMoveIn && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+            className="glass-card rounded-2xl p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="immediateReletting"
+                checked={data.immediateReletting}
+                onCheckedChange={(checked) => updateData({ immediateReletting: !!checked })}
+                className="mt-0.5"
+              />
+              <label htmlFor="immediateReletting" className="text-sm font-medium cursor-pointer leading-snug">
+                Sofortige Anschlussvermietung (Einzug innerhalb von 7 Tagen)
+              </label>
+            </div>
+            {data.immediateReletting && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3 overflow-hidden">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Datum des Neueinzugs</label>
+                  <Input
+                    type="date"
+                    value={data.relettingDate}
+                    onChange={e => updateData({ relettingDate: e.target.value })}
+                    className="rounded-xl bg-secondary/50 border-0 h-9 text-sm max-w-[200px]"
+                  />
+                </div>
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="text-xs leading-relaxed">
+                    <p className="font-semibold text-amber-600">§ 281 Abs. 2 BGB – Fristsetzung entbehrlich</p>
+                    <p className="text-muted-foreground mt-1">
+                      Aufgrund der Anschlussvermietung ist eine Nachbesserung durch den Mieter unzumutbar.
+                      Schadensersatz erfolgt direkt in Geld. Alle Mängelposten werden als <strong>endgültiger Schadensersatz</strong> deklariert.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Info className="w-3 h-3 text-primary shrink-0" />
+                  <span>Die Option „Nachbesserung durch Mieter" wird deaktiviert.</span>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+
         {/* CTA */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
           <Button
@@ -250,10 +302,16 @@ export const Step10DefectAnalysis = () => {
             Bestandsaufnahme abschließen & zur Kautionsberechnung
             <ArrowRight className="w-4 h-4" />
           </Button>
-          {damageFindings.length > 0 && (
+          {damageFindings.length > 0 && !data.immediateReletting && (
             <p className="text-center text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1">
               <Shield className="w-3 h-3 text-primary" />
               {damageFindings.length} Schäden werden automatisch mit 14-Tage-Frist versehen.
+            </p>
+          )}
+          {damageFindings.length > 0 && data.immediateReletting && (
+            <p className="text-center text-xs text-amber-500 mt-2 flex items-center justify-center gap-1">
+              <CalendarClock className="w-3 h-3" />
+              {damageFindings.length} Schäden werden als endgültiger Schadensersatz verrechnet.
             </p>
           )}
         </motion.div>
