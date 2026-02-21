@@ -152,11 +152,7 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     } catch (err: any) {
       clearInterval(interval);
       console.error('[EstateTurn] Analyse-Fehler:', err);
-      setError(
-        err.message?.includes('API') || err.message?.includes('Gemini') || err.message?.includes('500')
-          ? 'Verbindung zur KI fehlgeschlagen. Bitte versuche es erneut oder gib die Daten manuell ein.'
-          : err.message || 'Fehler bei der Analyse'
-      );
+      setError('Daten konnten nicht automatisch extrahiert werden. Bitte nutzen Sie die manuelle Eingabe.');
       setMode('idle');
     }
   };

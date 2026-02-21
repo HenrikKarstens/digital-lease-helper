@@ -47,13 +47,25 @@ serve(async (req) => {
 
     const isSale = transactionType === 'sale';
 
-    // Build parts for all pages
-    const parts: any[] = [];
+    // Helper: chunked base64 encoding (avoids stack overflow for large files)
+    function uint8ToBase64(bytes: Uint8Array): string {
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+        binary += String.fromCharCode(...chunk);
+      }
+      return btoa(binary);
+    }
 
-    for (let idx = 0; idx < files.length; idx++) {
+    // Build parts for all pages (limit to first 5 pages for performance)
+    const parts: any[] = [];
+    const maxPages = Math.min(files.length, 5);
+
+    for (let idx = 0; idx < maxPages; idx++) {
       const file = files[idx];
       const arrayBuffer = await file.arrayBuffer();
-      const base64Data = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const base64Data = uint8ToBase64(new Uint8Array(arrayBuffer));
       const mimeType = file.type || 'application/pdf';
       parts.push({
         inlineData: { mimeType, data: base64Data }
@@ -105,7 +117,7 @@ serve(async (req) => {
     }
 
     const prompt = `Du bist ein deutscher Immobilienrechtsexperte und Gutachter.
-Analysiere alle bereitgestellten Seiten (${files.length} Seite${files.length > 1 ? 'n' : ''}) dieses Dokuments: ${docTypeLabel}.
+Analysiere alle bereitgestellten Seiten (${maxPages} Seite${maxPages > 1 ? 'n' : ''}) dieses Dokuments: ${docTypeLabel}.
 
 Extrahiere die folgenden Informationen als JSON:
 ${extraFields}
@@ -159,7 +171,7 @@ WICHTIG:
     }
 
     return new Response(
-      JSON.stringify({ success: true, data: parsedData, pageCount: files.length }),
+      JSON.stringify({ success: true, data: parsedData, pageCount: maxPages }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
