@@ -69,9 +69,11 @@ export const DocumentScanner = ({ onComplete }: Props) => {
     const files = e.target.files;
     console.log('[EstateTurn] Files selected:', files?.length, files?.[0]?.name, files?.[0]?.type);
     if (!files || files.length === 0) return;
+    // CRITICAL: snapshot FileList into array BEFORE clearing input (clearing empties the FileList reference)
+    const fileArray = Array.from(files);
     e.target.value = '';
     try {
-      const photos = await Promise.all(Array.from(files).map(processFile));
+      const photos = await Promise.all(fileArray.map(processFile));
       console.log('[EstateTurn] Files processed, calling onComplete with', photos.length, 'pages');
       const all = [...capturedImages, ...photos];
       setCapturedImages(all);
