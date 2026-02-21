@@ -12,6 +12,7 @@ export const Step13Certificate = () => {
   const { ownerRole, clientRole, depositLabel, isSale, isMoveIn } = useTransactionLabels();
   const [sending, setSending] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [hasPreviewed, setHasPreviewed] = useState(false);
   const { toast } = useToast();
 
   const handlePreview = useCallback(() => {
@@ -19,6 +20,7 @@ export const Step13Certificate = () => {
       const blob = generateMasterProtocolBlob(data);
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
+      setHasPreviewed(true);
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
@@ -175,9 +177,17 @@ export const Step13Certificate = () => {
           </Button>
         </motion.div>
 
+        {!hasPreviewed && !data.protocolSent && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+            <p className="text-xs text-muted-foreground text-center mb-2">
+              Bitte öffnen Sie zuerst die Vorschau, bevor Sie das Protokoll versenden können.
+            </p>
+          </motion.div>
+        )}
+
         {!data.protocolSent ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-            <Button onClick={handleSend} disabled={sending} className="w-full h-14 rounded-2xl text-base font-semibold gap-2" size="lg">
+            <Button onClick={handleSend} disabled={sending || !hasPreviewed} className="w-full h-14 rounded-2xl text-base font-semibold gap-2" size="lg">
               {sending ? (
                 <>
                   <div className="w-5 h-5 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin" />
@@ -201,7 +211,7 @@ export const Step13Certificate = () => {
               <span>{data.landlordEmail || 'email@beispiel.de'}, {data.tenantEmail || 'email@beispiel.de'}</span>
             </div>
             <Button onClick={() => goToStepById('utility')} className="w-full h-12 rounded-2xl font-semibold gap-2 mt-4" size="lg">
-              Weiter zum Utility-Switch
+              Weiter zu Umzugs-Vorteile
             </Button>
           </motion.div>
         )}

@@ -81,12 +81,20 @@ export interface HandoverData {
   propertyAddress: string;
   landlordName: string;
   landlordEmail: string;
+  landlordPhone: string;
+  landlordBirthday: string;
   tenantName: string;
   tenantEmail: string;
+  tenantPhone: string;
+  tenantBirthday: string;
+  priorAddress: string;   // Voranschrift (Einzug)
+  nextAddress: string;    // Nachanschrift (Auszug)
   depositAmount: string;
   contractStart: string;
   contractEnd: string;
   contractDuration: string;
+  contractType: 'unbefristet' | 'befristet' | '';
+  contractSigningDate: string;
   coldRent: string;
   nkAdvancePayment: string;
   heatingCosts: string;
@@ -139,8 +147,14 @@ const defaultData: HandoverData = {
   propertyAddress: '',
   landlordName: '',
   landlordEmail: '',
+  landlordPhone: '',
+  landlordBirthday: '',
   tenantName: '',
   tenantEmail: '',
+  tenantPhone: '',
+  tenantBirthday: '',
+  priorAddress: '',
+  nextAddress: '',
   depositAmount: '',
   coldRent: '',
   nkAdvancePayment: '',
@@ -148,6 +162,8 @@ const defaultData: HandoverData = {
   totalRent: '',
   roomCount: '',
   contractDuration: '',
+  contractType: '',
+  contractSigningDate: '',
   preDamages: '',
   contractStart: '',
   contractEnd: '',

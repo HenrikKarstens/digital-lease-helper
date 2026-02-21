@@ -138,7 +138,7 @@ export const Step14Utility = () => {
     <TooltipProvider>
       <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
         <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-2 text-center">
-          Utility-Switch
+          Umzugs-Vorteile & Anmelde-Service
         </motion.h2>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-muted-foreground text-center mb-6 text-sm">
           Versorger wechseln & sparen – basierend auf Ihren Objektdaten
@@ -301,7 +301,7 @@ export const Step14Utility = () => {
               >
                 <a href={buildCheck24Link()} target="_blank" rel="noopener noreferrer">
                   <Zap className="w-5 h-5" />
-                  Tarife vergleichen auf Check24
+                  Kostenfreie Ersparnis sichern & anmelden
                   <ExternalLink className="w-4 h-4" />
                 </a>
               </Button>
@@ -312,7 +312,7 @@ export const Step14Utility = () => {
                 size="lg"
               >
                 <Zap className="w-5 h-5" />
-                Tarife vergleichen auf Check24
+                Kostenfreie Ersparnis sichern & anmelden
                 <ExternalLink className="w-4 h-4" />
               </Button>
             )}
