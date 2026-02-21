@@ -65,13 +65,20 @@ export const DocumentScanner = ({ onComplete }: Props) => {
   }, [processFile]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[EstateTurn] handleFileUpload triggered');
     const files = e.target.files;
+    console.log('[EstateTurn] Files selected:', files?.length, files?.[0]?.name, files?.[0]?.type);
     if (!files || files.length === 0) return;
     e.target.value = '';
-    const photos = await Promise.all(Array.from(files).map(processFile));
-    const all = [...capturedImages, ...photos];
-    setCapturedImages(all);
-    onComplete(all);
+    try {
+      const photos = await Promise.all(Array.from(files).map(processFile));
+      console.log('[EstateTurn] Files processed, calling onComplete with', photos.length, 'pages');
+      const all = [...capturedImages, ...photos];
+      setCapturedImages(all);
+      onComplete(all);
+    } catch (err) {
+      console.error('[EstateTurn] File processing error:', err);
+    }
   }, [capturedImages, processFile, onComplete]);
 
   const handleAddNextPage = () => {
@@ -249,7 +256,10 @@ export const DocumentScanner = ({ onComplete }: Props) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              console.log('[EstateTurn] Upload button clicked, fileInputRef:', !!fileInputRef.current);
+              fileInputRef.current?.click();
+            }}
             className="glass-card rounded-2xl p-5 flex items-center gap-4 text-left w-full hover:border-primary/30 transition-colors"
           >
             <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center shrink-0">
