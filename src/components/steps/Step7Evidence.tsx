@@ -213,38 +213,27 @@ export const Step7Evidence = () => {
 
           {/* ── Action buttons ── */}
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="space-y-2">
+            className="grid grid-cols-2 gap-2">
             <Button
               onClick={() => setPhase('camera')}
-              className="w-full h-14 rounded-2xl gap-3 text-sm font-semibold justify-start px-5"
+              className="h-auto min-h-[5rem] rounded-2xl gap-2 text-sm font-semibold flex-col items-center justify-center px-3 py-4"
               variant="outline"
             >
-              <Camera className="w-5 h-5 shrink-0" />
-              <div className="text-left">
-                <div>{isMoveIn ? 'Fotoerfassung (Vorhandener Mangel / Zustand)' : 'Fotoerfassung (Mangel/Schaden)'}</div>
-                <div className="text-xs font-normal text-muted-foreground">{isMoveIn ? 'Ist-Zustand per Bild dokumentieren' : 'Beweissicherung per Bild mit KI-Analyse'}</div>
+              <Camera className="w-6 h-6 shrink-0" />
+              <div className="text-center">
+                <div className="text-xs leading-tight">Fotoerfassung</div>
+                <div className="text-[10px] font-normal text-muted-foreground mt-0.5">{isMoveIn ? 'Zustand per Bild' : 'KI-Analyse'}</div>
               </div>
             </Button>
             <Button
               onClick={() => { setManualType('defect'); setPhase('manual-entry'); }}
-              className="w-full h-14 rounded-2xl gap-3 text-sm font-semibold justify-start px-5"
+              className="h-auto min-h-[5rem] rounded-2xl gap-2 text-sm font-semibold flex-col items-center justify-center px-3 py-4"
               variant="outline"
             >
-              <FileText className="w-5 h-5 text-amber-500 shrink-0" />
-              <div className="text-left">
-                <div>{isMoveIn ? 'Manueller Eintrag (Vorhandener Mangel / Zustand)' : 'Manueller Eintrag (Mangel/Schaden)'}</div>
-                <div className="text-xs font-normal text-muted-foreground">{isMoveIn ? 'Zustand ohne Foto dokumentieren' : 'Beschreibung ohne Foto'}</div>
-              </div>
-            </Button>
-            <Button
-              onClick={() => { setManualType('note'); setPhase('manual-entry'); }}
-              className="w-full h-14 rounded-2xl gap-3 text-sm font-semibold justify-start px-5"
-              variant="outline"
-            >
-              <StickyNote className="w-5 h-5 text-primary shrink-0" />
-              <div className="text-left">
-                <div>Besonderheit / Notiz (Zustand)</div>
-                <div className="text-xs font-normal text-muted-foreground">Neutral – keine Kautionsrelevanz</div>
+              <FileText className="w-6 h-6 text-amber-500 shrink-0" />
+              <div className="text-center">
+                <div className="text-xs leading-tight">Manueller Eintrag</div>
+                <div className="text-[10px] font-normal text-muted-foreground mt-0.5">Ohne Foto</div>
               </div>
             </Button>
           </motion.div>
@@ -473,10 +462,12 @@ export const Step7Evidence = () => {
                 <p className="font-semibold text-destructive">{currentResult.damageType}</p>
               </div>
             </div>
-            <div className="bg-secondary/60 rounded-xl p-3">
-              <p className="text-xs text-muted-foreground mb-1">BGH-Referenz</p>
-              <p className="text-sm font-mono font-medium">{currentResult.bghReference}</p>
-            </div>
+            {!isMoveIn && (
+              <div className="bg-secondary/60 rounded-xl p-3">
+                <p className="text-xs text-muted-foreground mb-1">BGH-Referenz</p>
+                <p className="text-sm font-mono font-medium">{currentResult.bghReference}</p>
+              </div>
+            )}
             {!isMoveIn && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-secondary/60 rounded-xl p-3">
@@ -637,9 +628,6 @@ const FindingCard = memo(({ f, onEdit, onDelete }: FindingCardProps) => {
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {!isNote && f.recommendedWithholding > 0 && (
-            <span className="text-sm font-bold text-destructive mr-1">{f.recommendedWithholding} €</span>
-          )}
           <button
             onClick={onEdit}
             className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors"
