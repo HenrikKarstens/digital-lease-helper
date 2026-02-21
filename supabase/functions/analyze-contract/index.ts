@@ -21,7 +21,6 @@ serve(async (req) => {
     while (true) {
       const f = formData.get(`file_${i}`) as File | null;
       if (!f) {
-        // fallback: single file
         const single = formData.get('file') as File | null;
         if (single && i === 0) files.push(single);
         break;
@@ -37,17 +36,17 @@ serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get('GEMINI_API_KEY');
+    const apiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'Gemini API Key nicht konfiguriert' }),
+        JSON.stringify({ error: 'LOVABLE_API_KEY nicht konfiguriert' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const isSale = transactionType === 'sale';
 
-    // Helper: chunked base64 encoding (avoids stack overflow for large files)
+    // Helper: chunked base64 encoding
     function uint8ToBase64(bytes: Uint8Array): string {
       let binary = '';
       const chunkSize = 8192;
@@ -58,8 +57,8 @@ serve(async (req) => {
       return btoa(binary);
     }
 
-    // Build parts for all pages (limit to first 5 pages for performance)
-    const parts: any[] = [];
+    // Build image content parts for OpenAI-compatible API
+    const imageParts: any[] = [];
     const maxPages = Math.min(files.length, 5);
 
     for (let idx = 0; idx < maxPages; idx++) {
@@ -67,8 +66,9 @@ serve(async (req) => {
       const arrayBuffer = await file.arrayBuffer();
       const base64Data = uint8ToBase64(new Uint8Array(arrayBuffer));
       const mimeType = file.type || 'application/pdf';
-      parts.push({
-        inlineData: { mimeType, data: base64Data }
+      imageParts.push({
+        type: 'image_url',
+        image_url: { url: `data:${mimeType};base64,${base64Data}` }
       });
     }
 
@@ -127,33 +127,53 @@ WICHTIG:
 - Felder, die nicht gefunden werden, mit leerem String "" befüllen, nicht weglassen.
 - Zahlen ohne Währungssymbol, nur die Zahl (z.B. "1250" nicht "1.250 €").`;
 
-    parts.push({ text: prompt });
-
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-    const geminiResponse = await fetch(geminiUrl, {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 4096,
-        }
-      })
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              ...imageParts,
+              { type: 'text', text: prompt },
+            ],
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 4096,
+      }),
     });
 
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error('Gemini API error:', errorText);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('AI Gateway error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Zu viele Anfragen. Bitte versuche es in einer Minute erneut.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'KI-Kontingent aufgebraucht. Bitte Credits aufladen.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: 'Fehler bei der KI-Analyse', details: errorText }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const geminiResult = await geminiResponse.json();
-    const textContent = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const result = await response.json();
+    const textContent = result.choices?.[0]?.message?.content || '';
 
     let jsonStr = textContent;
     const jsonMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -163,7 +183,7 @@ WICHTIG:
     try {
       parsedData = JSON.parse(jsonStr);
     } catch {
-      console.error('Failed to parse Gemini response as JSON:', textContent);
+      console.error('Failed to parse AI response as JSON:', textContent);
       return new Response(
         JSON.stringify({ error: 'KI-Antwort konnte nicht verarbeitet werden', raw: textContent }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
