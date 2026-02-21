@@ -19,9 +19,10 @@ function addWeeksToDate(weeks: number): string {
 
 interface ExpandedCardProps {
   finding: Finding;
+  isMoveOut: boolean;
 }
 
-const ExpandedCard = memo(({ finding }: ExpandedCardProps) => {
+const ExpandedCard = memo(({ finding, isMoveOut }: ExpandedCardProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
@@ -57,25 +58,35 @@ const ExpandedCard = memo(({ finding }: ExpandedCardProps) => {
               <p className="font-semibold">{finding.material}</p>
             </div>
             <div className="bg-background/50 rounded-lg p-2">
-              <p className="text-muted-foreground text-[10px]">Zeitwert-Abzug</p>
-              <p className="font-semibold">{finding.timeValueDeduction}%</p>
+              <p className="text-muted-foreground text-[10px]">Schadensart</p>
+              <p className="font-semibold">{finding.damageType}</p>
             </div>
-          </div>
-          <div className="bg-background/50 rounded-lg p-2 text-xs">
-            <p className="text-muted-foreground text-[10px] mb-0.5">BGH-Referenz</p>
-            <p className="font-mono font-medium text-primary">{finding.bghReference}</p>
           </div>
         </div>
 
-        {/* Auto-strategy info */}
-        {finding.recommendedWithholding > 0 && (
-          <div className="flex items-center gap-2 bg-primary/10 rounded-xl px-3 py-2">
-            <Shield className="w-3.5 h-3.5 text-primary shrink-0" />
-            <div>
-              <p className="text-[10px] text-muted-foreground">Automatisch: § 281 BGB Fristsetzung</p>
-              <p className="text-xs font-bold text-primary">Frist bis {finding.remediationDeadline || addWeeksToDate(2)}</p>
+        {/* Financial details – move-out only */}
+        {!isMoveOut ? null : (
+          <>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-background/50 rounded-lg p-2">
+                <p className="text-muted-foreground text-[10px]">Zeitwert-Abzug</p>
+                <p className="font-semibold">{finding.timeValueDeduction}%</p>
+              </div>
+              <div className="bg-background/50 rounded-lg p-2">
+                <p className="text-muted-foreground text-[10px]">BGH-Referenz</p>
+                <p className="font-mono font-medium text-primary">{finding.bghReference}</p>
+              </div>
             </div>
-          </div>
+            {finding.recommendedWithholding > 0 && (
+              <div className="flex items-center gap-2 bg-primary/10 rounded-xl px-3 py-2">
+                <Shield className="w-3.5 h-3.5 text-primary shrink-0" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground">Automatisch: § 281 BGB Fristsetzung</p>
+                  <p className="text-xs font-bold text-primary">Frist bis {finding.remediationDeadline || addWeeksToDate(2)}</p>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </motion.div>
@@ -134,19 +145,23 @@ export const Step10DefectAnalysis = () => {
         {/* Summary bar */}
         {data.findings.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-            className="glass-card rounded-2xl p-4 grid grid-cols-3 gap-3">
+            className={`glass-card rounded-2xl p-4 grid ${isMoveIn ? 'grid-cols-1' : 'grid-cols-3'} gap-3`}>
             <div className="text-center">
               <p className="text-2xl font-bold">{data.findings.length}</p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Befunde</p>
             </div>
-            <div className="text-center border-x border-border/30">
-              <p className="text-2xl font-bold text-amber-500">{damageFindings.length}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Schäden</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-destructive">{realtimeTotal} €</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Einbehalt</p>
-            </div>
+            {!isMoveIn && (
+              <div className="text-center border-x border-border/30">
+                <p className="text-2xl font-bold text-amber-500">{damageFindings.length}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Schäden</p>
+              </div>
+            )}
+            {!isMoveIn && (
+              <div className="text-center">
+                <p className="text-2xl font-bold text-destructive">{realtimeTotal} €</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Einbehalt</p>
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -200,7 +215,7 @@ export const Step10DefectAnalysis = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {f.recommendedWithholding > 0 && (
+                        {!isMoveIn && f.recommendedWithholding > 0 && (
                           <span className="text-sm font-bold text-destructive">{f.recommendedWithholding} €</span>
                         )}
                         <div className="text-muted-foreground">
@@ -214,7 +229,7 @@ export const Step10DefectAnalysis = () => {
                   <AnimatePresence initial={false}>
                     {isOpen && (
                       <div className="px-4 pb-4">
-                        <ExpandedCard finding={f} />
+                        <ExpandedCard finding={f} isMoveOut={!isMoveIn} />
                       </div>
                     )}
                   </AnimatePresence>
@@ -224,8 +239,8 @@ export const Step10DefectAnalysis = () => {
           </div>
         )}
 
-        {/* Live total */}
-        {data.findings.length > 0 && (
+        {/* Live total – move-out only */}
+        {data.findings.length > 0 && !isMoveIn && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
             className="glass-card rounded-2xl p-4">
             <div className="flex items-center justify-between mb-2">
