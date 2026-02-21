@@ -103,6 +103,11 @@ export interface HandoverData {
   preDamages: string;
   // AI analysis results
   depositLegalCheck: string;
+  depositLegalStatus: 'safe' | 'warning' | 'invalid' | '';
+  smallRepairAnalysis: string;
+  smallRepairStatus: 'safe' | 'warning' | 'invalid' | '';
+  endRenovationAnalysis: string;
+  endRenovationStatus: 'safe' | 'warning' | 'invalid' | '';
   renovationClauseAnalysis: string;
   // Step 5
   floorPlanUrl: string | null;
@@ -168,6 +173,11 @@ const defaultData: HandoverData = {
   contractStart: '',
   contractEnd: '',
   depositLegalCheck: '',
+  depositLegalStatus: '',
+  smallRepairAnalysis: '',
+  smallRepairStatus: '',
+  endRenovationAnalysis: '',
+  endRenovationStatus: '',
   renovationClauseAnalysis: '',
   floorPlanUrl: null,
   rooms: [],

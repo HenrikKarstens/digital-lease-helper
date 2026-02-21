@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, Scale, Paintbrush, AlertTriangle, Pencil, Check, X } from 'lucide-react';
+import { ArrowRight, Scale, Pencil, Check, X, Shield, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
@@ -65,6 +65,50 @@ const EditableRow = ({ label, value, onSave, filled }: EditableRowProps) => {
   );
 };
 
+// ── Legal Check Card ────────────────────────────────────────────────
+interface LegalCheckCardProps {
+  title: string;
+  description: string;
+  status: 'safe' | 'warning' | 'invalid' | '';
+}
+
+const LegalCheckCard = ({ title, description, status }: LegalCheckCardProps) => {
+  const statusConfig = {
+    safe: { icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800', label: 'Sicher' },
+    warning: { icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800', label: 'Prüfen' },
+    invalid: { icon: XCircle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800', label: 'Unwirksam' },
+    '': { icon: Shield, color: 'text-muted-foreground', bg: 'bg-secondary/30 border-border', label: 'Nicht geprüft' },
+  };
+
+  const config = statusConfig[status || ''];
+  const Icon = config.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`rounded-2xl p-4 border ${config.bg} transition-colors`}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`shrink-0 mt-0.5 ${config.color}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${config.color}`}>
+              {config.label}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {description || 'Keine Analyse verfügbar.'}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 export const Step4Validation = () => {
   const { data, updateData, goToStepById } = useHandover();
   const { ownerRole, clientRole, depositLabel, contractStartLabel, contractEndLabel } = useTransactionLabels();
@@ -73,6 +117,7 @@ export const Step4Validation = () => {
 
   const rows: { key: keyof typeof data; label: string }[] = [
     { key: 'propertyAddress', label: 'Objektadresse' },
+    { key: 'roomCount', label: 'Zimmeranzahl' },
     { key: 'landlordName', label: ownerRole },
     { key: 'landlordEmail', label: `E-Mail ${ownerRole}` },
     { key: 'landlordPhone', label: `Mobilnummer ${ownerRole}` },
@@ -82,7 +127,7 @@ export const Step4Validation = () => {
     { key: 'tenantPhone', label: `Mobilnummer ${clientRole}` },
     { key: 'tenantBirthday', label: `Geburtstag ${clientRole}` },
     ...(isMoveIn ? [{ key: 'priorAddress' as keyof typeof data, label: 'Voranschrift' }] : []),
-    ...(!isMoveIn ? [{ key: 'nextAddress' as keyof typeof data, label: 'Nachanschrift' }] : []),
+    ...(!isMoveIn ? [{ key: 'nextAddress' as keyof typeof data, label: 'Nachanschrift (neue Adresse)' }] : []),
     { key: 'coldRent', label: 'Kaltmiete (€)' },
     { key: 'nkAdvancePayment', label: 'NK-Vorauszahlung (€)' },
     { key: 'heatingCosts', label: 'Heiz-/Warmwasserkosten (€)' },
@@ -90,12 +135,11 @@ export const Step4Validation = () => {
     { key: 'depositAmount', label: `${depositLabel} (€)` },
     { key: 'contractStart', label: contractStartLabel },
     { key: 'contractEnd', label: contractEndLabel },
-    { key: 'contractType', label: 'Vertragsart (befristet/unbefristet)' },
-    { key: 'contractSigningDate', label: 'Datum der Vertragsunterzeichnung' },
-    { key: 'roomCount', label: 'Zimmeranzahl' },
+    { key: 'contractType', label: 'Vertragsart' },
+    { key: 'contractSigningDate', label: 'Datum Vertragsunterzeichnung' },
   ];
 
-  const hasLegalAnalysis = data.depositLegalCheck || data.renovationClauseAnalysis;
+  const hasLegalAnalysis = data.depositLegalCheck || data.smallRepairAnalysis || data.endRenovationAnalysis;
   const filledCount = rows.filter(r => !!data[r.key]).length;
 
   const handleConfirm = () => {
@@ -124,7 +168,7 @@ export const Step4Validation = () => {
         {filledCount} von {rows.length} Felder befüllt
       </motion.div>
 
-      {/* Tabular summary with inline editing */}
+      {/* Unified validation table */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         className="glass-card rounded-2xl px-5 py-2 w-full max-w-md"
       >
@@ -139,30 +183,36 @@ export const Step4Validation = () => {
         ))}
       </motion.div>
 
-      {/* Legal analysis */}
+      {/* Interactive Legal Check Cards */}
       {hasLegalAnalysis && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="w-full max-w-md mt-4 space-y-3">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="w-full max-w-md mt-5 space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
             <Scale className="w-4 h-4" />
-            KI-Rechtsanalyse
+            Granulare KI-Rechtsanalyse
           </h3>
+          
           {data.depositLegalCheck && (
-            <div className="glass-card rounded-2xl p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-primary shrink-0" />
-                <span className="text-xs font-semibold">Kautionsprüfung (§ 551 BGB)</span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">{data.depositLegalCheck}</p>
-            </div>
+            <LegalCheckCard
+              title="Kaution (§ 551 BGB)"
+              description={data.depositLegalCheck}
+              status={data.depositLegalStatus || ''}
+            />
           )}
-          {data.renovationClauseAnalysis && (
-            <div className="glass-card rounded-2xl p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <Paintbrush className="w-4 h-4 text-primary shrink-0" />
-                <span className="text-xs font-semibold">Schönheitsreparaturen</span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">{data.renovationClauseAnalysis}</p>
-            </div>
+          
+          {data.smallRepairAnalysis && (
+            <LegalCheckCard
+              title="Kleinreparaturklausel"
+              description={data.smallRepairAnalysis}
+              status={data.smallRepairStatus || ''}
+            />
+          )}
+          
+          {data.endRenovationAnalysis && (
+            <LegalCheckCard
+              title="Endrenovierung / Schönheitsreparaturen"
+              description={data.endRenovationAnalysis}
+              status={data.endRenovationStatus || ''}
+            />
           )}
         </motion.div>
       )}

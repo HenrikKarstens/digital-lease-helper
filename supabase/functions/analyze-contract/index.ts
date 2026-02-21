@@ -78,17 +78,28 @@ serve(async (req) => {
 - "propertyAddress": Die vollständige Objektadresse
 - "landlordName": Name ${isSale ? 'des Verkäufers' : 'des Vermieters'}
 - "landlordEmail": E-Mail ${isSale ? 'des Verkäufers' : 'des Vermieters'} (falls vorhanden, sonst "")
+- "landlordPhone": Mobilnummer/Telefonnummer ${isSale ? 'des Verkäufers' : 'des Vermieters'} (falls vorhanden, sonst ""). Suche intensiv im gesamten Dokument, auch in Kopfzeilen, Fußzeilen und Kontaktblöcken.
+- "landlordBirthday": Geburtsdatum ${isSale ? 'des Verkäufers' : 'des Vermieters'} im Format TT.MM.JJJJ (falls vorhanden, sonst ""). Suche auch nach Datumsangaben in Personendatenblöcken.
 - "tenantName": Name ${isSale ? 'des Käufers' : 'des Mieters'}
 - "tenantEmail": E-Mail ${isSale ? 'des Käufers' : 'des Mieters'} (falls vorhanden, sonst "")
+- "tenantPhone": Mobilnummer/Telefonnummer ${isSale ? 'des Käufers' : 'des Mieters'} (falls vorhanden, sonst ""). Suche intensiv im gesamten Dokument, auch in Kopfzeilen, Fußzeilen, handschriftlichen Ergänzungen und Kontaktblöcken. Format z.B. "+49 152 57024760".
+- "tenantBirthday": Geburtsdatum ${isSale ? 'des Käufers' : 'des Mieters'} im Format TT.MM.JJJJ (falls vorhanden, sonst ""). Suche auch nach Angaben wie "geb." oder "geboren am" oder Datumsformaten wie "12 09 1982" die als Geburtsdatum interpretiert werden können.
+- "priorAddress": Bisherige/vorherige Adresse ${isSale ? 'des Käufers' : 'des Mieters'} (falls vorhanden, sonst ""). Suche nach "bisherige Anschrift", "Voranschrift", "alte Adresse" o.ä.
 - "roomCount": Anzahl der Zimmer der Wohnung/des Objekts als Zahl (z.B. "3"). Falls nicht erkennbar, "".
 - "contractStart": Mietvertragsbeginn / Übergabedatum im Format TT.MM.JJJJ
 - "contractDuration": "unbefristet" wenn unbefristet, oder das Enddatum im Format TT.MM.JJJJ wenn befristet
+- "contractType": "unbefristet" oder "befristet" – suche nach Formulierungen wie "auf unbestimmte Zeit" (= unbefristet) oder "befristet bis"
+- "contractSigningDate": Datum der Vertragsunterzeichnung im Format TT.MM.JJJJ. Suche am Ende des Dokuments nach Datumsangaben neben den Unterschriften.
 - "coldRent": Aktuelle Nettokaltmiete in Euro als Zahl (nur die Zahl, z.B. "800")
 - "nkAdvancePayment": Betriebskostenvorauszahlung in Euro als Zahl (ohne Heizkosten, z.B. "150")
 - "heatingCosts": Heiz- und Warmwasserkosten-Vorauszahlung in Euro als Zahl (z.B. "80"). Falls nicht separat ausgewiesen, "".
 - "depositAmount": ${isSale ? 'Kaufpreis' : 'Kautionshöhe'} als Zahl in Euro (nur die Zahl, z.B. "2400")
-- "depositLegalCheck": Prüfe die ${isSale ? 'Zahlungsbedingungen' : 'Kaution gegen § 551 Abs. 1 BGB'}. ${isSale ? '' : 'Ist die Kaution höher als 3 Nettokaltmieten? Berechne: 3 × Kaltmiete und vergleiche mit der Kaution.'} Kurze Bewertung in 1-2 Sätzen. Falls die Kaution die Grenze überschreitet, beginne mit "⚠️ WARNUNG:".
-- "renovationClauseAnalysis": Suche im Vertragstext nach Schönheitsreparatur- und Kleinreparaturklauseln. Prüfe: Enthalten sie starre Fristenregelungen (z.B. "alle 3 Jahre Küche, alle 5 Jahre Bad")? Falls ja, sind diese nach BGH VIII ZR 308/02 unwirksam. Enthalten sie eine Kleinreparaturklausel mit Obergrenze > 120€ je Einzelfall oder > 8% der Jahresmiete? Kurze Bewertung in 1-2 Sätzen. Bei Problemen beginne mit "⚠️ WARNUNG:".
+- "depositLegalCheck": Prüfe die ${isSale ? 'Zahlungsbedingungen' : 'Kaution gegen § 551 Abs. 1 BGB'}. ${isSale ? '' : 'Ist die Kaution höher als 3 Nettokaltmieten? Berechne: 3 × Kaltmiete und vergleiche mit der Kaution.'} Kurze Bewertung in 1 Satz.
+- "depositLegalStatus": Bewertung der Kaution: "safe" wenn gesetzeskonform, "warning" wenn grenzwertig, "invalid" wenn rechtswidrig
+- "smallRepairAnalysis": Prüfe die Kleinreparaturklausel: Gibt es eine Obergrenze je Einzelfall? Liegt sie über 110-120€? Gibt es eine Jahreshöchstgrenze über 8% der Jahresmiete? Kurze Bewertung in 1 Satz.
+- "smallRepairStatus": "safe" wenn Klausel fehlt oder rechtssicher, "warning" wenn grenzwertig, "invalid" wenn unwirksam
+- "endRenovationAnalysis": Prüfe Schönheitsreparatur-/Endrenovierungsklauseln: Enthalten sie starre Fristenregelungen (z.B. "alle 3 Jahre Küche, alle 5 Jahre Bad")? Gibt es eine Endrenovierungspflicht unabhängig vom Zustand? Suche auch nach handschriftlichen Ergänzungen wie "Weiß-Streich-Klausel". Kurze Bewertung in 1 Satz.
+- "endRenovationStatus": "safe" wenn keine problematische Klausel, "warning" wenn prüfenswert, "invalid" wenn nach BGH VIII ZR 308/02 unwirksam
 - "confidence": Ein JSON-Objekt mit Feldnamen als Keys und Werten "high", "medium" oder "low" je nachdem, wie sicher die Extraktion war. Z.B. {"coldRent": "high", "roomCount": "low"}`;
     } else if (documentType === 'amendment') {
       docTypeLabel = 'Miet-Nachtrag / Änderungsvereinbarung';
