@@ -106,12 +106,20 @@ export const Step7Evidence = () => {
   const [manualLocation, setManualLocation] = useState('');
   const [manualType, setManualType] = useState<EntryType>('defect');
 
+  // Editable fields for result phase & edit phase
+  const [editMaterial, setEditMaterial] = useState('');
+  const [editDamageType, setEditDamageType] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+
   // ── AI analysis loop ───────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== 'analyzing') return;
     if (analysisStep >= analysisMessages.length) {
       const result = AI_RESULTS[data.findings.length % AI_RESULTS.length];
       setCurrentResult(result);
+      setEditMaterial(result.material);
+      setEditDamageType(result.damageType);
+      setEditDescription(result.description);
       setPhase('result');
       return;
     }
@@ -135,10 +143,12 @@ export const Step7Evidence = () => {
 
   const startEdit = (f: Finding) => {
     setEditingId(f.id);
-    setManualDesc(f.description);
     setManualRoom(f.room);
     setManualLocation(f.locationDetail || '');
     setManualType(f.entryType || 'defect');
+    setEditMaterial(f.material);
+    setEditDamageType(f.damageType);
+    setEditDescription(f.description);
     setPhase('edit');
   };
 
@@ -146,7 +156,15 @@ export const Step7Evidence = () => {
     updateData({
       findings: data.findings.map(f =>
         f.id === editingId
-          ? { ...f, room: manualRoom, description: manualDesc, locationDetail: manualLocation, entryType: manualType }
+          ? {
+              ...f,
+              room: manualRoom,
+              material: editMaterial,
+              damageType: editDamageType,
+              description: editDescription,
+              locationDetail: manualLocation,
+              entryType: manualType,
+            }
           : f
       ),
     });
@@ -185,7 +203,12 @@ export const Step7Evidence = () => {
       room: selectedRoom,
       pinX: 50,
       pinY: 50,
-      ...currentResult,
+      material: editMaterial,
+      damageType: editDamageType,
+      bghReference: currentResult.bghReference,
+      timeValueDeduction: currentResult.timeValueDeduction,
+      recommendedWithholding: currentResult.recommendedWithholding,
+      description: editDescription,
       timestamp: new Date().toLocaleString('de-DE'),
       locationDetail: locationDetail.trim() || undefined,
       entryType: currentResult.recommendedWithholding > 0 ? 'defect' : 'note',
@@ -452,16 +475,40 @@ export const Step7Evidence = () => {
           </div>
 
           <div className="space-y-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs text-muted-foreground">Erkanntes Material</p>
-                <p className="font-semibold">{currentResult.material}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Schadensart</p>
-                <p className="font-semibold text-destructive">{currentResult.damageType}</p>
-              </div>
+            {/* Editable Material */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Erkanntes Material</label>
+              <input
+                type="text"
+                value={editMaterial}
+                onChange={e => setEditMaterial(e.target.value)}
+                placeholder="z. B. Eichenparkett, Laminat"
+                className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
             </div>
+            {/* Editable Schadensart */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Schadensart</label>
+              <textarea
+                value={editDamageType}
+                onChange={e => setEditDamageType(e.target.value)}
+                placeholder="z. B. Kratzer, ca. 15cm"
+                rows={2}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              />
+            </div>
+            {/* New: Detaillierte Beschreibung */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Detaillierte Beschreibung / Notiz</label>
+              <textarea
+                value={editDescription}
+                onChange={e => setEditDescription(e.target.value)}
+                placeholder="Weitere Details zur Dokumentation…"
+                rows={3}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              />
+            </div>
+
             {!isMoveIn && (
               <div className="bg-secondary/60 rounded-xl p-3">
                 <p className="text-xs text-muted-foreground mb-1">BGH-Referenz</p>
@@ -483,10 +530,6 @@ export const Step7Evidence = () => {
                 </div>
               </div>
             )}
-            <div className="bg-secondary/40 rounded-xl p-3">
-              <p className="text-xs text-muted-foreground mb-1">Bewertung</p>
-              <p className="text-sm">{isMoveIn ? 'Dokumentation des Ist-Zustands zur Beweissicherung bei Einzug.' : currentResult.description}</p>
-            </div>
             {locationDetail && (
               <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <MapPin className="w-3 h-3" /> {locationDetail}
@@ -511,7 +554,7 @@ export const Step7Evidence = () => {
   if (phase === 'manual-entry' || phase === 'edit') {
     const isEdit = phase === 'edit';
     const onSave = isEdit ? saveEdit : saveManual;
-    const canSave = (isEdit ? manualRoom : manualRoom) && manualDesc.trim();
+    const canSave = manualRoom && (isEdit ? (editDamageType.trim() || editDescription.trim()) : manualDesc.trim());
 
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8">
@@ -526,7 +569,7 @@ export const Step7Evidence = () => {
             </h3>
             <p className="text-sm text-muted-foreground">
               {isEdit
-                ? 'Raum, Beschreibung oder Typ anpassen.'
+                ? 'Material, Schadensart und Beschreibung anpassen.'
                 : manualType === 'note'
                   ? 'Reiner Beweisanker ohne Kautionsabzug (z. B. Lampe demontiert).'
                   : 'Mangel ohne Foto dokumentieren.'}
@@ -569,18 +612,58 @@ export const Step7Evidence = () => {
                 className="w-full h-11 rounded-xl border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                Beschreibung *
-              </label>
-              <textarea
-                value={manualDesc}
-                onChange={e => setManualDesc(e.target.value)}
-                placeholder="Was wurde festgestellt?"
-                rows={3}
-                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-              />
-            </div>
+
+            {/* Material & Schadensart – shown in edit mode */}
+            {isEdit && (
+              <>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Material</label>
+                  <input
+                    type="text"
+                    value={editMaterial}
+                    onChange={e => setEditMaterial(e.target.value)}
+                    placeholder="z. B. Eichenparkett, Laminat, Fliesen"
+                    className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Schadensart</label>
+                  <textarea
+                    value={editDamageType}
+                    onChange={e => setEditDamageType(e.target.value)}
+                    placeholder="z. B. Kratzer, ca. 15cm"
+                    rows={2}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Detaillierte Beschreibung / Notiz</label>
+                  <textarea
+                    value={editDescription}
+                    onChange={e => setEditDescription(e.target.value)}
+                    placeholder="Weitere Details…"
+                    rows={3}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Manual entry – only description (no material from AI) */}
+            {!isEdit && (
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                  Beschreibung *
+                </label>
+                <textarea
+                  value={manualDesc}
+                  onChange={e => setManualDesc(e.target.value)}
+                  placeholder="Was wurde festgestellt?"
+                  rows={3}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3">
