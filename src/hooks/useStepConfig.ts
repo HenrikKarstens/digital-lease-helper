@@ -22,7 +22,7 @@ const ALL_STEPS: StepDef[] = [
   { id: 'defect-analysis',   label: 'Mängel',       component: 'Step10DefectAnalysis' },
   { id: 'deposit',           label: 'Kaution',      component: 'Step12Deposit' },
   { id: 'certificate',       label: 'Protokoll',    component: 'Step13Certificate' },
-  { id: 'utility',           label: 'Abschluss',    component: 'Step14Utility' },
+  { id: 'utility',           label: 'Umzugs-Vorteile', component: 'Step14Utility' },
 ];
 
 /**

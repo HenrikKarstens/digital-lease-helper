@@ -69,17 +69,30 @@ export const Step4Validation = () => {
   const { data, updateData, goToStepById } = useHandover();
   const { ownerRole, clientRole, depositLabel, contractStartLabel, contractEndLabel } = useTransactionLabels();
 
+  const isMoveIn = data.handoverDirection === 'move-in';
+
   const rows: { key: keyof typeof data; label: string }[] = [
     { key: 'propertyAddress', label: 'Objektadresse' },
     { key: 'landlordName', label: ownerRole },
     { key: 'landlordEmail', label: `E-Mail ${ownerRole}` },
+    { key: 'landlordPhone', label: `Mobilnummer ${ownerRole}` },
+    { key: 'landlordBirthday', label: `Geburtstag ${ownerRole}` },
     { key: 'tenantName', label: clientRole },
     { key: 'tenantEmail', label: `E-Mail ${clientRole}` },
+    { key: 'tenantPhone', label: `Mobilnummer ${clientRole}` },
+    { key: 'tenantBirthday', label: `Geburtstag ${clientRole}` },
+    ...(isMoveIn ? [{ key: 'priorAddress' as keyof typeof data, label: 'Voranschrift' }] : []),
+    ...(!isMoveIn ? [{ key: 'nextAddress' as keyof typeof data, label: 'Nachanschrift' }] : []),
     { key: 'coldRent', label: 'Kaltmiete (€)' },
     { key: 'nkAdvancePayment', label: 'NK-Vorauszahlung (€)' },
+    { key: 'heatingCosts', label: 'Heiz-/Warmwasserkosten (€)' },
+    { key: 'totalRent', label: 'Gesamtmiete (€)' },
     { key: 'depositAmount', label: `${depositLabel} (€)` },
     { key: 'contractStart', label: contractStartLabel },
     { key: 'contractEnd', label: contractEndLabel },
+    { key: 'contractType', label: 'Vertragsart (befristet/unbefristet)' },
+    { key: 'contractSigningDate', label: 'Datum der Vertragsunterzeichnung' },
+    { key: 'roomCount', label: 'Zimmeranzahl' },
   ];
 
   const hasLegalAnalysis = data.depositLegalCheck || data.renovationClauseAnalysis;

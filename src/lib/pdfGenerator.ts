@@ -10,6 +10,56 @@ const SUCCESS_COLOR: [number, number, number] = [22, 163, 74];
 const TEXT_COLOR: [number, number, number] = [30, 30, 40];
 const MUTED_COLOR: [number, number, number] = [100, 100, 120];
 
+// Helper: embed photos with timestamp/GPS metadata below a section
+function embedPhotos(
+  doc: jsPDF,
+  photos: { url: string; label: string; timestamp?: string; gps?: string }[],
+  y: number,
+  pageW: number,
+  pageH: number,
+  col1: number
+): number {
+  if (photos.length === 0) return y;
+  const imgW = 50;
+  const imgH = 37;
+  const gap = 4;
+  const cols = Math.floor((pageW - 28) / (imgW + gap));
+  
+  for (let i = 0; i < photos.length; i++) {
+    const colIdx = i % cols;
+    const x = col1 + colIdx * (imgW + gap);
+    if (colIdx === 0 && i > 0) y += imgH + 14;
+    if (y + imgH + 14 > pageH - 20) { doc.addPage(); y = 36; }
+    
+    try {
+      doc.addImage(photos[i].url, 'JPEG', x, y, imgW, imgH);
+      doc.setDrawColor(200, 200, 215);
+      doc.rect(x, y, imgW, imgH);
+    } catch {
+      doc.setTextColor(...MUTED_COLOR);
+      doc.setFontSize(6.5);
+      doc.text('Bild nicht ladbar', x + 2, y + imgH / 2);
+    }
+    // Label
+    doc.setTextColor(...MUTED_COLOR);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.text(photos[i].label, x, y + imgH + 3, { maxWidth: imgW });
+    // Timestamp + GPS
+    const meta: string[] = [];
+    if (photos[i].timestamp) meta.push(photos[i].timestamp!);
+    if (photos[i].gps) meta.push(photos[i].gps!);
+    if (meta.length > 0) {
+      doc.setFontSize(5.5);
+      doc.setFont('helvetica', 'italic');
+      doc.text(meta.join(' · '), x, y + imgH + 6.5, { maxWidth: imgW });
+      doc.setFont('helvetica', 'normal');
+    }
+  }
+  y += imgH + 14;
+  return y;
+}
+
 function addHeader(doc: jsPDF, title: string, subtitle: string, pageW: number) {
   doc.setFillColor(...BRAND_COLOR);
   doc.rect(0, 0, pageW, 28, 'F');
@@ -359,16 +409,26 @@ export function generateMasterProtocol(data: HandoverData): void {
   autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
-    head: [['Partei', 'Name', 'E-Mail']],
+    head: [['Partei', 'Name', 'E-Mail', 'Mobilnummer', 'Geburtstag']],
     body: [
-      [isSale ? 'Verkäufer' : 'Vermieter', data.landlordName || '–', data.landlordEmail || '–'],
-      [isSale ? 'Käufer' : 'Mieter', data.tenantName || '–', data.tenantEmail || '–'],
+      [isSale ? 'Verkäufer' : 'Vermieter', data.landlordName || '–', data.landlordEmail || '–', data.landlordPhone || '–', data.landlordBirthday || '–'],
+      [isSale ? 'Käufer' : 'Mieter', data.tenantName || '–', data.tenantEmail || '–', data.tenantPhone || '–', data.tenantBirthday || '–'],
     ],
     headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
-    bodyStyles: { fontSize: 8 },
+    bodyStyles: { fontSize: 7.5 },
     alternateRowStyles: { fillColor: [248, 249, 255] },
   });
   y = (doc as any).lastAutoTable.finalY + 4;
+
+  // Prior/Next address
+  if (data.priorAddress || data.nextAddress) {
+    const addrLabel = data.handoverDirection === 'move-in' ? 'Voranschrift (Mieter)' : 'Nachanschrift (Mieter)';
+    const addrValue = data.handoverDirection === 'move-in' ? data.priorAddress : data.nextAddress;
+    if (addrValue) {
+      labelValue(doc, addrLabel, addrValue, col1, y, colW * 2);
+      y += 8;
+    }
+  }
 
   // ── §3 Vertragsanalyse (KI) ───────────────────────────────────────────────
   y = sectionTitle(doc, '§3  Vertragsanalyse (KI-gestützt)', y, pageW);
@@ -379,9 +439,14 @@ export function generateMasterProtocol(data: HandoverData): void {
     body: [
       ['Kaltmiete', data.coldRent ? `${data.coldRent} €` : '–'],
       ['NK-Vorauszahlung', data.nkAdvancePayment ? `${data.nkAdvancePayment} €` : '–'],
+      ['Heiz-/Warmwasserkosten', data.heatingCosts ? `${data.heatingCosts} €` : '–'],
+      ['Gesamtmiete', data.totalRent ? `${data.totalRent} €` : '–'],
       ['Kaution', data.depositAmount ? `${data.depositAmount} €` : '–'],
+      ['Zimmeranzahl', data.roomCount || '–'],
       ['Vertragsbeginn', data.contractStart || '–'],
-      ['Vertragsende', data.contractEnd || '–'],
+      ['Vertragsende / Befristung', data.contractDuration || data.contractEnd || '–'],
+      ['Vertragsart', data.contractType === 'befristet' ? 'Befristet' : data.contractType === 'unbefristet' ? 'Unbefristet' : '–'],
+      ['Datum Vertragsunterzeichnung', data.contractSigningDate || '–'],
       ['Kautionsprüfung (§ 551 BGB)', data.depositLegalCheck || 'Nicht geprüft'],
       ['Renovierungsklausel', data.renovationClauseAnalysis || 'Nicht geprüft'],
     ],
@@ -438,6 +503,16 @@ export function generateMasterProtocol(data: HandoverData): void {
       alternateRowStyles: { fillColor: [248, 249, 255] },
     });
     y = (doc as any).lastAutoTable.finalY + 4;
+    
+    // Embed meter photos
+    const meterPhotos = data.meterReadings
+      .filter(m => m.photoUrl)
+      .map(m => ({
+        url: m.photoUrl!,
+        label: `${m.medium} – Zähler ${m.meterNumber || '–'}`,
+        timestamp: date,
+      }));
+    y = embedPhotos(doc, meterPhotos, y, pageW, pageH, col1);
   } else {
     doc.setTextColor(...MUTED_COLOR);
     doc.setFontSize(8);
@@ -529,6 +604,11 @@ export function generateMasterProtocol(data: HandoverData): void {
       doc.text('Dokumentation des Ist-Zustands zur Beweissicherung bei Einzug. Keine Kautionsabzüge.', col1, y);
       doc.setFont('helvetica', 'normal');
       y += 7;
+      // Embed finding photos (move-in)
+      const findingPhotos = data.findings
+        .filter(f => f.photoUrl)
+        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: f.timestamp }));
+      y = embedPhotos(doc, findingPhotos, y, pageW, pageH, col1);
     } else {
       doc.setTextColor(...SUCCESS_COLOR);
       doc.setFontSize(8);
@@ -576,6 +656,11 @@ export function generateMasterProtocol(data: HandoverData): void {
       });
       doc.setFont('helvetica', 'normal');
       y += 2;
+      // Embed defect photos (move-out)
+      const defectPhotos = defectFindings
+        .filter(f => f.photoUrl)
+        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: f.timestamp }));
+      y = embedPhotos(doc, defectPhotos, y, pageW, pageH, col1);
     } else {
       doc.setTextColor(...SUCCESS_COLOR);
       doc.setFontSize(8);
@@ -905,6 +990,7 @@ export function generateMasterProtocol(data: HandoverData): void {
     `3. Verjährungsfrist: Ansprüche des Vermieters wegen Verschlechterungen verjähren in 6 Monaten nach Rückgabe der Mietsache (§ 548 BGB).`,
     `4. Schönheitsreparaturen: Formularklauseln zu Renovierungspflichten des Mieters sind nach BGH-Rechtsprechung in der Regel unwirksam, sofern sie von § 307 BGB abweichen.`,
     `5. Protokollverbindlichkeit: Dieses Protokoll wurde digital mit einem SHA-256-Hash versiegelt und ist urkundlich zu verwahren.`,
+    `6. Anerkennung: Dem Mieter wird eine Prüffrist von 14 Tagen eingeräumt. Erfolgt innerhalb dieser Frist kein begründeter Widerspruch gegen die Feststellungen in diesem Protokoll, gilt der dokumentierte Zustand als anerkannt.`,
   ];
   const clauseLines = clauses.flatMap(c => doc.splitTextToSize(c, pageW - 36));
   const clauseH = clauseLines.length * 3.8 + 8;
@@ -1028,18 +1114,28 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
-    head: [['Partei', 'Name', 'E-Mail', 'Digitale Signatur']],
+    head: [['Partei', 'Name', 'E-Mail', 'Mobilnummer', 'Geburtstag', 'Digitale Signatur']],
     body: [
-      [isSale ? 'Verkäufer' : 'Vermieter', data.landlordName || '–', data.landlordEmail || '–',
+      [isSale ? 'Verkäufer' : 'Vermieter', data.landlordName || '–', data.landlordEmail || '–', data.landlordPhone || '–', data.landlordBirthday || '–',
         data.signatureLandlord ? `✓ Signiert am ${signatureTimestamp}` : 'Nicht unterschrieben'],
-      [isSale ? 'Käufer' : 'Mieter', data.tenantName || '–', data.tenantEmail || '–',
+      [isSale ? 'Käufer' : 'Mieter', data.tenantName || '–', data.tenantEmail || '–', data.tenantPhone || '–', data.tenantBirthday || '–',
         data.signatureTenant ? `✓ Signiert am ${signatureTimestamp}` : 'Nicht unterschrieben'],
     ],
-    headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
-    bodyStyles: { fontSize: 8 },
+    headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7 },
+    bodyStyles: { fontSize: 7 },
     alternateRowStyles: { fillColor: [248, 249, 255] },
   });
   y = (doc as any).lastAutoTable.finalY + 4;
+
+  // Prior/Next address
+  if (data.priorAddress || data.nextAddress) {
+    const addrLabel2 = data.handoverDirection === 'move-in' ? 'Voranschrift (Mieter)' : 'Nachanschrift (Mieter)';
+    const addrValue2 = data.handoverDirection === 'move-in' ? data.priorAddress : data.nextAddress;
+    if (addrValue2) {
+      labelValue(doc, addrLabel2, addrValue2, col1, y, colW * 2);
+      y += 8;
+    }
+  }
 
   y = sectionTitle(doc, '§3  Vertragsanalyse (KI-gestützt)', y, pageW);
   autoTable(doc, {
@@ -1049,9 +1145,14 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     body: [
       ['Kaltmiete', data.coldRent ? `${data.coldRent} €` : '–'],
       ['NK-Vorauszahlung', data.nkAdvancePayment ? `${data.nkAdvancePayment} €` : '–'],
+      ['Heiz-/Warmwasserkosten', data.heatingCosts ? `${data.heatingCosts} €` : '–'],
+      ['Gesamtmiete', data.totalRent ? `${data.totalRent} €` : '–'],
       ['Kaution', data.depositAmount ? `${data.depositAmount} €` : '–'],
+      ['Zimmeranzahl', data.roomCount || '–'],
       ['Vertragsbeginn', data.contractStart || '–'],
-      ['Vertragsende', data.contractEnd || '–'],
+      ['Vertragsende / Befristung', data.contractDuration || data.contractEnd || '–'],
+      ['Vertragsart', data.contractType === 'befristet' ? 'Befristet' : data.contractType === 'unbefristet' ? 'Unbefristet' : '–'],
+      ['Datum Vertragsunterzeichnung', data.contractSigningDate || '–'],
       ['Kautionsprüfung (§ 551 BGB)', data.depositLegalCheck || 'Nicht geprüft'],
       ['Renovierungsklausel', data.renovationClauseAnalysis || 'Nicht geprüft'],
     ],
@@ -1102,6 +1203,11 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
       alternateRowStyles: { fillColor: [248, 249, 255] },
     });
     y = (doc as any).lastAutoTable.finalY + 4;
+    // Embed meter photos (blob)
+    const meterPhotos2 = data.meterReadings
+      .filter(m => m.photoUrl)
+      .map(m => ({ url: m.photoUrl!, label: `${m.medium} – Zähler ${m.meterNumber || '–'}`, timestamp: date }));
+    y = embedPhotos(doc, meterPhotos2, y, pageW, pageH, col1);
   } else {
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(8);
     doc.text('Keine Zähler erfasst.', col1, y); y += 8;
@@ -1152,6 +1258,11 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
       }
     });
     doc.setFont('helvetica', 'normal'); y += 2;
+    // Embed defect photos (blob)
+    const defectPhotos2 = defectFindings2
+      .filter(f => f.photoUrl)
+      .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: f.timestamp }));
+    y = embedPhotos(doc, defectPhotos2, y, pageW, pageH, col1);
   } else {
     doc.setTextColor(...SUCCESS_COLOR); doc.setFontSize(8);
     doc.text('✓ Keine Mängel dokumentiert.', col1, y); y += 8;
@@ -1360,7 +1471,8 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     `3. Verjährungsfrist: Ansprüche des Vermieters wegen Verschlechterungen verjähren in 6 Monaten nach Rückgabe der Mietsache (§ 548 BGB).`,
     `4. Schönheitsreparaturen: Formularklauseln zu Renovierungspflichten des Mieters sind nach BGH-Rechtsprechung in der Regel unwirksam (BGH VIII ZR 163/18, § 307 BGB).`,
     `5. Protokollverbindlichkeit: Dieses Protokoll wurde digital mit einem SHA-256-Hash versiegelt und ist urkundlich zu verwahren.`,
-    isSale ? `6. Kaufrecht: Mängelansprüche richten sich nach § 434 BGB i.V.m. ${bghRef}.` : `6. Mietrecht: Kautions-Abrechnung gemäß § 551 BGB, Zeitwert-Abzug gemäß ${bghRef}.`,
+    `6. Anerkennung: Dem Mieter wird eine Prüffrist von 14 Tagen eingeräumt. Erfolgt innerhalb dieser Frist kein begründeter Widerspruch gegen die Feststellungen in diesem Protokoll, gilt der dokumentierte Zustand als anerkannt.`,
+    isSale ? `7. Kaufrecht: Mängelansprüche richten sich nach § 434 BGB i.V.m. ${bghRef}.` : `7. Mietrecht: Kautions-Abrechnung gemäß § 551 BGB, Zeitwert-Abzug gemäß ${bghRef}.`,
   ];
   const clauseLines = clauses.flatMap(c => doc.splitTextToSize(c, pageW - 36));
   const clauseH = clauseLines.length * 3.8 + 8;
