@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import {
   Zap, Leaf, TrendingDown, Euro, ArrowRight, FileText, CheckCircle2,
-  PartyPopper, Info, Users, ExternalLink, Building2, Pencil
+  PartyPopper, Info, Users, ExternalLink, Building2, Pencil, ShieldCheck,
+  Home, Wifi
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -35,10 +36,9 @@ const GRUNDVERSORGER_DB: Record<string, { name: string; pricePerKwh: number; gru
   '04': { name: 'Stadtwerke Leipzig', pricePerKwh: 0.3640, grundpreis: 137 },
 };
 
-// Check24 competitor tariff simulation (cheapest)
 const CHECK24_BEST_PRICE_PER_KWH = 0.2890;
 const CHECK24_BEST_GRUNDPREIS = 95;
-const CHECK24_AFFILIATE_ID = 'ESTATETURN_PARTNER'; // Platzhalter für Partner-ID
+const CHECK24_AFFILIATE_ID = 'ESTATETURN_PARTNER';
 
 function extractPlz(address: string): string {
   const match = address.match(/\b(\d{5})\b/);
@@ -47,64 +47,91 @@ function extractPlz(address: string): string {
 
 function lookupGrundversorger(plz: string) {
   if (!plz) return null;
-  // Try 2-digit prefix
   const prefix2 = plz.substring(0, 2);
   if (GRUNDVERSORGER_DB[prefix2]) return GRUNDVERSORGER_DB[prefix2];
-  // Fallback: generic
   return { name: 'Lokaler Grundversorger', pricePerKwh: 0.3700, grundpreis: 140 };
 }
 
 function estimateConsumption(rooms: number, persons: number): number {
-  // Base by rooms
-  const baseByRooms: Record<number, number> = {
-    1: 1500, 2: 2000, 3: 2500, 4: 3500, 5: 4000,
-  };
+  const baseByRooms: Record<number, number> = { 1: 1500, 2: 2000, 3: 2500, 4: 3500, 5: 4000 };
   const base = baseByRooms[Math.min(rooms, 5)] ?? 3500;
-  // Adjust by persons
-  const personFactor: Record<number, number> = {
-    1: 0.8, 2: 1.0, 3: 1.2, 4: 1.4, 5: 1.6,
-  };
+  const personFactor: Record<number, number> = { 1: 0.8, 2: 1.0, 3: 1.2, 4: 1.4, 5: 1.6 };
   const factor = personFactor[Math.min(persons, 5)] ?? 1.0;
   return Math.round(base * factor);
+}
+
+function getTodayFormatted(): string {
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2, '0');
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const y = now.getFullYear();
+  return `${d}.${m}.${y}`;
+}
+
+function getTodayISO(): string {
+  return new Date().toISOString().split('T')[0];
 }
 
 export const Step14Utility = () => {
   const { data, resetData } = useHandover();
   const { cancellationTarget, isMoveIn, isSale } = useTransactionLabels();
-  const showCheck24 = isMoveIn || isSale; // Check24 for move-in and sale (new occupant)
-  const showCancellation = !isMoveIn && !isSale; // Cancellation only for rental move-out
+  const isMoveOut = data.handoverDirection === 'move-out';
+  const isLandlord = data.role === 'landlord';
+  const isTenant = data.role === 'tenant';
+
   const [cancellation, setCancellation] = useState(false);
   const [dsgvoConsent, setDsgvoConsent] = useState(false);
   const [manualKwhEdit, setManualKwhEdit] = useState(false);
   const [manualKwh, setManualKwh] = useState<number | null>(null);
   const { toast } = useToast();
 
-  // Room count from context
   const roomCount = data.rooms.length || 2;
   const [persons, setPersons] = useState(2);
-
-  // Meter data
   const stromMeter = data.meterReadings.find(m => m.medium === 'Strom');
-
-  // PLZ & Grundversorger
   const plz = extractPlz(data.propertyAddress);
   const grundversorger = lookupGrundversorger(plz);
 
-  // Estimated consumption (heuristic or manual override)
-  const heuristicKwh = useMemo(
-    () => estimateConsumption(roomCount, persons),
-    [roomCount, persons]
-  );
+  const heuristicKwh = useMemo(() => estimateConsumption(roomCount, persons), [roomCount, persons]);
   const estimatedKwh = manualKwh ?? heuristicKwh;
 
-  // Price calculations
   const grundversorgerJahr = grundversorger
     ? Math.round(grundversorger.grundpreis + estimatedKwh * grundversorger.pricePerKwh)
     : 0;
   const check24Jahr = Math.round(CHECK24_BEST_GRUNDPREIS + estimatedKwh * CHECK24_BEST_PRICE_PER_KWH);
   const ersparnis = grundversorgerJahr - check24Jahr;
 
-  // Check24 deep link with affiliate
+  // Deposit amount from context
+  const depositAmount = parseFloat(data.depositAmount) || 0;
+  const propertyShort = data.propertyAddress
+    ? data.propertyAddress.split(',')[0].trim()
+    : 'Ihr Objekt';
+
+  // Today's date as moving date (automatic handover date)
+  const todayFormatted = getTodayFormatted();
+  const todayISO = getTodayISO();
+
+  // Context-aware headline & subtitle
+  const headline = isMoveOut
+    ? 'Dein Umzugs-Finale & Neustart-Service'
+    : 'Umzugs-Vorteile & Anmelde-Service';
+
+  const subtitle = isMoveOut
+    ? (isTenant
+        ? 'Sichere dir dein gratis Protokoll und ziehe mit deinem Strom/DSL einfach an die neue Adresse um.'
+        : `Objekt ${propertyShort} jetzt für den Leerstand absichern (Rechtsschutz & Gebäudecheck).`)
+    : 'Versorger wechseln & sparen – basierend auf Ihren Objektdaten';
+
+  // Show Check24 for move-in / sale (new occupant)
+  const showCheck24 = isMoveIn || isSale;
+  // Show cancellation for rental move-out
+  const showCancellation = isMoveOut && !isSale;
+  // Show deposit trigger for move-out tenant
+  const showDepositTrigger = isMoveOut && isTenant && depositAmount > 0;
+  // Show landlord vacancy card for move-out landlord
+  const showLandlordVacancy = isMoveOut && isLandlord;
+  // Show move-out tenant utility transfer card
+  const showMoveOutUtility = isMoveOut && isTenant;
+
   const buildCheck24Link = () => {
     const params = new URLSearchParams({
       zipcode: plz || '10115',
@@ -112,19 +139,10 @@ export const Step14Utility = () => {
       affiliate_id: CHECK24_AFFILIATE_ID,
     });
     if (stromMeter?.meterNumber) params.set('meterNumber', stromMeter.meterNumber);
-    // Format moving date as DD.MM.YYYY
-    const rawDate = data.contractEnd || new Date().toISOString().split('T')[0];
-    const [y, m, d] = rawDate.split('-');
-    const movingDate = d && m && y ? `${d}.${m}.${y}` : rawDate;
-    params.set('movingDate', movingDate);
+    // Use today's date as moving date
+    params.set('movingDate', todayFormatted);
     return `https://www.check24.de/strom/vergleich/?${params.toString()}`;
   };
-
-  const movingDateFormatted = (() => {
-    const rawDate = data.contractEnd || new Date().toISOString().split('T')[0];
-    const [y, m, d] = rawDate.split('-');
-    return d && m && y ? `${d}.${m}.${y}` : rawDate;
-  })();
 
   const handleCancellation = () => {
     setCancellation(true);
@@ -138,15 +156,116 @@ export const Step14Utility = () => {
     <TooltipProvider>
       <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
         <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-2 text-center">
-          Umzugs-Vorteile & Anmelde-Service
+          {headline}
         </motion.h2>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-muted-foreground text-center mb-6 text-sm">
-          Versorger wechseln & sparen – basierend auf Ihren Objektdaten
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-muted-foreground text-center mb-6 text-sm max-w-md">
+          {subtitle}
         </motion.p>
 
         <div className="w-full max-w-md space-y-4">
 
-          {/* ── Verbrauchsschätzung (only for move-in / sale) ── */}
+          {/* ── Move-Out: Tenant Utility Transfer ── */}
+          {showMoveOutUtility && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className="glass-card rounded-2xl p-5 border-2 border-primary/20"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Strom & DSL mitnehmen</h3>
+                  <p className="text-xs text-muted-foreground">An die neue Adresse umziehen</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Melde deinen bestehenden Strom- und Internetvertrag einfach auf deine neue Adresse um – oder sichere dir einen günstigeren Tarif.
+              </p>
+              {data.nextAddress && (
+                <div className="bg-primary/5 rounded-xl p-2.5 mb-3 flex items-center gap-2">
+                  <Home className="w-4 h-4 text-primary shrink-0" />
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">Neue Adresse: </span>
+                    <span className="font-medium">{data.nextAddress}</span>
+                  </div>
+                </div>
+              )}
+              <div className="bg-muted/40 rounded-xl p-2.5 mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+                <Info className="w-4 h-4 shrink-0" />
+                Umzugsdatum: <span className="font-semibold text-foreground">{todayFormatted}</span> (Übergabetag)
+              </div>
+              <div className="flex gap-2">
+                <Button asChild variant="outline" className="flex-1 rounded-xl gap-1.5 text-xs h-10">
+                  <a href={buildCheck24Link()} target="_blank" rel="noopener noreferrer">
+                    <Zap className="w-4 h-4" />
+                    Neuer Stromtarif
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </Button>
+                <Button variant="outline" className="flex-1 rounded-xl gap-1.5 text-xs h-10" disabled>
+                  <Wifi className="w-4 h-4" />
+                  DSL umziehen
+                  <span className="text-[9px] text-muted-foreground">(bald)</span>
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Move-Out: Kautions-Trigger (Tenant) ── */}
+          {showDepositTrigger && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+              className="glass-card rounded-2xl p-5 border-2 border-amber-400/30 bg-gradient-to-br from-amber-500/5 to-transparent"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Kautionsschutz</h3>
+                  <p className="text-xs text-muted-foreground">Sofort-Auszahlung deiner Kaution</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Warte nicht auf dein Geld. Sichere dir deine Kaution von <span className="font-bold text-foreground">{depositAmount.toLocaleString('de-DE')} €</span> sofort über unseren Partner-Kautionsschutz.
+              </p>
+              <div className="bg-amber-500/10 rounded-xl p-3 mb-3 text-center">
+                <p className="text-xs text-muted-foreground mb-0.5">Kautionshöhe laut Vertrag</p>
+                <p className="text-xl font-bold text-amber-600">{depositAmount.toLocaleString('de-DE')} €</p>
+              </div>
+              <Button variant="outline" className="w-full rounded-xl gap-2 border-amber-400/50 hover:bg-amber-500/10" disabled>
+                <ShieldCheck className="w-4 h-4" />
+                Kaution sofort sichern
+                <span className="text-[9px] text-muted-foreground">(bald verfügbar)</span>
+              </Button>
+            </motion.div>
+          )}
+
+          {/* ── Move-Out: Landlord Vacancy Protection ── */}
+          {showLandlordVacancy && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+              className="glass-card rounded-2xl p-5 border-2 border-blue-400/30 bg-gradient-to-br from-blue-500/5 to-transparent"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Leerstandsschutz</h3>
+                  <p className="text-xs text-muted-foreground">{propertyShort} absichern</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Schützen Sie Ihr Objekt während des Leerstands: Rechtsschutz, Gebäudecheck und Vermittlungsservice für die Neuvermietung.
+              </p>
+              <Button variant="outline" className="w-full rounded-xl gap-2 border-blue-400/50 hover:bg-blue-500/10" disabled>
+                <Building2 className="w-4 h-4" />
+                Leerstandsschutz anfragen
+                <span className="text-[9px] text-muted-foreground">(bald)</span>
+              </Button>
+            </motion.div>
+          )}
+
+          {/* ── Move-In / Sale: Verbrauchsschätzung & Check24 ── */}
           {showCheck24 && (<>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
             className="glass-card rounded-2xl p-5"
@@ -162,11 +281,6 @@ export const Step14Utility = () => {
                 </TooltipTrigger>
                 <TooltipContent side="left" className="max-w-[260px] text-xs">
                   Schätzung basiert auf {roomCount} Zimmer{roomCount !== 1 ? 'n' : ''} / {persons} Person{persons !== 1 ? 'en' : ''}.
-                  {stromMeter && (
-                    <span className="block mt-1">
-                      Der Zählerstand ({stromMeter.reading} kWh) dient lediglich der Schlussabrechnung mit dem Altversorger.
-                    </span>
-                  )}
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -177,13 +291,7 @@ export const Step14Utility = () => {
                   <label className="text-xs text-muted-foreground">Personenanzahl</label>
                   <span className="text-sm font-semibold">{persons} Person{persons !== 1 ? 'en' : ''}</span>
                 </div>
-                <Slider
-                  value={[persons]}
-                  onValueChange={([v]) => setPersons(v)}
-                  min={1}
-                  max={5}
-                  step={1}
-                />
+                <Slider value={[persons]} onValueChange={([v]) => setPersons(v)} min={1} max={5} step={1} />
               </div>
 
               <div className="bg-primary/10 rounded-xl p-3 flex items-center justify-between">
@@ -237,14 +345,11 @@ export const Step14Utility = () => {
               </div>
             </div>
 
-            {/* Grundversorger info */}
             {grundversorger && (
               <div className="bg-background/60 rounded-xl p-3 mb-3 flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
                 <div className="text-xs">
-                  <p className="text-muted-foreground">
-                    Ihr Grundversorger{plz ? ` (PLZ ${plz})` : ''}
-                  </p>
+                  <p className="text-muted-foreground">Ihr Grundversorger{plz ? ` (PLZ ${plz})` : ''}</p>
                   <p className="font-semibold">{grundversorger.name}</p>
                 </div>
               </div>
@@ -266,7 +371,6 @@ export const Step14Utility = () => {
               </div>
             </div>
 
-            {/* Ersparnis highlight */}
             <div className="bg-success/15 rounded-xl p-3 mb-4 text-center">
               <div className="flex items-center justify-center gap-1.5 mb-1">
                 <Euro className="w-4 h-4 text-success" />
@@ -278,7 +382,6 @@ export const Step14Utility = () => {
               </p>
             </div>
 
-            {/* DSGVO Consent */}
             <div className="flex items-start gap-2.5 mb-3">
               <Checkbox
                 id="dsgvo-check24"
@@ -292,7 +395,6 @@ export const Step14Utility = () => {
               </label>
             </div>
 
-            {/* Check24 CTA */}
             {dsgvoConsent ? (
               <Button
                 asChild
@@ -306,11 +408,7 @@ export const Step14Utility = () => {
                 </a>
               </Button>
             ) : (
-              <Button
-                disabled
-                className="w-full h-12 rounded-2xl font-semibold gap-2"
-                size="lg"
-              >
+              <Button disabled className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
                 <Zap className="w-5 h-5" />
                 Kostenfreie Ersparnis sichern & anmelden
                 <ExternalLink className="w-4 h-4" />
@@ -318,7 +416,7 @@ export const Step14Utility = () => {
             )}
 
             <p className="text-[10px] text-muted-foreground text-center mt-2">
-              PLZ {plz || '–'} · {estimatedKwh.toLocaleString('de-DE')} kWh · Zähler: {stromMeter?.meterNumber || '–'} · Umzug: {movingDateFormatted}
+              PLZ {plz || '–'} · {estimatedKwh.toLocaleString('de-DE')} kWh · Zähler: {stromMeter?.meterNumber || '–'} · Umzug: {todayFormatted}
             </p>
           </motion.div>
           </>)}
@@ -356,7 +454,7 @@ export const Step14Utility = () => {
             <PartyPopper className="w-10 h-10 text-primary mx-auto mb-3" />
             <h3 className="text-lg font-bold mb-1">Übergabe abgeschlossen!</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Alle 13 Schritte wurden erfolgreich durchlaufen. Ihr EstateTurn-Zertifikat ist rechtssicher erstellt.
+              Alle Schritte wurden erfolgreich durchlaufen. Ihr EstateTurn-Zertifikat ist rechtssicher erstellt.
             </p>
             <Button variant="outline" onClick={resetData} className="rounded-xl gap-2">
               Neue Übergabe starten
