@@ -138,8 +138,13 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
         propertyAddress: 'propertyAddress',
         landlordName: 'landlordName',
         landlordEmail: 'landlordEmail',
+        landlordPhone: 'landlordPhone',
+        landlordBirthday: 'landlordBirthday',
         tenantName: 'tenantName',
         tenantEmail: 'tenantEmail',
+        tenantPhone: 'tenantPhone',
+        tenantBirthday: 'tenantBirthday',
+        priorAddress: 'priorAddress',
         depositAmount: 'depositAmount',
         coldRent: 'coldRent',
         nkAdvancePayment: 'nkAdvancePayment',
@@ -149,7 +154,14 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
         contractStart: 'contractStart',
         contractEnd: 'contractEnd',
         contractDuration: 'contractDuration',
+        contractType: 'contractType',
+        contractSigningDate: 'contractSigningDate',
         depositLegalCheck: 'depositLegalCheck',
+        depositLegalStatus: 'depositLegalStatus',
+        smallRepairAnalysis: 'smallRepairAnalysis',
+        smallRepairStatus: 'smallRepairStatus',
+        endRenovationAnalysis: 'endRenovationAnalysis',
+        endRenovationStatus: 'endRenovationStatus',
         renovationClauseAnalysis: 'renovationClauseAnalysis',
         preDamages: 'preDamages',
       };
@@ -211,10 +223,17 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     if (docStep.id === 'main-contract') {
       add('propertyAddress', 'Objektadresse', 'propertyAddress');
       add('landlordName', isSale ? 'Verkäufer' : 'Vermieter', 'landlordName');
+      add('landlordPhone', `Mobilnummer ${isSale ? 'Verkäufer' : 'Vermieter'}`, 'landlordPhone');
+      add('landlordBirthday', `Geburtstag ${isSale ? 'Verkäufer' : 'Vermieter'}`, 'landlordBirthday');
       add('tenantName', isSale ? 'Käufer' : 'Mieter', 'tenantName');
+      add('tenantPhone', `Mobilnummer ${isSale ? 'Käufer' : 'Mieter'}`, 'tenantPhone');
+      add('tenantBirthday', `Geburtstag ${isSale ? 'Käufer' : 'Mieter'}`, 'tenantBirthday');
+      add('priorAddress', 'Voranschrift', 'priorAddress');
       add('roomCount', 'Anzahl Zimmer', 'roomCount');
       add('contractStart', isSale ? 'Übergabedatum' : 'Vertragsbeginn', 'contractStart', { required: true });
       add('contractDuration', 'Befristung', 'contractDuration');
+      add('contractType', 'Vertragsart', 'contractType');
+      add('contractSigningDate', 'Vertragsunterzeichnung', 'contractSigningDate');
       add('coldRent', 'Kaltmiete (€)', 'coldRent', { required: true });
       add('nkAdvancePayment', 'Betriebskostenvorauszahlung (€)', 'nkAdvancePayment');
       add('heatingCosts', 'Heiz-/Warmwasserkosten (€)', 'heatingCosts');
@@ -237,12 +256,19 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     if (!analysisResult) return [];
     const warnings: { type: 'error' | 'warning' | 'info'; text: string }[] = [];
     if (analysisResult.depositLegalCheck) {
-      const isWarning = analysisResult.depositLegalCheck.includes('⚠️') || analysisResult.depositLegalCheck.toLowerCase().includes('warnung');
-      warnings.push({ type: isWarning ? 'error' : 'info', text: `§ 551 BGB Kautionsprüfung: ${analysisResult.depositLegalCheck.replace('⚠️ WARNUNG: ', '')}` });
+      const status = analysisResult.depositLegalStatus;
+      const type = status === 'invalid' ? 'error' : status === 'warning' ? 'warning' : 'info';
+      warnings.push({ type, text: `§ 551 BGB Kaution: ${analysisResult.depositLegalCheck}` });
     }
-    if (analysisResult.renovationClauseAnalysis) {
-      const isWarning = analysisResult.renovationClauseAnalysis.includes('⚠️') || analysisResult.renovationClauseAnalysis.toLowerCase().includes('warnung');
-      warnings.push({ type: isWarning ? 'warning' : 'info', text: `Klausel-Check: ${analysisResult.renovationClauseAnalysis.replace('⚠️ WARNUNG: ', '')}` });
+    if (analysisResult.smallRepairAnalysis) {
+      const status = analysisResult.smallRepairStatus;
+      const type = status === 'invalid' ? 'error' : status === 'warning' ? 'warning' : 'info';
+      warnings.push({ type, text: `Kleinreparaturen: ${analysisResult.smallRepairAnalysis}` });
+    }
+    if (analysisResult.endRenovationAnalysis) {
+      const status = analysisResult.endRenovationStatus;
+      const type = status === 'invalid' ? 'error' : status === 'warning' ? 'warning' : 'info';
+      warnings.push({ type, text: `Endrenovierung: ${analysisResult.endRenovationAnalysis}` });
     }
     return warnings;
   };
