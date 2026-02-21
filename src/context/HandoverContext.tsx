@@ -86,8 +86,12 @@ export interface HandoverData {
   depositAmount: string;
   contractStart: string;
   contractEnd: string;
+  contractDuration: string;
   coldRent: string;
   nkAdvancePayment: string;
+  heatingCosts: string;
+  totalRent: string;
+  roomCount: string;
   preDamages: string;
   // AI analysis results
   depositLegalCheck: string;
@@ -140,6 +144,10 @@ const defaultData: HandoverData = {
   depositAmount: '',
   coldRent: '',
   nkAdvancePayment: '',
+  heatingCosts: '',
+  totalRent: '',
+  roomCount: '',
+  contractDuration: '',
   preDamages: '',
   contractStart: '',
   contractEnd: '',

@@ -9,6 +9,7 @@ import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { DocumentAnalysisProgress } from './DocumentAnalysisProgress';
 import { AnalysisSummaryCard } from './AnalysisSummaryCard';
+import type { SummaryField } from './AnalysisSummaryCard';
 import { DocumentScanner } from './DocumentScanner';
 import type { DocStep, PagePhoto, InputMode } from './types';
 
@@ -37,17 +38,20 @@ const getManualFields = (docType: string, isSale: boolean, ownerRole: string, cl
       { key: 'landlordEmail', label: `E-Mail ${ownerRole}`, placeholder: 'email@beispiel.de', type: 'email' },
       { key: 'tenantName', label: clientRole, placeholder: `Name des ${clientRole}s` },
       { key: 'tenantEmail', label: `E-Mail ${clientRole}`, placeholder: 'email@beispiel.de', type: 'email' },
-      { key: 'coldRent', label: isSale ? 'Kaufpreis (€)' : 'Kaltmiete (€)', placeholder: '0.00' },
-      { key: 'nkAdvancePayment', label: 'NK-Vorauszahlung (€)', placeholder: '0.00' },
-      { key: 'depositAmount', label: isSale ? 'Kaufpreisrestbetrag (€)' : 'Kaution (€)', placeholder: '0.00' },
-      { key: 'contractStart', label: isSale ? 'Übergabedatum' : 'Vertragsbeginn', placeholder: 'TT.MM.JJJJ' },
-      { key: 'contractEnd', label: isSale ? 'Stichtag' : 'Vertragsende', placeholder: 'TT.MM.JJJJ oder unbefristet' },
+      { key: 'roomCount', label: 'Anzahl Zimmer', placeholder: 'z.B. 3' },
+      { key: 'contractStart', label: isSale ? 'Übergabedatum' : 'Vertragsbeginn', placeholder: 'TT.MM.JJJJ', required: true },
+      { key: 'contractDuration', label: 'Befristung', placeholder: 'unbefristet oder TT.MM.JJJJ' },
+      { key: 'coldRent', label: isSale ? 'Kaufpreis (€)' : 'Kaltmiete (€)', placeholder: '0.00', required: true },
+      { key: 'nkAdvancePayment', label: 'Betriebskostenvorauszahlung (€)', placeholder: '0.00' },
+      { key: 'heatingCosts', label: 'Heiz-/Warmwasserkosten (€)', placeholder: '0.00' },
+      { key: 'depositAmount', label: isSale ? 'Kaufpreisrestbetrag (€)' : 'Kaution (€)', placeholder: '0.00', required: true },
     ];
   }
   if (docType === 'amendment') {
     return [
       { key: 'coldRent', label: 'Neue Kaltmiete (€)', placeholder: '0.00' },
-      { key: 'nkAdvancePayment', label: 'Neue NK-Vorauszahlung (€)', placeholder: '0.00' },
+      { key: 'nkAdvancePayment', label: 'Neue Betriebskostenvorauszahlung (€)', placeholder: '0.00' },
+      { key: 'heatingCosts', label: 'Neue Heiz-/Warmwasserkosten (€)', placeholder: '0.00' },
     ];
   }
   if (docType === 'handover-protocol') {
@@ -58,6 +62,7 @@ const getManualFields = (docType: string, isSale: boolean, ownerRole: string, cl
   if (docType === 'utility-bill') {
     return [
       { key: 'nkAdvancePayment', label: 'Monatl. Vorauszahlung (€)', placeholder: '0.00' },
+      { key: 'heatingCosts', label: 'Heizkosten-Anteil (€)', placeholder: '0.00' },
     ];
   }
   return [];
@@ -138,8 +143,12 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
         depositAmount: 'depositAmount',
         coldRent: 'coldRent',
         nkAdvancePayment: 'nkAdvancePayment',
+        heatingCosts: 'heatingCosts',
+        totalRent: 'totalRent',
+        roomCount: 'roomCount',
         contractStart: 'contractStart',
         contractEnd: 'contractEnd',
+        contractDuration: 'contractDuration',
         depositLegalCheck: 'depositLegalCheck',
         renovationClauseAnalysis: 'renovationClauseAnalysis',
         preDamages: 'preDamages',
@@ -184,29 +193,58 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     onDone();
   };
 
-  const getSummaryFields = () => {
+  const getSummaryFields = (): SummaryField[] => {
     if (!analysisResult) return [];
-    const fields: { key: string; label: string; value: string; onUpdate: (v: string) => void }[] = [];
-    const add = (key: string, label: string, dataKey: keyof typeof data) => {
+    const confidence = analysisResult.confidence || {};
+    const fields: SummaryField[] = [];
+    const add = (key: string, label: string, dataKey: keyof typeof data, opts?: { required?: boolean }) => {
       const val = (analysisResult[key] || (data[dataKey] as string) || '').toString();
-      if (val) fields.push({ key, label, value: val, onUpdate: (v: string) => updateData({ [dataKey]: v } as any) });
+      fields.push({
+        key,
+        label,
+        value: val,
+        required: opts?.required,
+        confidence: confidence[key] as 'high' | 'medium' | 'low' | undefined,
+        onUpdate: (v: string) => updateData({ [dataKey]: v } as any),
+      });
     };
     if (docStep.id === 'main-contract') {
       add('propertyAddress', 'Objektadresse', 'propertyAddress');
       add('landlordName', isSale ? 'Verkäufer' : 'Vermieter', 'landlordName');
       add('tenantName', isSale ? 'Käufer' : 'Mieter', 'tenantName');
-      add('coldRent', 'Kaltmiete', 'coldRent');
-      add('nkAdvancePayment', 'NK-Vorauszahlung', 'nkAdvancePayment');
-      add('depositAmount', isSale ? 'Kaufpreis' : 'Kaution', 'depositAmount');
+      add('roomCount', 'Anzahl Zimmer', 'roomCount');
+      add('contractStart', isSale ? 'Übergabedatum' : 'Vertragsbeginn', 'contractStart', { required: true });
+      add('contractDuration', 'Befristung', 'contractDuration');
+      add('coldRent', 'Kaltmiete (€)', 'coldRent', { required: true });
+      add('nkAdvancePayment', 'Betriebskostenvorauszahlung (€)', 'nkAdvancePayment');
+      add('heatingCosts', 'Heiz-/Warmwasserkosten (€)', 'heatingCosts');
+      add('totalRent', 'Gesamtmiete (€)', 'totalRent');
+      add('depositAmount', isSale ? 'Kaufpreis (€)' : 'Kaution (€)', 'depositAmount', { required: true });
     } else if (docStep.id === 'amendment') {
       add('coldRent', 'Neue Kaltmiete', 'coldRent');
-      add('nkAdvancePayment', 'Neue NK-Vorauszahlung', 'nkAdvancePayment');
+      add('nkAdvancePayment', 'Neue Betriebskostenvorauszahlung', 'nkAdvancePayment');
+      add('heatingCosts', 'Neue Heiz-/Warmwasserkosten', 'heatingCosts');
     } else if (docStep.id === 'handover-protocol') {
       add('preDamages', 'Vorschäden', 'preDamages');
     } else if (docStep.id === 'utility-bill') {
       add('nkAdvancePayment', 'Monatl. Vorauszahlung', 'nkAdvancePayment');
+      add('heatingCosts', 'Heizkosten-Anteil', 'heatingCosts');
     }
     return fields;
+  };
+
+  const getLegalWarnings = () => {
+    if (!analysisResult) return [];
+    const warnings: { type: 'error' | 'warning' | 'info'; text: string }[] = [];
+    if (analysisResult.depositLegalCheck) {
+      const isWarning = analysisResult.depositLegalCheck.includes('⚠️') || analysisResult.depositLegalCheck.toLowerCase().includes('warnung');
+      warnings.push({ type: isWarning ? 'error' : 'info', text: `§ 551 BGB Kautionsprüfung: ${analysisResult.depositLegalCheck.replace('⚠️ WARNUNG: ', '')}` });
+    }
+    if (analysisResult.renovationClauseAnalysis) {
+      const isWarning = analysisResult.renovationClauseAnalysis.includes('⚠️') || analysisResult.renovationClauseAnalysis.toLowerCase().includes('warnung');
+      warnings.push({ type: isWarning ? 'warning' : 'info', text: `Klausel-Check: ${analysisResult.renovationClauseAnalysis.replace('⚠️ WARNUNG: ', '')}` });
+    }
+    return warnings;
   };
 
   // ── Manual input form ──────────────────────────────────────────────────
@@ -275,6 +313,7 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
           docType={docStep.id}
           fields={getSummaryFields()}
           analysisSummary={analysisResult._summary}
+          legalWarnings={getLegalWarnings()}
           onContinue={onDone}
         />
       </div>
