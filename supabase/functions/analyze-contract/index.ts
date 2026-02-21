@@ -15,7 +15,6 @@ serve(async (req) => {
     const transactionType = formData.get('transactionType') as string || 'rental';
     const documentType = formData.get('documentType') as string || 'main-contract';
 
-    // Support multiple files (multi-page)
     const files: File[] = [];
     let i = 0;
     while (true) {
@@ -46,7 +45,6 @@ serve(async (req) => {
 
     const isSale = transactionType === 'sale';
 
-    // Helper: chunked base64 encoding
     function uint8ToBase64(bytes: Uint8Array): string {
       let binary = '';
       const chunkSize = 8192;
@@ -57,7 +55,6 @@ serve(async (req) => {
       return btoa(binary);
     }
 
-    // Build image content parts for OpenAI-compatible API
     const imageParts: any[] = [];
     const maxPages = Math.min(files.length, 5);
 
@@ -72,7 +69,6 @@ serve(async (req) => {
       });
     }
 
-    // Build tailored prompt based on document type
     let docTypeLabel = '';
     let extraFields = '';
 
@@ -84,36 +80,44 @@ serve(async (req) => {
 - "landlordEmail": E-Mail ${isSale ? 'des Verkäufers' : 'des Vermieters'} (falls vorhanden, sonst "")
 - "tenantName": Name ${isSale ? 'des Käufers' : 'des Mieters'}
 - "tenantEmail": E-Mail ${isSale ? 'des Käufers' : 'des Mieters'} (falls vorhanden, sonst "")
+- "roomCount": Anzahl der Zimmer der Wohnung/des Objekts als Zahl (z.B. "3"). Falls nicht erkennbar, "".
+- "contractStart": Mietvertragsbeginn / Übergabedatum im Format TT.MM.JJJJ
+- "contractDuration": "unbefristet" wenn unbefristet, oder das Enddatum im Format TT.MM.JJJJ wenn befristet
+- "coldRent": Aktuelle Nettokaltmiete in Euro als Zahl (nur die Zahl, z.B. "800")
+- "nkAdvancePayment": Betriebskostenvorauszahlung in Euro als Zahl (ohne Heizkosten, z.B. "150")
+- "heatingCosts": Heiz- und Warmwasserkosten-Vorauszahlung in Euro als Zahl (z.B. "80"). Falls nicht separat ausgewiesen, "".
 - "depositAmount": ${isSale ? 'Kaufpreis' : 'Kautionshöhe'} als Zahl in Euro (nur die Zahl, z.B. "2400")
-- "coldRent": Aktuelle Kaltmiete in Euro als Zahl (nur bei Mietvertrag, sonst "")
-- "nkAdvancePayment": Aktuelle Nebenkostenvorauszahlung in Euro als Zahl (nur bei Mietvertrag, sonst "")
-- "contractStart": Vertragsbeginn im Format YYYY-MM-DD
-- "contractEnd": Vertragsende im Format YYYY-MM-DD (falls unbefristet, dann "")
-- "depositLegalCheck": Prüfung der ${isSale ? 'Zahlungsbedingungen' : 'Kaution gegen § 551 BGB'} - ist die Höhe zulässig? Max. 3 Nettokaltmieten bei Mietvertrag. Kurze Bewertung in 1-2 Sätzen.
-- "renovationClauseAnalysis": Analyse der Schönheitsreparaturklauseln nach aktueller BGH-Rechtsprechung. Sind starre Fristen enthalten? Ist die Klausel wirksam? Kurze Bewertung in 1-2 Sätzen.`;
+- "depositLegalCheck": Prüfe die ${isSale ? 'Zahlungsbedingungen' : 'Kaution gegen § 551 Abs. 1 BGB'}. ${isSale ? '' : 'Ist die Kaution höher als 3 Nettokaltmieten? Berechne: 3 × Kaltmiete und vergleiche mit der Kaution.'} Kurze Bewertung in 1-2 Sätzen. Falls die Kaution die Grenze überschreitet, beginne mit "⚠️ WARNUNG:".
+- "renovationClauseAnalysis": Suche im Vertragstext nach Schönheitsreparatur- und Kleinreparaturklauseln. Prüfe: Enthalten sie starre Fristenregelungen (z.B. "alle 3 Jahre Küche, alle 5 Jahre Bad")? Falls ja, sind diese nach BGH VIII ZR 308/02 unwirksam. Enthalten sie eine Kleinreparaturklausel mit Obergrenze > 120€ je Einzelfall oder > 8% der Jahresmiete? Kurze Bewertung in 1-2 Sätzen. Bei Problemen beginne mit "⚠️ WARNUNG:".
+- "confidence": Ein JSON-Objekt mit Feldnamen als Keys und Werten "high", "medium" oder "low" je nachdem, wie sicher die Extraktion war. Z.B. {"coldRent": "high", "roomCount": "low"}`;
     } else if (documentType === 'amendment') {
       docTypeLabel = 'Miet-Nachtrag / Änderungsvereinbarung';
       extraFields = `
 - "coldRent": Neue/aktuelle Kaltmiete in Euro als Zahl (falls geändert, sonst "")
 - "nkAdvancePayment": Neue Nebenkostenvorauszahlung in Euro als Zahl (falls geändert, sonst "")
-- "contractStart": Datum des Nachtrags im Format YYYY-MM-DD
-- "amendmentSummary": Kurze Zusammenfassung der wesentlichen Änderungen in 1-2 Sätzen`;
+- "heatingCosts": Neue Heiz-/Warmwasserkosten in Euro als Zahl (falls geändert, sonst "")
+- "contractStart": Datum des Nachtrags im Format TT.MM.JJJJ
+- "amendmentSummary": Kurze Zusammenfassung der wesentlichen Änderungen in 1-2 Sätzen
+- "confidence": Ein JSON-Objekt mit Feldnamen als Keys und Werten "high", "medium" oder "low"`;
     } else if (documentType === 'handover-protocol') {
       docTypeLabel = 'Übergabeprotokoll / Einzugsprotokoll';
       extraFields = `
 - "propertyAddress": Objektadresse falls erkennbar, sonst ""
 - "preDamages": Auflistung aller im Protokoll vermerkten Vorschäden und Mängel. Jeder Eintrag mit Raum und Beschreibung, kommagetrennt. Falls keine vorhanden: ""
-- "contractStart": Datum des Protokolls im Format YYYY-MM-DD
-- "protocolSummary": Kurze Zusammenfassung des Zustands der Wohnung in 1-2 Sätzen`;
+- "contractStart": Datum des Protokolls im Format TT.MM.JJJJ
+- "protocolSummary": Kurze Zusammenfassung des Zustands der Wohnung in 1-2 Sätzen
+- "confidence": Ein JSON-Objekt mit Feldnamen als Keys und Werten "high", "medium" oder "low"`;
     } else if (documentType === 'utility-bill') {
       docTypeLabel = 'Nebenkostenabrechnung';
       extraFields = `
 - "nkAdvancePayment": Bisher geleistete Vorauszahlungen pro Monat in Euro als Zahl (falls erkennbar)
+- "heatingCosts": Heizkosten-Anteil pro Monat in Euro als Zahl (falls separat erkennbar, sonst "")
 - "nkTotal": Gesamte NK-Kosten des Abrechnungsjahres in Euro als Zahl
 - "nkBalance": Nachzahlungsbetrag (positiv) oder Guthaben (negativ) in Euro als Zahl
-- "contractStart": Abrechnungszeitraum Beginn im Format YYYY-MM-DD
-- "contractEnd": Abrechnungszeitraum Ende im Format YYYY-MM-DD
-- "billSummary": Kurze Bewertung des Puffers - ist die aktuelle Vorauszahlung ausreichend? 1-2 Sätze.`;
+- "contractStart": Abrechnungszeitraum Beginn im Format TT.MM.JJJJ
+- "contractEnd": Abrechnungszeitraum Ende im Format TT.MM.JJJJ
+- "billSummary": Kurze Bewertung des Puffers - ist die aktuelle Vorauszahlung ausreichend? 1-2 Sätze.
+- "confidence": Ein JSON-Objekt mit Feldnamen als Keys und Werten "high", "medium" oder "low"`;
     }
 
     const prompt = `Du bist ein deutscher Immobilienrechtsexperte und Gutachter.
@@ -125,7 +129,9 @@ ${extraFields}
 WICHTIG: 
 - Antworte NUR mit validem JSON, keine Erklärungen davor oder danach.
 - Felder, die nicht gefunden werden, mit leerem String "" befüllen, nicht weglassen.
-- Zahlen ohne Währungssymbol, nur die Zahl (z.B. "1250" nicht "1.250 €").`;
+- Zahlen ohne Währungssymbol, nur die Zahl (z.B. "1250" nicht "1.250 €").
+- Datumsformat immer TT.MM.JJJJ (z.B. "01.01.2024").
+- Das "confidence"-Objekt MUSS für jedes extrahierte Feld einen Eintrag haben.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -188,6 +194,18 @@ WICHTIG:
         JSON.stringify({ error: 'KI-Antwort konnte nicht verarbeitet werden', raw: textContent }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Compute totalRent if we have the component parts
+    if (documentType === 'main-contract') {
+      const cold = parseFloat(parsedData.coldRent) || 0;
+      const nk = parseFloat(parsedData.nkAdvancePayment) || 0;
+      const heating = parseFloat(parsedData.heatingCosts) || 0;
+      if (cold > 0) {
+        parsedData.totalRent = String(cold + nk + heating);
+      } else {
+        parsedData.totalRent = '';
+      }
     }
 
     return new Response(
