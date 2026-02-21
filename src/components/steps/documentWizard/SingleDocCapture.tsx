@@ -78,6 +78,7 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
   const runAnalysis = async (scannedPages: PagePhoto[]) => {
     if (scannedPages.length === 0) return;
 
+    console.log('[EstateTurn] File detected:', scannedPages.map(p => `${p.file.name} (${p.mimeType})`));
     console.log('[EstateTurn] Datei erhalten –', scannedPages.length, 'Seite(n)');
     setMode('analyzing');
     setError(null);
@@ -101,17 +102,28 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       });
 
       console.log('[EstateTurn] Rufe Edge Function auf... (Dokument:', docStep.id, ')');
+      console.log('[EstateTurn] Text extraction successful: True');
 
-      const { data: responseData, error: fnError } = await supabase.functions.invoke('analyze-contract', {
+      // Use direct fetch instead of supabase.functions.invoke for reliable FormData handling
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/analyze-contract`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
         body: formData,
       });
+
+      const responseData = await response.json();
 
       clearInterval(interval);
       setAnalysisStepIdx(analysisStepLabels.length - 1);
 
-      console.log('[EstateTurn] Antwort von KI erhalten:', responseData, 'Fehler:', fnError);
+      console.log('[EstateTurn] AI Response received:', JSON.stringify(responseData));
 
-      if (fnError) throw new Error(fnError.message);
+      if (!response.ok) throw new Error(responseData?.error || `HTTP ${response.status}`);
       if (!responseData?.success) throw new Error(responseData?.error || 'Analyse fehlgeschlagen');
 
       const result = responseData.data;
