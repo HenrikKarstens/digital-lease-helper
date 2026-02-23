@@ -148,6 +148,9 @@ export interface HandoverData {
   relettingDate: string;
   // Step 13
   protocolSent: boolean;
+  // Paywall
+  paymentStatus: 'unpaid' | 'paid';
+  serviceCheckStatus: 'none' | 'completed';
 }
 
 const STORAGE_KEY = 'estateturn_draft';
@@ -214,6 +217,8 @@ const defaultData: HandoverData = {
   immediateReletting: false,
   relettingDate: '',
   protocolSent: false,
+  paymentStatus: 'unpaid',
+  serviceCheckStatus: 'none',
 };
 
 interface HandoverContextType {
@@ -280,7 +285,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
     } else {
       const MASTER_ORDER = [
         'hero', 'transaction-type', 'role', 'direction', 'data-check',
-        'floor-plan', 'participants', 'evidence', 'meters', 'keys', 'defect-analysis',
+        'floor-plan', 'participants', 'evidence', 'keys', 'meters', 'defect-analysis',
         'deposit', 'certificate', 'utility'
       ];
       const masterIdx = MASTER_ORDER.indexOf(stepId);
