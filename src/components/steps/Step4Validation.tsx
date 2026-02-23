@@ -12,12 +12,13 @@ import { Step3SmartEntry } from './Step3SmartEntry';
 interface EditableRowProps {
   label: string;
   value: string;
+  sourceRef?: string;
   onSave: (v: string) => void;
   filled: boolean;
   rowId?: string;
 }
 
-const EditableRow = ({ label, value, onSave, filled, rowId }: EditableRowProps) => {
+const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId }: EditableRowProps) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -25,9 +26,17 @@ const EditableRow = ({ label, value, onSave, filled, rowId }: EditableRowProps) 
   const handleCancel = () => { setDraft(value); setEditing(false); };
 
   return (
-    <div id={rowId} className="flex items-center gap-2 py-2.5 border-b border-border/40 last:border-0 scroll-mt-24">
+    <div id={rowId} className="flex items-center gap-2 py-2.5 border-b border-border/40 last:border-0 scroll-mt-48">
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+          {sourceRef && (
+            <span className="text-[9px] text-muted-foreground/60 mb-0.5 flex items-center gap-0.5">
+              <BookOpen className="w-2.5 h-2.5" />
+              {sourceRef}
+            </span>
+          )}
+        </div>
         {editing ? (
           <div className="flex items-center gap-1.5">
             <Input
@@ -92,35 +101,33 @@ const LegalCheckCard = ({ id, title, description, sourceRef, status, isStricken,
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
+    <div
       onClick={handleClick}
-      className={`rounded-2xl p-4 border transition-all ${scrollToField ? 'cursor-pointer hover:shadow-md' : ''} ${isStricken ? 'bg-muted/40 border-border opacity-60' : config.bg}`}
+      className={`rounded-xl p-3 border transition-all ${scrollToField ? 'cursor-pointer hover:shadow-md' : ''} ${isStricken ? 'bg-muted/40 border-border opacity-60' : config.bg}`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2.5">
         <div className={`shrink-0 mt-0.5 ${isStricken ? 'text-muted-foreground' : config.color}`}>
-          <Icon className="w-5 h-5" />
+          <Icon className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1">
-            <h4 className={`text-sm font-semibold ${isStricken ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+          <div className="flex items-center justify-between mb-0.5">
+            <h4 className={`text-xs font-semibold ${isStricken ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
               {title}
             </h4>
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${isStricken ? 'text-muted-foreground' : config.color}`}>
+            <span className={`text-[9px] font-bold uppercase tracking-wider ${isStricken ? 'text-muted-foreground' : config.color}`}>
               {isStricken ? 'Gestrichen' : config.label}
             </span>
           </div>
           {isStricken ? (
-            <p className="text-xs text-muted-foreground italic">Vom Nutzer als gestrichen markiert</p>
+            <p className="text-[10px] text-muted-foreground italic">Vom Nutzer als gestrichen markiert</p>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground leading-relaxed">
+              <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
                 {description || 'Keine Analyse verfügbar.'}
               </p>
               {sourceRef && (
-                <p className="text-[10px] text-muted-foreground/70 mt-1.5 flex items-center gap-1">
-                  <BookOpen className="w-3 h-3" />
+                <p className="text-[9px] text-muted-foreground/70 mt-1 flex items-center gap-1">
+                  <BookOpen className="w-2.5 h-2.5" />
                   Quelle: {sourceRef}
                 </p>
               )}
@@ -128,20 +135,20 @@ const LegalCheckCard = ({ id, title, description, sourceRef, status, isStricken,
           )}
         </div>
       </div>
-      <div className="mt-3 flex justify-end" onClick={e => e.stopPropagation()}>
+      <div className="mt-2 flex justify-end" onClick={e => e.stopPropagation()}>
         <button
           onClick={onToggleStrike}
-          className={`flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors ${
+          className={`flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-lg transition-colors ${
             isStricken
               ? 'bg-primary/10 text-primary hover:bg-primary/20'
               : 'bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary'
           }`}
         >
-          <Strikethrough className="w-3.5 h-3.5" />
-          {isStricken ? 'Wiederherstellen' : 'Gestrichen markieren'}
+          <Strikethrough className="w-3 h-3" />
+          {isStricken ? 'Wiederherstellen' : 'Gestrichen'}
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
@@ -155,6 +162,17 @@ const computeDepositCheck = (coldRent: string, depositAmount: string) => {
     return { status: 'safe' as const, text: `Gesetzliche Grenze (${limit.toLocaleString('de-DE')} €) eingehalten. Kaution beträgt ${deposit.toLocaleString('de-DE')} €.` };
   }
   return { status: 'invalid' as const, text: `Kaution (${deposit.toLocaleString('de-DE')} €) übersteigt die gesetzliche Grenze von 3 Nettokaltmieten (${limit.toLocaleString('de-DE')} €).` };
+};
+
+// ── Source reference mapping for Borchardt contract ─────────────────
+const FIELD_SOURCE_REFS: Record<string, string> = {
+  contractStart: '§ 2 Abs. 1',
+  coldRent: '§ 3 Abs. 1',
+  depositAmount: '§ 6 Abs. 1',
+  nkAdvancePayment: '§ 4',
+  heatingCosts: '§ 4',
+  contractEnd: '§ 2 Abs. 2',
+  contractType: '§ 2',
 };
 
 // ── Main Component ──────────────────────────────────────────────────
@@ -176,7 +194,7 @@ export const Step4Validation = () => {
     updateData({ strickenClauses: updated });
 
     if (updated.includes(clauseId)) {
-      toast.success('Klausel als gestrichen markiert. Die Rechtsanalyse berücksichtigt dies.');
+      toast.success('Klausel als gestrichen markiert.');
     } else {
       toast.info('Klausel wiederhergestellt.');
     }
@@ -229,79 +247,88 @@ export const Step4Validation = () => {
   }
 
   return (
-    <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
-      <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-1 text-center">
-        Check & Confirm
-      </motion.h2>
-      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-muted-foreground text-center mb-5 text-sm">
-        Prüfen Sie die Daten — tippen Sie zum Bearbeiten auf ✎
-      </motion.p>
-
-      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
-        className="mb-4 flex items-center gap-3"
-      >
-        <span className="px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-semibold">
-          {filledCount} / {rows.length} Felder
-        </span>
-        <button
-          onClick={() => setShowScanner(true)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-secondary text-muted-foreground text-xs font-medium hover:text-foreground transition-colors"
-        >
-          <FileText className="w-3.5 h-3.5" />
-          Dokument hinzufügen
-        </button>
+    <div className="min-h-[80vh] flex flex-col items-center px-4 py-4">
+      {/* Compact header */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md mb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">Daten-Check & Rechtsanalyse</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Prüfen, korrigieren & bestätigen
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold">
+              {filledCount}/{rows.length}
+            </span>
+            <button
+              onClick={() => setShowScanner(true)}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-secondary text-muted-foreground text-[11px] font-medium hover:text-foreground transition-colors"
+            >
+              <FileText className="w-3 h-3" />
+              + Dokument
+            </button>
+          </div>
+        </div>
       </motion.div>
 
-      {/* Legal Analysis Cards (header section) */}
+      {/* Sticky Legal Analysis Cards */}
       {hasLegalAnalysis && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="w-full max-w-md mb-5 space-y-3">
-          <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-            <Scale className="w-4 h-4" />
-            KI-Rechtsanalyse
-          </h3>
+        <div className="w-full max-w-md sticky top-0 z-30 pb-3">
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-background/95 backdrop-blur-md rounded-2xl border border-border/50 p-3 shadow-sm space-y-2"
+          >
+            <h3 className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 mb-1">
+              <Scale className="w-3.5 h-3.5" />
+              KI-Rechtsanalyse
+            </h3>
 
-          {(data.depositLegalCheck || dynamicDeposit) && (
-            <LegalCheckCard
-              id="deposit"
-              title="Kaution (§ 551 BGB)"
-              description={dynamicDeposit?.text || data.depositLegalCheck}
-              sourceRef={data.depositSourceRef || '§ 6 Abs. 1 – Kaution'}
-              status={dynamicDeposit?.status || data.depositLegalStatus || ''}
-              isStricken={stricken.includes('deposit')}
-              onToggleStrike={() => toggleClause('deposit')}
-              scrollToField="depositAmount"
-            />
-          )}
+            {(data.depositLegalCheck || dynamicDeposit) && (
+              <LegalCheckCard
+                id="deposit"
+                title="Kaution (§ 551 BGB)"
+                description={dynamicDeposit?.text || data.depositLegalCheck}
+                sourceRef={data.depositSourceRef || '§ 6 Abs. 1 – Kaution'}
+                status={dynamicDeposit?.status || data.depositLegalStatus || ''}
+                isStricken={stricken.includes('deposit')}
+                onToggleStrike={() => toggleClause('deposit')}
+                scrollToField="depositAmount"
+              />
+            )}
 
-          {data.smallRepairAnalysis && (
-            <LegalCheckCard
-              id="small-repair"
-              title="Kleinreparaturklausel"
-              description={data.smallRepairAnalysis}
-              sourceRef={data.smallRepairSourceRef || '§ 16 Abs. 6 – Kleinreparaturen'}
-              status={data.smallRepairStatus || ''}
-              isStricken={stricken.includes('small-repair')}
-              onToggleStrike={() => toggleClause('small-repair')}
-              scrollToField="coldRent"
-            />
-          )}
+            {data.smallRepairAnalysis && (
+              <LegalCheckCard
+                id="small-repair"
+                title="Kleinreparaturklausel"
+                description={data.smallRepairAnalysis}
+                sourceRef={data.smallRepairSourceRef || '§ 16 Abs. 6 – Kleinreparaturen'}
+                status={data.smallRepairStatus || ''}
+                isStricken={stricken.includes('small-repair')}
+                onToggleStrike={() => toggleClause('small-repair')}
+                scrollToField="coldRent"
+              />
+            )}
 
-          {data.endRenovationAnalysis && (
-            <LegalCheckCard
-              id="end-renovation"
-              title="Endrenovierung / Schönheitsreparaturen"
-              description={data.endRenovationAnalysis}
-              sourceRef={data.endRenovationSourceRef || '§ 27 – Schönheitsreparaturen'}
-              status={data.endRenovationStatus || ''}
-              isStricken={stricken.includes('end-renovation')}
-              onToggleStrike={() => toggleClause('end-renovation')}
-            />
-          )}
-        </motion.div>
+            {data.endRenovationAnalysis && (
+              <LegalCheckCard
+                id="end-renovation"
+                title="Endrenovierung / Schönheitsreparaturen"
+                description={data.endRenovationAnalysis}
+                sourceRef={data.endRenovationSourceRef || '§ 27 – Handschriftliche Ergänzung'}
+                status={data.endRenovationStatus || ''}
+                isStricken={stricken.includes('end-renovation')}
+                onToggleStrike={() => toggleClause('end-renovation')}
+              />
+            )}
+          </motion.div>
+        </div>
       )}
 
-      {/* Editable validation table (body section) */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+      {/* Scrollable editable validation fields */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         className="glass-card rounded-2xl px-5 py-2 w-full max-w-md"
       >
         {rows.map(row => (
@@ -309,6 +336,7 @@ export const Step4Validation = () => {
             key={row.key}
             rowId={`row-${row.key}`}
             label={row.label}
+            sourceRef={FIELD_SOURCE_REFS[row.key as string]}
             value={(data[row.key] as string) || ''}
             filled={!!(data[row.key])}
             onSave={v => updateData({ [row.key]: v } as any)}
@@ -318,7 +346,7 @@ export const Step4Validation = () => {
 
       {/* Pre-damages */}
       {data.preDamages && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="w-full max-w-md mt-4">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="w-full max-w-md mt-3">
           <div className="glass-card rounded-2xl p-4 space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold">🔍 Vorschäden aus Protokoll</span>
@@ -329,7 +357,7 @@ export const Step4Validation = () => {
       )}
 
       {/* Confirm button */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="w-full max-w-md mt-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="w-full max-w-md mt-5">
         <Button onClick={handleConfirm} className="w-full h-13 rounded-2xl text-base font-semibold gap-2" size="lg">
           Daten bestätigen & Protokoll starten
           <ArrowRight className="w-5 h-5" />
