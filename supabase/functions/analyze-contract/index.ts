@@ -100,6 +100,9 @@ serve(async (req) => {
 - "smallRepairStatus": "safe" wenn Klausel fehlt oder rechtssicher, "warning" wenn grenzwertig, "invalid" wenn unwirksam
 - "endRenovationAnalysis": Prüfe Schönheitsreparatur-/Endrenovierungsklauseln: Enthalten sie starre Fristenregelungen (z.B. "alle 3 Jahre Küche, alle 5 Jahre Bad")? Gibt es eine Endrenovierungspflicht unabhängig vom Zustand? Suche auch nach handschriftlichen Ergänzungen wie "Weiß-Streich-Klausel". Kurze Bewertung in 1 Satz.
 - "endRenovationStatus": "safe" wenn keine problematische Klausel, "warning" wenn prüfenswert, "invalid" wenn nach BGH VIII ZR 308/02 unwirksam
+- "depositSourceRef": Quellennachweis für die Kautionsklausel im Vertrag, z.B. "§ 6 Abs. 1 – Kaution". Nenne den genauen Paragrafen und Absatz aus dem Dokument. Falls nicht zuordbar: ""
+- "smallRepairSourceRef": Quellennachweis für die Kleinreparaturklausel, z.B. "§ 16 Abs. 6 – Kleinreparaturen". Nenne den genauen Paragrafen und Absatz. Falls nicht zuordbar: ""
+- "endRenovationSourceRef": Quellennachweis für die Renovierungs-/Schönheitsreparaturklausel, z.B. "§ 27 – Schönheitsreparaturen". Nenne den genauen Paragrafen und Absatz. Falls nicht zuordbar: ""
 - "confidence": Ein JSON-Objekt mit Feldnamen als Keys und Werten "high", "medium" oder "low" je nachdem, wie sicher die Extraktion war. Z.B. {"coldRent": "high", "roomCount": "low"}`;
     } else if (documentType === 'amendment') {
       docTypeLabel = 'Miet-Nachtrag / Änderungsvereinbarung';

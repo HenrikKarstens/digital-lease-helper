@@ -1,10 +1,10 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Scale, Pencil, Check, X, Shield, AlertTriangle, CheckCircle2, XCircle, Strikethrough, FileText, PenLine } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowRight, Scale, Pencil, Check, X, Shield, AlertTriangle, CheckCircle2, XCircle, Strikethrough, FileText, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
-import { useState, lazy, Suspense } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { Step3SmartEntry } from './Step3SmartEntry';
 
@@ -14,9 +14,10 @@ interface EditableRowProps {
   value: string;
   onSave: (v: string) => void;
   filled: boolean;
+  rowId?: string;
 }
 
-const EditableRow = ({ label, value, onSave, filled }: EditableRowProps) => {
+const EditableRow = ({ label, value, onSave, filled, rowId }: EditableRowProps) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -24,7 +25,7 @@ const EditableRow = ({ label, value, onSave, filled }: EditableRowProps) => {
   const handleCancel = () => { setDraft(value); setEditing(false); };
 
   return (
-    <div className="flex items-center gap-2 py-2.5 border-b border-border/40 last:border-0">
+    <div id={rowId} className="flex items-center gap-2 py-2.5 border-b border-border/40 last:border-0 scroll-mt-24">
       <div className="flex-1 min-w-0">
         <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
         {editing ? (
@@ -61,17 +62,19 @@ const EditableRow = ({ label, value, onSave, filled }: EditableRowProps) => {
   );
 };
 
-// ── Legal Check Card with Strike-through ────────────────────────────
+// ── Legal Check Card with Source Reference & Click-to-Scroll ────────
 interface LegalCheckCardProps {
   id: string;
   title: string;
   description: string;
+  sourceRef?: string;
   status: 'safe' | 'warning' | 'invalid' | '';
   isStricken: boolean;
   onToggleStrike: () => void;
+  scrollToField?: string;
 }
 
-const LegalCheckCard = ({ id, title, description, status, isStricken, onToggleStrike }: LegalCheckCardProps) => {
+const LegalCheckCard = ({ id, title, description, sourceRef, status, isStricken, onToggleStrike, scrollToField }: LegalCheckCardProps) => {
   const statusConfig = {
     safe: { icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800', label: 'Sicher' },
     warning: { icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800', label: 'Prüfen' },
@@ -82,11 +85,18 @@ const LegalCheckCard = ({ id, title, description, status, isStricken, onToggleSt
   const config = statusConfig[status || ''];
   const Icon = config.icon;
 
+  const handleClick = () => {
+    if (scrollToField) {
+      document.getElementById(`row-${scrollToField}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-2xl p-4 border transition-all ${isStricken ? 'bg-muted/40 border-border opacity-60' : config.bg}`}
+      onClick={handleClick}
+      className={`rounded-2xl p-4 border transition-all ${scrollToField ? 'cursor-pointer hover:shadow-md' : ''} ${isStricken ? 'bg-muted/40 border-border opacity-60' : config.bg}`}
     >
       <div className="flex items-start gap-3">
         <div className={`shrink-0 mt-0.5 ${isStricken ? 'text-muted-foreground' : config.color}`}>
@@ -104,13 +114,21 @@ const LegalCheckCard = ({ id, title, description, status, isStricken, onToggleSt
           {isStricken ? (
             <p className="text-xs text-muted-foreground italic">Vom Nutzer als gestrichen markiert</p>
           ) : (
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {description || 'Keine Analyse verfügbar.'}
-            </p>
+            <>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {description || 'Keine Analyse verfügbar.'}
+              </p>
+              {sourceRef && (
+                <p className="text-[10px] text-muted-foreground/70 mt-1.5 flex items-center gap-1">
+                  <BookOpen className="w-3 h-3" />
+                  Quelle: {sourceRef}
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>
-      <div className="mt-3 flex justify-end">
+      <div className="mt-3 flex justify-end" onClick={e => e.stopPropagation()}>
         <button
           onClick={onToggleStrike}
           className={`flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors ${
@@ -144,13 +162,10 @@ export const Step4Validation = () => {
   const { data, updateData, goToStepById } = useHandover();
   const { ownerRole, clientRole, depositLabel, contractStartLabel, contractEndLabel } = useTransactionLabels();
 
-  // Determine if we need to show the document scanner first
   const hasAnalysisData = !!(data.propertyAddress || data.landlordName || data.tenantName || data.coldRent);
   const [showScanner, setShowScanner] = useState(!hasAnalysisData);
 
   const isMoveIn = data.handoverDirection === 'move-in';
-
-  // Dynamic real-time deposit validation
   const dynamicDeposit = computeDepositCheck(data.coldRent, data.depositAmount);
 
   const toggleClause = (clauseId: string) => {
@@ -161,7 +176,7 @@ export const Step4Validation = () => {
     updateData({ strickenClauses: updated });
 
     if (updated.includes(clauseId)) {
-      toast.success(`Klausel als gestrichen markiert. Die Rechtsanalyse berücksichtigt dies.`);
+      toast.success('Klausel als gestrichen markiert. Die Rechtsanalyse berücksichtigt dies.');
     } else {
       toast.info('Klausel wiederhergestellt.');
     }
@@ -191,7 +206,7 @@ export const Step4Validation = () => {
     { key: 'contractSigningDate', label: 'Datum Vertragsunterzeichnung' },
   ];
 
-  const hasLegalAnalysis = data.depositLegalCheck || data.smallRepairAnalysis || data.endRenovationAnalysis;
+  const hasLegalAnalysis = data.depositLegalCheck || data.smallRepairAnalysis || data.endRenovationAnalysis || dynamicDeposit;
   const filledCount = rows.filter(r => !!data[r.key]).length;
   const stricken = data.strickenClauses || [];
 
@@ -205,7 +220,6 @@ export const Step4Validation = () => {
     goToStepById('floor-plan');
   };
 
-  // If scanner mode, show the integrated document capture
   if (showScanner) {
     return (
       <div className="min-h-[80vh] flex flex-col">
@@ -214,17 +228,15 @@ export const Step4Validation = () => {
     );
   }
 
-  // ── Validation + Legal Analysis view ─────────────────────────────
   return (
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
       <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-1 text-center">
-        Daten-Check & Rechtshinweise
+        Check & Confirm
       </motion.h2>
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-muted-foreground text-center mb-5 text-sm">
         Prüfen Sie die Daten — tippen Sie zum Bearbeiten auf ✎
       </motion.p>
 
-      {/* Completion badge */}
       <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
         className="mb-4 flex items-center gap-3"
       >
@@ -240,7 +252,7 @@ export const Step4Validation = () => {
         </button>
       </motion.div>
 
-      {/* Legal Analysis Cards (top) */}
+      {/* Legal Analysis Cards (header section) */}
       {hasLegalAnalysis && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="w-full max-w-md mb-5 space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
@@ -253,9 +265,11 @@ export const Step4Validation = () => {
               id="deposit"
               title="Kaution (§ 551 BGB)"
               description={dynamicDeposit?.text || data.depositLegalCheck}
+              sourceRef={data.depositSourceRef || '§ 6 Abs. 1 – Kaution'}
               status={dynamicDeposit?.status || data.depositLegalStatus || ''}
               isStricken={stricken.includes('deposit')}
               onToggleStrike={() => toggleClause('deposit')}
+              scrollToField="depositAmount"
             />
           )}
 
@@ -264,9 +278,11 @@ export const Step4Validation = () => {
               id="small-repair"
               title="Kleinreparaturklausel"
               description={data.smallRepairAnalysis}
+              sourceRef={data.smallRepairSourceRef || '§ 16 Abs. 6 – Kleinreparaturen'}
               status={data.smallRepairStatus || ''}
               isStricken={stricken.includes('small-repair')}
               onToggleStrike={() => toggleClause('small-repair')}
+              scrollToField="coldRent"
             />
           )}
 
@@ -275,6 +291,7 @@ export const Step4Validation = () => {
               id="end-renovation"
               title="Endrenovierung / Schönheitsreparaturen"
               description={data.endRenovationAnalysis}
+              sourceRef={data.endRenovationSourceRef || '§ 27 – Schönheitsreparaturen'}
               status={data.endRenovationStatus || ''}
               isStricken={stricken.includes('end-renovation')}
               onToggleStrike={() => toggleClause('end-renovation')}
@@ -283,13 +300,14 @@ export const Step4Validation = () => {
         </motion.div>
       )}
 
-      {/* Editable validation table */}
+      {/* Editable validation table (body section) */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
         className="glass-card rounded-2xl px-5 py-2 w-full max-w-md"
       >
         {rows.map(row => (
           <EditableRow
             key={row.key}
+            rowId={`row-${row.key}`}
             label={row.label}
             value={(data[row.key] as string) || ''}
             filled={!!(data[row.key])}
@@ -313,7 +331,7 @@ export const Step4Validation = () => {
       {/* Confirm button */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="w-full max-w-md mt-6">
         <Button onClick={handleConfirm} className="w-full h-13 rounded-2xl text-base font-semibold gap-2" size="lg">
-          Bestätigen & Weiter
+          Daten bestätigen & Protokoll starten
           <ArrowRight className="w-5 h-5" />
         </Button>
       </motion.div>

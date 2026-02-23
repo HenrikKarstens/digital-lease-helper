@@ -109,6 +109,10 @@ export interface HandoverData {
   endRenovationAnalysis: string;
   endRenovationStatus: 'safe' | 'warning' | 'invalid' | '';
   renovationClauseAnalysis: string;
+  // Source references from contract paragraphs
+  depositSourceRef: string;
+  smallRepairSourceRef: string;
+  endRenovationSourceRef: string;
   // Stricken clauses (user-marked as struck-through)
   strickenClauses: string[];
   // Step 5
@@ -183,6 +187,9 @@ const defaultData: HandoverData = {
   endRenovationAnalysis: '',
   endRenovationStatus: '',
   renovationClauseAnalysis: '',
+  depositSourceRef: '',
+  smallRepairSourceRef: '',
+  endRenovationSourceRef: '',
   strickenClauses: [],
   floorPlanUrl: null,
   rooms: [],
