@@ -29,7 +29,7 @@ const Step10DefectAnalysis = lazy(() => import('@/components/steps/Step10DefectA
 const Step12Deposit = lazy(() => import('@/components/steps/Step12Deposit').then(m => ({ default: m.Step12Deposit })));
 
 const Step12Unlock = lazy(() => import('@/components/steps/Step12Unlock').then(m => ({ default: m.Step12Unlock })));
-const Step14Utility = lazy(() => import('@/components/steps/Step14Utility').then(m => ({ default: m.Step14Utility })));
+
 
 const COMPONENT_MAP: Record<string, React.ComponentType> = {
   Step1Hero,
@@ -47,7 +47,6 @@ const COMPONENT_MAP: Record<string, React.ComponentType> = {
   Step12Deposit,
   
   Step12Unlock,
-  Step14Utility,
 };
 
 const StepLoader = () => (
