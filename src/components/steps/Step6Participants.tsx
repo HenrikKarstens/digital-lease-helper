@@ -207,11 +207,14 @@ export const Step6Participants = () => {
 
   const signedCount = data.participants.filter(p => p.signature).length;
 
-  // Count valid emails across participants
-  const validEmailCount = data.participants.filter(p => {
-    const email = getEmailForParticipant(p);
-    return email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }).length;
+  // Collect valid unique emails
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const landlordEmail = data.landlordEmail?.trim() || '';
+  const tenantEmail = data.tenantEmail?.trim() || '';
+  const hasValidLandlord = emailRegex.test(landlordEmail);
+  const hasValidTenant = emailRegex.test(tenantEmail);
+  const validEmailCount = [hasValidLandlord, hasValidTenant].filter(Boolean).length;
+  const emailsIdentical = hasValidLandlord && hasValidTenant && landlordEmail.toLowerCase() === tenantEmail.toLowerCase();
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
@@ -276,8 +279,27 @@ export const Step6Participants = () => {
           </Button>
         </div>
 
-        {/* Conditional legal warning – only when <2 valid emails */}
-        {validEmailCount < 2 && data.participants.length > 0 && (
+        {/* Duplicate email error */}
+        {emailsIdentical && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="rounded-2xl border-2 border-destructive/40 bg-destructive/5 p-4"
+          >
+            <div className="flex items-start gap-2">
+              <X className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-sm text-destructive">Identische E-Mail-Adressen</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  {ownerRole} und {clientRole} müssen unterschiedliche E-Mail-Adressen haben, um eine rechtssichere Zustellung an beide Parteien zu garantieren.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Conditional legal warning – only when <2 unique valid emails */}
+        {!emailsIdentical && validEmailCount < 2 && data.participants.length > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -344,10 +366,10 @@ export const Step6Participants = () => {
         </AlertDialog>
 
         <Button
+          disabled={emailsIdentical}
           onClick={() => {
-            const hasLandlordEmail = !!data.landlordEmail?.trim();
-            const hasTenantEmail = !!data.tenantEmail?.trim();
-            if (!hasLandlordEmail || !hasTenantEmail) {
+            if (emailsIdentical) return;
+            if (!hasValidLandlord || !hasValidTenant) {
               setShowEmailWarning(true);
               return;
             }
