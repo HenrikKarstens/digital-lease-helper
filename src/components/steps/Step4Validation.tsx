@@ -127,6 +127,18 @@ const LegalCheckCard = ({ id, title, description, status, isStricken, onToggleSt
   );
 };
 
+// ── Dynamic legal check helpers ─────────────────────────────────────
+const computeDepositCheck = (coldRent: string, depositAmount: string) => {
+  const rent = parseFloat(coldRent) || 0;
+  const deposit = parseFloat(depositAmount) || 0;
+  if (!rent || !deposit) return null;
+  const limit = rent * 3;
+  if (deposit <= limit) {
+    return { status: 'safe' as const, text: `Gesetzliche Grenze (${limit.toLocaleString('de-DE')} €) eingehalten. Kaution beträgt ${deposit.toLocaleString('de-DE')} €.` };
+  }
+  return { status: 'invalid' as const, text: `Kaution (${deposit.toLocaleString('de-DE')} €) übersteigt die gesetzliche Grenze von 3 Nettokaltmieten (${limit.toLocaleString('de-DE')} €).` };
+};
+
 // ── Main Component ──────────────────────────────────────────────────
 export const Step4Validation = () => {
   const { data, updateData, goToStepById } = useHandover();
@@ -137,6 +149,9 @@ export const Step4Validation = () => {
   const [showScanner, setShowScanner] = useState(!hasAnalysisData);
 
   const isMoveIn = data.handoverDirection === 'move-in';
+
+  // Dynamic real-time deposit validation
+  const dynamicDeposit = computeDepositCheck(data.coldRent, data.depositAmount);
 
   const toggleClause = (clauseId: string) => {
     const current = data.strickenClauses || [];
@@ -233,12 +248,12 @@ export const Step4Validation = () => {
             KI-Rechtsanalyse
           </h3>
 
-          {data.depositLegalCheck && (
+          {(data.depositLegalCheck || dynamicDeposit) && (
             <LegalCheckCard
               id="deposit"
               title="Kaution (§ 551 BGB)"
-              description={data.depositLegalCheck}
-              status={data.depositLegalStatus || ''}
+              description={dynamicDeposit?.text || data.depositLegalCheck}
+              status={dynamicDeposit?.status || data.depositLegalStatus || ''}
               isStricken={stricken.includes('deposit')}
               onToggleStrike={() => toggleClause('deposit')}
             />
