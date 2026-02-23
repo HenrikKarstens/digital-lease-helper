@@ -190,11 +190,11 @@ export const Step6Participants = () => {
     if (!participant) return;
     const roleLower = participant.role.toLowerCase();
 
-    // Sync to global fields
-    if (roleLower.includes('mieter') || roleLower.includes('käufer')) {
-      updateData({ tenantEmail: email });
-    } else if (roleLower.includes('vermieter') || roleLower.includes('verkäufer') || roleLower.includes('eigentümer')) {
+    // IMPORTANT: Check vermieter/verkäufer FIRST – 'vermieter' contains 'mieter'!
+    if (roleLower.includes('vermieter') || roleLower.includes('verkäufer') || roleLower.includes('eigentümer')) {
       updateData({ landlordEmail: email });
+    } else if (roleLower.includes('mieter') || roleLower.includes('käufer')) {
+      updateData({ tenantEmail: email });
     }
 
     // Also store on participant
