@@ -160,20 +160,43 @@ export const Step6Participants = () => {
   };
 
   const saveSignature = (id: string, dataUrl: string) => {
-    updateData({
+    const participant = data.participants.find(p => p.id === id);
+    const roleLower = participant?.role.toLowerCase() || '';
+
+    const updates: Partial<typeof data> = {
       participants: data.participants.map(p =>
         p.id === id ? { ...p, signature: dataUrl } : p
       ),
-    });
+    };
+
+    // Sync to global signature fields for Phase 9+ (check vermieter BEFORE mieter)
+    if (roleLower.includes('vermieter') || roleLower.includes('verkäufer') || roleLower.includes('eigentümer')) {
+      updates.signatureLandlord = dataUrl;
+    } else if (roleLower.includes('mieter') || roleLower.includes('käufer')) {
+      updates.signatureTenant = dataUrl;
+    }
+
+    updateData(updates);
     setOpenSigId(null);
   };
 
   const clearSignature = (id: string) => {
-    updateData({
+    const participant = data.participants.find(p => p.id === id);
+    const roleLower = participant?.role.toLowerCase() || '';
+
+    const updates: Partial<typeof data> = {
       participants: data.participants.map(p =>
         p.id === id ? { ...p, signature: null } : p
       ),
-    });
+    };
+
+    if (roleLower.includes('vermieter') || roleLower.includes('verkäufer') || roleLower.includes('eigentümer')) {
+      updates.signatureLandlord = null;
+    } else if (roleLower.includes('mieter') || roleLower.includes('käufer')) {
+      updates.signatureTenant = null;
+    }
+
+    updateData(updates);
   };
 
   /** Resolve email for a participant – check 'vermieter' BEFORE 'mieter' (since 'vermieter' contains 'mieter') */

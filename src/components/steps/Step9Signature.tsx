@@ -135,7 +135,17 @@ export const Step9Signature = () => {
           <SignaturePad
             label={data.landlordName || ownerRole}
             value={data.signatureLandlord}
-            onSave={(url) => updateData({ signatureLandlord: url })}
+            onSave={(url) => {
+              // Sync to participant with landlord role
+              const updatedParticipants = data.participants.map(p => {
+                const r = p.role.toLowerCase();
+                if (r.includes('vermieter') || r.includes('verkäufer') || r.includes('eigentümer')) {
+                  return { ...p, signature: url };
+                }
+                return p;
+              });
+              updateData({ signatureLandlord: url, participants: updatedParticipants });
+            }}
           />
         </motion.div>
 
@@ -143,7 +153,17 @@ export const Step9Signature = () => {
           <SignaturePad
             label={data.tenantName || clientRole}
             value={data.signatureTenant}
-            onSave={(url) => updateData({ signatureTenant: url })}
+            onSave={(url) => {
+              const updatedParticipants = data.participants.map(p => {
+                const r = p.role.toLowerCase();
+                if (!r.includes('vermieter') && !r.includes('verkäufer') && !r.includes('eigentümer') &&
+                    (r.includes('mieter') || r.includes('käufer'))) {
+                  return { ...p, signature: url };
+                }
+                return p;
+              });
+              updateData({ signatureTenant: url, participants: updatedParticipants });
+            }}
           />
         </motion.div>
 
