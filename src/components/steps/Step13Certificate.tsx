@@ -6,6 +6,7 @@ import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { generateMasterProtocol, generateMasterProtocolBlob } from '@/lib/pdfGenerator';
+import { SendDialog } from './SendDialog';
 
 export const Step13Certificate = () => {
   const { data, updateData, goToStepById } = useHandover();
@@ -13,6 +14,7 @@ export const Step13Certificate = () => {
   const [sending, setSending] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [hasPreviewed, setHasPreviewed] = useState(false);
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const handlePreview = useCallback(() => {
@@ -44,14 +46,16 @@ export const Step13Certificate = () => {
   const payout = Math.max(0, saldo);
   const restforderung = saldo < 0 ? Math.abs(saldo) : 0;
 
-  const handleSend = () => {
+  const handleConfirmSend = (recipients: { name: string; email: string }[]) => {
     setSending(true);
     setTimeout(() => {
       setSending(false);
+      setSendDialogOpen(false);
       updateData({ protocolSent: true });
+      const emailList = recipients.map(r => r.email).join(', ');
       toast({
         title: '✅ Protokoll versendet!',
-        description: `Das EstateTurn-Zertifikat wurde an ${data.landlordEmail || 'email@beispiel.de'} und ${data.tenantEmail || 'email@beispiel.de'} gesendet.`,
+        description: `Das EstateTurn-Zertifikat wurde an ${emailList} gesendet.`,
       });
     }, 2000);
   };
@@ -169,7 +173,7 @@ export const Step13Certificate = () => {
           </Button>
           <Button
             variant="outline"
-            onClick={() => generateMasterProtocol(data)}
+            onClick={() => { generateMasterProtocol(data); setHasPreviewed(true); }}
             className="flex-1 h-12 rounded-2xl font-semibold gap-2 border-primary/30"
           >
             <Download className="w-4 h-4" />
@@ -180,26 +184,23 @@ export const Step13Certificate = () => {
         {!hasPreviewed && !data.protocolSent && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
             <p className="text-xs text-muted-foreground text-center mb-2">
-              Bitte öffnen Sie zuerst die Vorschau, bevor Sie das Protokoll versenden können.
+              Bitte öffnen Sie zuerst die Vorschau oder laden Sie das Dokument herunter, bevor Sie es versenden können.
             </p>
           </motion.div>
         )}
 
         {!data.protocolSent ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-            <Button onClick={handleSend} disabled={sending || !hasPreviewed} className="w-full h-14 rounded-2xl text-base font-semibold gap-2" size="lg">
-              {sending ? (
-                <>
-                  <div className="w-5 h-5 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin" />
-                  Wird versendet...
-                </>
-              ) : (
-                <>
-                  <Send className="w-5 h-5" />
-                  Rechtssicher versenden
-                </>
-              )}
+            <Button onClick={() => setSendDialogOpen(true)} disabled={!hasPreviewed} className="w-full h-14 rounded-2xl text-base font-semibold gap-2" size="lg">
+              <Send className="w-5 h-5" />
+              An Beteiligte versenden
             </Button>
+            <SendDialog
+              open={sendDialogOpen}
+              onOpenChange={setSendDialogOpen}
+              onConfirmSend={handleConfirmSend}
+              sending={sending}
+            />
           </motion.div>
         ) : (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card rounded-2xl p-5 text-center">
