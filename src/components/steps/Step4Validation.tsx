@@ -24,6 +24,7 @@ const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId }: Editabl
 
   const handleSave = () => { onSave(draft); setEditing(false); };
   const handleCancel = () => { setDraft(value); setEditing(false); };
+  const handleBlur = () => { if (draft !== value) { onSave(draft); } setEditing(false); };
 
   return (
     <div id={rowId} className="flex items-center gap-2 py-2.5 border-b border-border/40 last:border-0 scroll-mt-48">
@@ -45,11 +46,17 @@ const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId }: Editabl
               className="h-8 text-sm rounded-lg bg-secondary/60 border-0 focus-visible:ring-1 px-2"
               autoFocus
               onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleCancel(); }}
+              onBlur={(e) => {
+                // Don't auto-save if user clicked save or cancel button
+                const related = e.relatedTarget as HTMLElement;
+                if (related?.closest('[data-edit-action]')) return;
+                handleBlur();
+              }}
             />
-            <button onClick={handleSave} className="shrink-0 p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+            <button data-edit-action onClick={handleSave} className="shrink-0 p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
               <Check className="w-3.5 h-3.5" />
             </button>
-            <button onClick={handleCancel} className="shrink-0 p-1.5 rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+            <button data-edit-action onClick={handleCancel} className="shrink-0 p-1.5 rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
