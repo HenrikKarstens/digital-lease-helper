@@ -231,11 +231,11 @@ export const Step4Validation = () => {
   const handleConfirm = () => {
     updateData({
       participants: [
-        { id: '1', name: data.landlordName || ownerRole, role: ownerRole, email: data.landlordEmail, present: true },
-        { id: '2', name: data.tenantName || clientRole, role: clientRole, email: data.tenantEmail, present: true },
+        { id: '1', name: data.landlordName || ownerRole, role: ownerRole, email: data.landlordEmail || '', present: true },
+        { id: '2', name: data.tenantName || clientRole, role: clientRole, email: data.tenantEmail || '', present: true },
       ]
     });
-    goToStepById('floor-plan');
+    goToStepById('participants');
   };
 
   if (showScanner) {
