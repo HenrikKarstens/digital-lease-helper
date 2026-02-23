@@ -112,32 +112,12 @@ const ParticipantCard = ({
   </motion.div>
 );
 
-/* ── Legal Warning Box ──────────────────────────────────────────── */
-const LegalWarningBox = ({ address, onDismiss, clientRole, ownerRole }: {
-  address: string; onDismiss: () => void; clientRole: string; ownerRole: string;
-}) => (
-  <motion.div
-    initial={{ opacity: 0, height: 0 }}
-    animate={{ opacity: 1, height: 'auto' }}
-    className="rounded-2xl border-2 border-destructive/40 bg-destructive/5 p-4 space-y-3"
-  >
-    <div className="flex items-start gap-2">
-      <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-      <div>
-        <p className="font-semibold text-sm text-destructive">Rechtlicher Hinweis</p>
-        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-          Für die volle Beweiskraft müssen {clientRole} und {ownerRole} eine identische
-          Kopie des Dokuments erhalten (§ 535 BGB). Um eine rechtssichere Dokumentation der Übergabe in der{' '}
-          <span className="font-medium text-foreground">{address || 'Immobilie'}</span>{' '}
-          zu gewährleisten, ist der Versand an beide Vertragsparteien zwingend erforderlich.
-        </p>
-      </div>
-    </div>
-    <Button variant="destructive" size="sm" className="rounded-lg text-xs" onClick={onDismiss}>
-      Trotzdem fortfahren
-    </Button>
-  </motion.div>
-);
+/* ── Confirmation Dialog (forced confirmation) ─────────────────── */
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from '@/components/ui/alert-dialog';
+
 
 /* ── Main Component ─────────────────────────────────────────────── */
 export const Step6Participants = () => {
@@ -227,6 +207,12 @@ export const Step6Participants = () => {
 
   const signedCount = data.participants.filter(p => p.signature).length;
 
+  // Count valid emails across participants
+  const validEmailCount = data.participants.filter(p => {
+    const email = getEmailForParticipant(p);
+    return email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }).length;
+
   return (
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
       <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-2 text-center">
@@ -290,21 +276,27 @@ export const Step6Participants = () => {
           </Button>
         </div>
 
-        {/* Legal warning – always visible */}
-        <div className="rounded-2xl border border-accent/30 bg-accent/5 p-4">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="w-5 h-5 text-accent-foreground shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-sm">Rechtlicher Hinweis</p>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Für die volle Beweiskraft müssen {clientRole} und {ownerRole} eine identische
-                Kopie des Dokuments erhalten (§ 535 BGB). Um eine rechtssichere Dokumentation der Übergabe in der{' '}
-                <span className="font-medium text-foreground">{data.propertyAddress || 'Weddingstedter Straße 39, 25746 Heide'}</span>{' '}
-                zu gewährleisten, ist der Versand an beide Vertragsparteien zwingend erforderlich.
-              </p>
+        {/* Conditional legal warning – only when <2 valid emails */}
+        {validEmailCount < 2 && data.participants.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="rounded-2xl border-2 border-destructive/40 bg-destructive/5 p-4"
+          >
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-sm text-destructive">Rechtlicher Hinweis</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  Für die volle Beweiskraft müssen {clientRole} und {ownerRole} eine identische
+                  Kopie des Dokuments erhalten (§ 535 BGB). Um eine rechtssichere Dokumentation der Übergabe in der{' '}
+                  <span className="font-medium text-foreground">{data.propertyAddress || 'Weddingstedter Straße 39, 25746 Heide'}</span>{' '}
+                  zu gewährleisten, ist der Versand an beide Vertragsparteien zwingend erforderlich.
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        )}
 
         {/* Vorab-Dokument / Offline-Protokoll */}
         <div className="glass-card rounded-2xl p-4">
@@ -322,23 +314,40 @@ export const Step6Participants = () => {
           </Button>
         </div>
 
-        {/* Validation warning if emails missing */}
-        <AnimatePresence>
-          {showEmailWarning && (
-            <LegalWarningBox
-              address={data.propertyAddress || 'Weddingstedter Straße 39, 25746 Heide'}
-              clientRole={clientRole}
-              ownerRole={ownerRole}
-              onDismiss={() => { setShowEmailWarning(false); goToStepById('evidence'); }}
-            />
-          )}
-        </AnimatePresence>
+        {/* Confirmation dialog for proceeding with incomplete emails */}
+        <AlertDialog open={showEmailWarning} onOpenChange={setShowEmailWarning}>
+          <AlertDialogContent className="rounded-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                Unvollständige E-Mail-Adressen
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm leading-relaxed">
+                Möchten Sie wirklich mit nur einer E-Mail-Adresse fortfahren? Dies kann die Beweiskraft
+                Ihres Protokolls für das Objekt in{' '}
+                <span className="font-medium text-foreground">
+                  {data.propertyAddress || 'Weddingstedter Straße 39, 25746 Heide'}
+                </span>{' '}
+                einschränken.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl">Zurück</AlertDialogCancel>
+              <AlertDialogAction
+                className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => { setShowEmailWarning(false); goToStepById('evidence'); }}
+              >
+                Trotzdem fortfahren
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Button
           onClick={() => {
             const hasLandlordEmail = !!data.landlordEmail?.trim();
             const hasTenantEmail = !!data.tenantEmail?.trim();
-            if ((!hasLandlordEmail || !hasTenantEmail) && !showEmailWarning) {
+            if (!hasLandlordEmail || !hasTenantEmail) {
               setShowEmailWarning(true);
               return;
             }
