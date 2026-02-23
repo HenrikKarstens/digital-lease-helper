@@ -184,7 +184,8 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       } as Record<string, string>)[docStep.id];
 
       setAnalysisResult({ ...result, _summary: summaryKey || '' });
-      setTimeout(() => setMode('done'), 500);
+      // Skip summary screen – go directly to data-check
+      setTimeout(() => onDone(), 300);
     } catch (err: any) {
       clearInterval(interval);
       console.error('[EstateTurn] Analyse-Fehler:', err);
