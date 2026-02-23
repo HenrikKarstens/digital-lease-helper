@@ -121,8 +121,8 @@ export const Step14Utility = () => {
         : `Objekt ${propertyShort} jetzt für den Leerstand absichern (Rechtsschutz & Gebäudecheck).`)
     : 'Versorger wechseln & sparen – basierend auf Ihren Objektdaten';
 
-  // Show Check24 for move-in / sale (new occupant)
-  const showCheck24 = isMoveIn || isSale;
+  // Show Check24 tariff comparison for all users (tenants benefit from comparison on move-out too)
+  const showCheck24 = true;
   // Show cancellation for rental move-out
   const showCancellation = isMoveOut && !isSale;
   // Show deposit trigger for move-out tenant
@@ -134,12 +134,12 @@ export const Step14Utility = () => {
 
   const buildCheck24Link = () => {
     const params = new URLSearchParams({
-      zipcode: plz || '10115',
+      zipcode: plz || '25746',
       totalConsumption: String(estimatedKwh),
       affiliate_id: CHECK24_AFFILIATE_ID,
+      partnerId: CHECK24_AFFILIATE_ID,
     });
     if (stromMeter?.meterNumber) params.set('meterNumber', stromMeter.meterNumber);
-    // Use today's date as moving date
     params.set('movingDate', todayFormatted);
     return `https://www.check24.de/strom/vergleich/?${params.toString()}`;
   };
