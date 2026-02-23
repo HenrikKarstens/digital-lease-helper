@@ -20,20 +20,20 @@ import {
 } from '@/components/ui/tooltip';
 
 // ── PLZ → Grundversorger lookup (top cities) ──
-const GRUNDVERSORGER_DB: Record<string, { name: string; pricePerKwh: number; grundpreis: number }> = {
-  '10': { name: 'Vattenfall Berlin', pricePerKwh: 0.3890, grundpreis: 148 },
-  '20': { name: 'Vattenfall Hamburg', pricePerKwh: 0.3750, grundpreis: 142 },
-  '22': { name: 'Vattenfall Hamburg', pricePerKwh: 0.3750, grundpreis: 142 },
-  '30': { name: 'enercity Hannover', pricePerKwh: 0.3680, grundpreis: 139 },
-  '40': { name: 'Stadtwerke Düsseldorf', pricePerKwh: 0.3720, grundpreis: 141 },
-  '50': { name: 'RheinEnergie Köln', pricePerKwh: 0.3650, grundpreis: 138 },
-  '60': { name: 'Mainova Frankfurt', pricePerKwh: 0.3810, grundpreis: 145 },
-  '70': { name: 'EnBW Stuttgart', pricePerKwh: 0.3790, grundpreis: 144 },
-  '80': { name: 'SWM München', pricePerKwh: 0.3850, grundpreis: 147 },
-  '90': { name: 'N-ERGIE Nürnberg', pricePerKwh: 0.3710, grundpreis: 140 },
-  '25': { name: 'Stadtwerke Heide', pricePerKwh: 0.3620, grundpreis: 136 },
-  '01': { name: 'DREWAG Dresden', pricePerKwh: 0.3580, grundpreis: 135 },
-  '04': { name: 'Stadtwerke Leipzig', pricePerKwh: 0.3640, grundpreis: 137 },
+const GRUNDVERSORGER_DB: Record<string, { name: string; tarif: string; pricePerKwh: number; grundpreis: number }> = {
+  '10': { name: 'Vattenfall Berlin', tarif: 'Basis', pricePerKwh: 0.3890, grundpreis: 148 },
+  '20': { name: 'Vattenfall Hamburg', tarif: 'Basis', pricePerKwh: 0.3750, grundpreis: 142 },
+  '22': { name: 'Vattenfall Hamburg', tarif: 'Basis', pricePerKwh: 0.3750, grundpreis: 142 },
+  '30': { name: 'enercity Hannover', tarif: 'Basis', pricePerKwh: 0.3680, grundpreis: 139 },
+  '40': { name: 'Stadtwerke Düsseldorf', tarif: 'Basis', pricePerKwh: 0.3720, grundpreis: 141 },
+  '50': { name: 'RheinEnergie Köln', tarif: 'Basis', pricePerKwh: 0.3650, grundpreis: 138 },
+  '60': { name: 'Mainova Frankfurt', tarif: 'Basis', pricePerKwh: 0.3810, grundpreis: 145 },
+  '70': { name: 'EnBW Stuttgart', tarif: 'Basis', pricePerKwh: 0.3790, grundpreis: 144 },
+  '80': { name: 'SWM München', tarif: 'Basis', pricePerKwh: 0.3850, grundpreis: 147 },
+  '90': { name: 'N-ERGIE Nürnberg', tarif: 'Basis', pricePerKwh: 0.3710, grundpreis: 140 },
+  '25': { name: 'Stadtwerke Heide', tarif: 'Basis', pricePerKwh: 0.3620, grundpreis: 136 },
+  '01': { name: 'DREWAG Dresden', tarif: 'Basis', pricePerKwh: 0.3580, grundpreis: 135 },
+  '04': { name: 'Stadtwerke Leipzig', tarif: 'Basis', pricePerKwh: 0.3640, grundpreis: 137 },
 };
 
 const CHECK24_BEST_PRICE_PER_KWH = 0.2890;
@@ -49,7 +49,7 @@ function lookupGrundversorger(plz: string) {
   if (!plz) return null;
   const prefix2 = plz.substring(0, 2);
   if (GRUNDVERSORGER_DB[prefix2]) return GRUNDVERSORGER_DB[prefix2];
-  return { name: 'Lokaler Grundversorger', pricePerKwh: 0.3700, grundpreis: 140 };
+  return { name: 'Lokaler Grundversorger', tarif: 'Basis', pricePerKwh: 0.3700, grundpreis: 140 };
 }
 
 function estimateConsumption(rooms: number, persons: number): number {
@@ -133,14 +133,15 @@ export const Step14Utility = () => {
   const showMoveOutUtility = isMoveOut && isTenant;
 
   const buildCheck24Link = () => {
+    const meterNum = stromMeter?.meterNumber || '';
     const params = new URLSearchParams({
       zipcode: plz || '25746',
       totalConsumption: String(estimatedKwh),
       affiliate_id: CHECK24_AFFILIATE_ID,
       partnerId: CHECK24_AFFILIATE_ID,
+      meterNumber: meterNum,
+      movingDate: todayFormatted,
     });
-    if (stromMeter?.meterNumber) params.set('meterNumber', stromMeter.meterNumber);
-    params.set('movingDate', todayFormatted);
     return `https://www.check24.de/strom/vergleich/?${params.toString()}`;
   };
 
@@ -350,7 +351,7 @@ export const Step14Utility = () => {
                 <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
                 <div className="text-xs">
                   <p className="text-muted-foreground">Ihr Grundversorger{plz ? ` (PLZ ${plz})` : ''}</p>
-                  <p className="font-semibold">{grundversorger.name}</p>
+                  <p className="font-semibold">{grundversorger.name} – {grundversorger.tarif}</p>
                 </div>
               </div>
             )}
