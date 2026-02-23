@@ -1,17 +1,20 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, ArrowRight, Check, X, PenTool, ChevronDown, FileDown } from 'lucide-react';
+import { UserPlus, ArrowRight, Check, X, PenTool, ChevronDown, FileDown, Mail, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
+import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState } from 'react';
 import { SignaturePad } from '@/components/SignaturePad';
 import { generateBeweisanker } from '@/lib/pdfGenerator';
 
 export const Step6Participants = () => {
   const { data, updateData, goToStepById } = useHandover();
+  const { ownerRole, clientRole } = useTransactionLabels();
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState('');
   const [openSigId, setOpenSigId] = useState<string | null>(null);
+  const [showEmailWarning, setShowEmailWarning] = useState(false);
 
   const addParticipant = () => {
     if (!newName.trim()) return;
@@ -199,7 +202,86 @@ export const Step6Participants = () => {
           </Button>
         </div>
 
-        <Button onClick={() => goToStepById('evidence')} className="w-full h-13 rounded-2xl text-base font-semibold gap-2" size="lg">
+        {/* E-Mail-Felder für Versand */}
+        <div className="glass-card rounded-2xl p-4 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Mail className="w-4 h-4 text-primary" />
+            <p className="text-sm font-semibold">E-Mail-Adressen für Protokollversand</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Diese Adressen werden in Phase 12 für den automatischen Versand verwendet.
+          </p>
+          <div className="space-y-2">
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                E-Mail {ownerRole} *
+              </label>
+              <Input
+                type="email"
+                value={data.landlordEmail}
+                onChange={e => updateData({ landlordEmail: e.target.value })}
+                placeholder={`E-Mail ${ownerRole}`}
+                className="rounded-xl bg-secondary/50 border-0 mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                E-Mail {clientRole} *
+              </label>
+              <Input
+                type="email"
+                value={data.tenantEmail}
+                onChange={e => updateData({ tenantEmail: e.target.value })}
+                placeholder={`E-Mail ${clientRole}`}
+                className="rounded-xl bg-secondary/50 border-0 mt-1"
+              />
+            </div>
+          </div>
+
+          {/* Legal warning if only one email */}
+          {showEmailWarning && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 space-y-2"
+            >
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-sm text-destructive">Rechtlicher Hinweis</p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Für die volle Beweiskraft müssen {clientRole} und {ownerRole} eine identische
+                    Kopie des Dokuments erhalten (§ 535 BGB). Um eine rechtssichere Dokumentation der Übergabe in der{' '}
+                    <span className="font-medium text-foreground">{data.propertyAddress || 'Immobilie'}</span>{' '}
+                    zu gewährleisten, ist der Versand an beide Vertragsparteien zwingend erforderlich.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="rounded-lg text-xs"
+                onClick={() => { setShowEmailWarning(false); goToStepById('evidence'); }}
+              >
+                Trotzdem fortfahren
+              </Button>
+            </motion.div>
+          )}
+        </div>
+
+        <Button
+          onClick={() => {
+            const hasLandlordEmail = !!data.landlordEmail?.trim();
+            const hasTenantEmail = !!data.tenantEmail?.trim();
+            if ((!hasLandlordEmail || !hasTenantEmail) && !showEmailWarning) {
+              setShowEmailWarning(true);
+              return;
+            }
+            goToStepById('evidence');
+          }}
+          className="w-full h-13 rounded-2xl text-base font-semibold gap-2"
+          size="lg"
+        >
           Weiter zur Beweissicherung
           <ArrowRight className="w-5 h-5" />
         </Button>
