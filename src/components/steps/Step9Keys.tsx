@@ -244,7 +244,7 @@ export const Step9Keys = () => {
       {/* Navigation */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="w-full max-w-md">
         <Button
-          onClick={() => goToStepById('defect-analysis')}
+          onClick={() => goToStepById('meters')}
           disabled={keys.length === 0 || !keyPhoto}
           className="w-full h-12 rounded-2xl font-semibold gap-2"
           size="lg"

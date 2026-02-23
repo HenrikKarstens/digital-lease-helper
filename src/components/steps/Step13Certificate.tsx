@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { FileText, Send, CheckCircle2, Shield, Mail, Calendar, MapPin, Users, Download, Printer, X, Eye } from 'lucide-react';
+import { FileText, Send, CheckCircle2, Shield, Mail, Calendar, MapPin, Users, Download, Printer, X, Eye, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
@@ -7,6 +7,7 @@ import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { generateMasterProtocol, generateMasterProtocolBlob } from '@/lib/pdfGenerator';
 import { SendDialog } from './SendDialog';
+import { PaywallOverlay } from './PaywallOverlay';
 
 export const Step13Certificate = () => {
   const { data, updateData, goToStepById } = useHandover();
@@ -15,7 +16,10 @@ export const Step13Certificate = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [hasPreviewed, setHasPreviewed] = useState(false);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const { toast } = useToast();
+
+  const isUnlocked = data.paymentStatus === 'paid' || data.serviceCheckStatus === 'completed';
 
   const handlePreview = useCallback(() => {
     try {
@@ -46,6 +50,19 @@ export const Step13Certificate = () => {
   const payout = Math.max(0, saldo);
   const restforderung = saldo < 0 ? Math.abs(saldo) : 0;
 
+  const handleSendClick = () => {
+    if (!isUnlocked) {
+      setPaywallOpen(true);
+    } else {
+      setSendDialogOpen(true);
+    }
+  };
+
+  const handlePaywallUnlocked = () => {
+    // After paywall is cleared, open send dialog
+    setSendDialogOpen(true);
+  };
+
   const handleConfirmSend = (recipients: { name: string; email: string }[]) => {
     setSending(true);
     setTimeout(() => {
@@ -69,6 +86,11 @@ export const Step13Certificate = () => {
             <div className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
               <span className="font-semibold text-sm">Protokoll-Vorschau</span>
+              {!isUnlocked && (
+                <span className="text-[10px] bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium">
+                  VORABZUG
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 rounded-xl">
@@ -80,7 +102,24 @@ export const Step13Certificate = () => {
               </Button>
             </div>
           </div>
-          <iframe src={previewUrl} className="flex-1 w-full border-0" title="Protokoll PDF Vorschau" />
+          <div className="flex-1 relative">
+            <iframe src={previewUrl} className="w-full h-full border-0" title="Protokoll PDF Vorschau" />
+            {/* Diagonal watermark overlay when not unlocked */}
+            {!isUnlocked && (
+              <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center">
+                <div
+                  className="text-destructive/15 font-black text-2xl sm:text-4xl whitespace-nowrap select-none"
+                  style={{
+                    transform: 'rotate(-35deg)',
+                    letterSpacing: '0.05em',
+                    textShadow: '0 0 20px hsl(var(--destructive) / 0.1)',
+                  }}
+                >
+                  VORABZUG – Nicht zur Einreichung geeignet
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -101,6 +140,12 @@ export const Step13Certificate = () => {
             <p className="text-xs text-muted-foreground font-mono mt-1">
               ID: ET-{Date.now().toString(36).toUpperCase()}
             </p>
+            {!isUnlocked && (
+              <div className="mt-2 inline-flex items-center gap-1.5 text-xs bg-destructive/10 text-destructive px-3 py-1 rounded-full font-medium">
+                <Lock className="w-3 h-3" />
+                Vorabzug – Freischaltung erforderlich
+              </div>
+            )}
           </div>
 
           <div className="space-y-3 text-sm">
@@ -191,10 +236,21 @@ export const Step13Certificate = () => {
 
         {!data.protocolSent ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-            <Button onClick={() => setSendDialogOpen(true)} disabled={!hasPreviewed} className="w-full h-14 rounded-2xl text-base font-semibold gap-2" size="lg">
+            <Button onClick={handleSendClick} disabled={!hasPreviewed} className="w-full h-14 rounded-2xl text-base font-semibold gap-2" size="lg">
+              {!isUnlocked && <Lock className="w-4 h-4" />}
               <Send className="w-5 h-5" />
               An Beteiligte versenden
             </Button>
+            {!isUnlocked && hasPreviewed && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                Freischaltung erforderlich, um das Protokoll ohne Wasserzeichen zu versenden.
+              </p>
+            )}
+            <PaywallOverlay
+              open={paywallOpen}
+              onOpenChange={setPaywallOpen}
+              onUnlocked={handlePaywallUnlocked}
+            />
             <SendDialog
               open={sendDialogOpen}
               onOpenChange={setSendDialogOpen}
