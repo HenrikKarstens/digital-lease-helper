@@ -73,7 +73,7 @@ function getTodayISO(): string {
 }
 
 export const Step14Utility = () => {
-  const { data, resetData } = useHandover();
+  const { data, resetData, updateData, goToStepById } = useHandover();
   const { cancellationTarget, isMoveIn, isSale } = useTransactionLabels();
   const isMoveOut = data.handoverDirection === 'move-out';
   const isLandlord = data.role === 'landlord';
@@ -390,28 +390,30 @@ export const Step14Utility = () => {
                 className="mt-0.5"
               />
               <label htmlFor="dsgvo-check24" className="text-[11px] text-muted-foreground leading-tight cursor-pointer">
-                Ich stimme zu, dass meine Daten (PLZ, geschätzter Verbrauch, Zählernummer) zum Zwecke des Tarifvergleichs an Check24 übertragen werden.{' '}
+                Ich stimme zu, dass meine Daten (PLZ <span className="font-semibold text-foreground">{plz || '–'}</span>, geschätzter Verbrauch <span className="font-semibold text-foreground">{estimatedKwh.toLocaleString('de-DE')} kWh</span>, Zählernummer <span className="font-semibold text-foreground">{stromMeter?.meterNumber || '–'}</span>) zum Zwecke des Tarifvergleichs an Check24 übertragen werden.{' '}
                 <a href="/datenschutz" className="underline text-primary">Datenschutzerklärung</a>.
               </label>
             </div>
 
             {dsgvoConsent ? (
               <Button
-                asChild
+                onClick={() => {
+                  updateData({ serviceCheckStatus: 'completed' });
+                  toast({ title: '✅ Protokoll freigeschaltet', description: 'Vielen Dank! Ihr Protokoll ist jetzt ohne Wasserzeichen verfügbar.' });
+                  window.open(buildCheck24Link(), '_blank');
+                  goToStepById('certificate');
+                }}
                 className="w-full h-12 rounded-2xl font-semibold gap-2 bg-[#00893e] hover:bg-[#006e32] text-white"
                 size="lg"
               >
-                <a href={buildCheck24Link()} target="_blank" rel="noopener noreferrer">
-                  <Zap className="w-5 h-5" />
-                  Kostenfreie Ersparnis sichern & anmelden
-                  <ExternalLink className="w-4 h-4" />
-                </a>
+                <Zap className="w-5 h-5" />
+                Kostenfreie Ersparnis & Gutachten freischalten
+                <ExternalLink className="w-4 h-4" />
               </Button>
             ) : (
               <Button disabled className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
                 <Zap className="w-5 h-5" />
-                Kostenfreie Ersparnis sichern & anmelden
-                <ExternalLink className="w-4 h-4" />
+                Kostenfreie Ersparnis & Gutachten freischalten
               </Button>
             )}
 

@@ -115,7 +115,7 @@ export const Step13Certificate = () => {
                     textShadow: '0 0 20px hsl(var(--destructive) / 0.1)',
                   }}
                 >
-                  VORABZUG – Nicht zur Einreichung geeignet
+                  VORABZUG – Kein Original
                 </div>
               </div>
             )}
@@ -250,6 +250,7 @@ export const Step13Certificate = () => {
               open={paywallOpen}
               onOpenChange={setPaywallOpen}
               onUnlocked={handlePaywallUnlocked}
+              onServiceCheck={() => goToStepById('utility')}
             />
             <SendDialog
               open={sendDialogOpen}
