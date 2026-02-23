@@ -21,7 +21,6 @@ const ALL_STEPS: StepDef[] = [
   { id: 'data-complete',     label: 'Abschluss',    component: 'Step10DataComplete' },
   { id: 'defect-analysis',   label: 'Mängel',       component: 'Step10DefectAnalysis' },
   { id: 'deposit',           label: 'Kaution',      component: 'Step12Deposit' },
-  { id: 'preview',           label: 'Vorschau',     component: 'Step11ForcedPreview' },
   { id: 'unlock',            label: 'Freischaltung', component: 'Step12Unlock' },
   { id: 'utility',           label: 'Umzugs-Vorteile', component: 'Step14Utility' },
 ];
