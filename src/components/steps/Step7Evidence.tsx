@@ -305,12 +305,12 @@ export const Step7Evidence = () => {
           {/* ── Continue ── */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
             {data.findings.length === 0 ? (
-              <Button variant="outline" onClick={() => goToStepById('meters')} className="w-full h-12 rounded-2xl font-semibold">
+              <Button variant="outline" onClick={() => goToStepById('keys')} className="w-full h-12 rounded-2xl font-semibold">
                 Weiter ohne Befunde →
               </Button>
             ) : (
-              <Button onClick={() => goToStepById('meters')} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
-                Weiter zur Zählererfassung
+              <Button onClick={() => goToStepById('keys')} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+                Weiter zur Schlüssel-Inventur
                 <ArrowRight className="w-4 h-4" />
               </Button>
             )}
