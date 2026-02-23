@@ -148,6 +148,7 @@ export interface HandoverData {
   relettingDate: string;
   // Step 13
   protocolSent: boolean;
+  previewViewed: boolean;
   // Paywall
   paymentStatus: 'unpaid' | 'paid';
   serviceCheckStatus: 'none' | 'completed';
@@ -217,6 +218,7 @@ const defaultData: HandoverData = {
   immediateReletting: false,
   relettingDate: '',
   protocolSent: false,
+  previewViewed: false,
   paymentStatus: 'unpaid',
   serviceCheckStatus: 'none',
 };
@@ -286,7 +288,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
       const MASTER_ORDER = [
         'hero', 'transaction-type', 'role', 'direction', 'data-check',
         'floor-plan', 'participants', 'evidence', 'keys', 'meters', 'data-complete',
-        'defect-analysis', 'deposit', 'certificate', 'utility'
+        'defect-analysis', 'deposit', 'preview', 'unlock', 'utility'
       ];
       const masterIdx = MASTER_ORDER.indexOf(stepId);
       for (let i = masterIdx + 1; i < MASTER_ORDER.length; i++) {

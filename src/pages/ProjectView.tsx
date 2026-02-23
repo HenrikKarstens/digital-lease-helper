@@ -28,7 +28,8 @@ const Step9Keys = lazy(() => import('@/components/steps/Step9Keys').then(m => ({
 const Step10DataComplete = lazy(() => import('@/components/steps/Step10DataComplete').then(m => ({ default: m.Step10DataComplete })));
 const Step10DefectAnalysis = lazy(() => import('@/components/steps/Step10DefectAnalysis').then(m => ({ default: m.Step10DefectAnalysis })));
 const Step12Deposit = lazy(() => import('@/components/steps/Step12Deposit').then(m => ({ default: m.Step12Deposit })));
-const Step13Certificate = lazy(() => import('@/components/steps/Step13Certificate').then(m => ({ default: m.Step13Certificate })));
+const Step11ForcedPreview = lazy(() => import('@/components/steps/Step11ForcedPreview').then(m => ({ default: m.Step11ForcedPreview })));
+const Step12Unlock = lazy(() => import('@/components/steps/Step12Unlock').then(m => ({ default: m.Step12Unlock })));
 const Step14Utility = lazy(() => import('@/components/steps/Step14Utility').then(m => ({ default: m.Step14Utility })));
 
 const COMPONENT_MAP: Record<string, React.ComponentType> = {
@@ -46,7 +47,8 @@ const COMPONENT_MAP: Record<string, React.ComponentType> = {
   Step10DataComplete,
   Step10DefectAnalysis,
   Step12Deposit,
-  Step13Certificate,
+  Step11ForcedPreview,
+  Step12Unlock,
   Step14Utility,
 };
 
