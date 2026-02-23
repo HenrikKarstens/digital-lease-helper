@@ -283,13 +283,18 @@ export const Step12Unlock = () => {
           </div>
 
           <Button
-            onClick={() => { handleServiceCheckSelect(); setSendDialogOpen(true); }}
+            onClick={() => {
+              handleServiceCheckSelect();
+              // Use emails from Phase 5 participants directly – skip SendDialog
+              const recipients = recipientList.map(r => ({ role: '', name: r.name, email: r.email }));
+              handleServiceCheckConfirmSend(recipients);
+            }}
             disabled={!dsgvoConsent || !previewViewed}
             className="w-full h-12 rounded-2xl font-semibold gap-2"
             size="lg"
           >
             <Zap className="w-5 h-5" />
-            Kostenfreie Ersparnis & Gutachten freischalten
+            Tarifvergleich & kostenloses Protokoll
             <ExternalLink className="w-4 h-4" />
           </Button>
         </motion.div>
