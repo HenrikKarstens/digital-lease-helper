@@ -176,11 +176,12 @@ export const Step6Participants = () => {
     });
   };
 
-  /** Resolve email for a participant – each role gets ONLY its own email, never the other's */
+  /** Resolve email for a participant – check 'vermieter' BEFORE 'mieter' (since 'vermieter' contains 'mieter') */
   const getEmailForParticipant = (p: { id: string; name: string; role: string; email?: string }) => {
     const roleLower = p.role.toLowerCase();
-    if (roleLower.includes('mieter') || roleLower.includes('käufer')) return data.tenantEmail || '';
+    // IMPORTANT: Check vermieter/verkäufer FIRST – 'vermieter' contains 'mieter'!
     if (roleLower.includes('vermieter') || roleLower.includes('verkäufer') || roleLower.includes('eigentümer')) return data.landlordEmail || '';
+    if (roleLower.includes('mieter') || roleLower.includes('käufer')) return data.tenantEmail || '';
     return p.email || '';
   };
 
