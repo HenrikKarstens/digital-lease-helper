@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, ArrowRight, Check, X, PenTool, ChevronDown, FileDown, Mail, AlertTriangle } from 'lucide-react';
+import { UserPlus, ArrowRight, Check, X, PenTool, ChevronDown, FileDown, AlertTriangle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
@@ -8,6 +8,138 @@ import { useState } from 'react';
 import { SignaturePad } from '@/components/SignaturePad';
 import { generateBeweisanker } from '@/lib/pdfGenerator';
 
+/* ── Participant Card (with inline email) ───────────────────────── */
+interface ParticipantCardProps {
+  p: { id: string; name: string; role: string; present: boolean; signature?: string | null; email?: string };
+  index: number;
+  openSigId: string | null;
+  emailValue: string;
+  onTogglePresence: (id: string) => void;
+  onRemove: (id: string) => void;
+  onToggleSig: (id: string) => void;
+  onSaveSignature: (id: string, url: string) => void;
+  onClearSignature: (id: string) => void;
+  onEmailChange: (id: string, email: string) => void;
+  roleLabel?: string;
+}
+
+const ParticipantCard = ({
+  p, index, openSigId, emailValue,
+  onTogglePresence, onRemove, onToggleSig,
+  onSaveSignature, onClearSignature, onEmailChange,
+}: ParticipantCardProps) => (
+  <motion.div
+    key={p.id}
+    initial={{ opacity: 0, x: -10 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ delay: index * 0.05 }}
+    className="glass-card rounded-2xl overflow-hidden"
+  >
+    {/* Header row */}
+    <div className="p-4 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => onTogglePresence(p.id)}
+          className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+            p.present ? 'bg-success/20 text-success' : 'bg-destructive/10 text-destructive'
+          }`}
+        >
+          {p.present ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+        </button>
+        <div>
+          <p className="text-sm font-medium">{p.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-muted-foreground">{p.role}</p>
+            {p.signature && <span className="text-xs text-success font-medium">· Unterschrift ✓</span>}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onToggleSig(p.id)}
+          className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
+            p.signature
+              ? 'text-success bg-success/10'
+              : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+          }`}
+        >
+          <PenTool className="w-3 h-3" />
+          {p.signature ? 'Sig.' : 'Sign.'}
+          <ChevronDown className={`w-3 h-3 transition-transform ${openSigId === p.id ? 'rotate-180' : ''}`} />
+        </button>
+        <button onClick={() => onRemove(p.id)} className="text-muted-foreground hover:text-destructive p-1 rounded-lg hover:bg-destructive/10 transition-colors">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+
+    {/* Inline email field */}
+    <div className="px-4 pb-3">
+      <div className="flex items-center gap-2">
+        <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <Input
+          type="email"
+          value={emailValue}
+          onChange={e => onEmailChange(p.id, e.target.value)}
+          placeholder="E-Mail-Adresse"
+          className="rounded-xl bg-secondary/50 border-0 h-8 text-xs"
+        />
+      </div>
+    </div>
+
+    {/* Inline signature pad */}
+    <AnimatePresence>
+      {openSigId === p.id && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="px-4 pb-4 overflow-hidden"
+        >
+          <SignaturePad
+            label={`${p.name} (${p.role})`}
+            value={p.signature ?? null}
+            onSave={(url) => onSaveSignature(p.id, url)}
+            onClear={() => onClearSignature(p.id)}
+          />
+          <p className="text-xs text-muted-foreground mt-2 text-center">
+            Optional – bestätigt Anwesenheit & Identität
+          </p>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </motion.div>
+);
+
+/* ── Legal Warning Box ──────────────────────────────────────────── */
+const LegalWarningBox = ({ address, onDismiss, clientRole, ownerRole }: {
+  address: string; onDismiss: () => void; clientRole: string; ownerRole: string;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, height: 0 }}
+    animate={{ opacity: 1, height: 'auto' }}
+    className="rounded-2xl border-2 border-destructive/40 bg-destructive/5 p-4 space-y-3"
+  >
+    <div className="flex items-start gap-2">
+      <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+      <div>
+        <p className="font-semibold text-sm text-destructive">Rechtlicher Hinweis</p>
+        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+          Für die volle Beweiskraft müssen {clientRole} und {ownerRole} eine identische
+          Kopie des Dokuments erhalten (§ 535 BGB). Um eine rechtssichere Dokumentation der Übergabe in der{' '}
+          <span className="font-medium text-foreground">{address || 'Immobilie'}</span>{' '}
+          zu gewährleisten, ist der Versand an beide Vertragsparteien zwingend erforderlich.
+        </p>
+      </div>
+    </div>
+    <Button variant="destructive" size="sm" className="rounded-lg text-xs" onClick={onDismiss}>
+      Trotzdem fortfahren
+    </Button>
+  </motion.div>
+);
+
+/* ── Main Component ─────────────────────────────────────────────── */
 export const Step6Participants = () => {
   const { data, updateData, goToStepById } = useHandover();
   const { ownerRole, clientRole } = useTransactionLabels();
@@ -64,6 +196,35 @@ export const Step6Participants = () => {
     });
   };
 
+  /** Resolve email for a participant from their card OR from global landlord/tenant fields */
+  const getEmailForParticipant = (p: { id: string; name: string; role: string; email?: string }) => {
+    // Check role-based global emails first
+    const roleLower = p.role.toLowerCase();
+    if (roleLower.includes('mieter') || roleLower.includes('käufer')) return data.tenantEmail || p.email || '';
+    if (roleLower.includes('vermieter') || roleLower.includes('verkäufer') || roleLower.includes('eigentümer')) return data.landlordEmail || p.email || '';
+    return p.email || '';
+  };
+
+  const handleEmailChange = (id: string, email: string) => {
+    const participant = data.participants.find(p => p.id === id);
+    if (!participant) return;
+    const roleLower = participant.role.toLowerCase();
+
+    // Sync to global fields
+    if (roleLower.includes('mieter') || roleLower.includes('käufer')) {
+      updateData({ tenantEmail: email });
+    } else if (roleLower.includes('vermieter') || roleLower.includes('verkäufer') || roleLower.includes('eigentümer')) {
+      updateData({ landlordEmail: email });
+    }
+
+    // Also store on participant
+    updateData({
+      participants: data.participants.map(p =>
+        p.id === id ? { ...p, email } : p
+      ),
+    });
+  };
+
   const signedCount = data.participants.filter(p => p.signature).length;
 
   return (
@@ -89,79 +250,22 @@ export const Step6Participants = () => {
           </div>
         )}
 
-        {/* Participant list */}
+        {/* Participant cards with integrated email */}
         <div className="space-y-2">
           {data.participants.map((p, i) => (
-            <motion.div
+            <ParticipantCard
               key={p.id}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="glass-card rounded-2xl overflow-hidden"
-            >
-              {/* Participant row */}
-              <div className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => togglePresence(p.id)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-                      p.present ? 'bg-success/20 text-success' : 'bg-destructive/10 text-destructive'
-                    }`}
-                  >
-                    {p.present ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
-                  </button>
-                  <div>
-                    <p className="text-sm font-medium">{p.name}</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-muted-foreground">{p.role}</p>
-                      {p.signature && (
-                        <span className="text-xs text-success font-medium">· Unterschrift ✓</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setOpenSigId(openSigId === p.id ? null : p.id)}
-                    className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
-                      p.signature
-                        ? 'text-success bg-success/10'
-                        : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
-                    }`}
-                  >
-                    <PenTool className="w-3 h-3" />
-                    {p.signature ? 'Sig.' : 'Sign.'}
-                    <ChevronDown className={`w-3 h-3 transition-transform ${openSigId === p.id ? 'rotate-180' : ''}`} />
-                  </button>
-                  <button onClick={() => removeParticipant(p.id)} className="text-muted-foreground hover:text-destructive p-1 rounded-lg hover:bg-destructive/10 transition-colors">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Inline signature pad – lazy mount */}
-              <AnimatePresence>
-                {openSigId === p.id && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="px-4 pb-4 overflow-hidden"
-                  >
-                    <SignaturePad
-                      label={`${p.name} (${p.role})`}
-                      value={p.signature ?? null}
-                      onSave={(url) => saveSignature(p.id, url)}
-                      onClear={() => clearSignature(p.id)}
-                    />
-                    <p className="text-xs text-muted-foreground mt-2 text-center">
-                      Optional – bestätigt Anwesenheit & Identität
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
+              p={p}
+              index={i}
+              openSigId={openSigId}
+              emailValue={getEmailForParticipant(p)}
+              onTogglePresence={togglePresence}
+              onRemove={removeParticipant}
+              onToggleSig={(id) => setOpenSigId(openSigId === id ? null : id)}
+              onSaveSignature={saveSignature}
+              onClearSignature={clearSignature}
+              onEmailChange={handleEmailChange}
+            />
           ))}
         </div>
 
@@ -186,6 +290,22 @@ export const Step6Participants = () => {
           </Button>
         </div>
 
+        {/* Legal warning – always visible */}
+        <div className="rounded-2xl border border-accent/30 bg-accent/5 p-4">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-accent-foreground shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-sm">Rechtlicher Hinweis</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                Für die volle Beweiskraft müssen {clientRole} und {ownerRole} eine identische
+                Kopie des Dokuments erhalten (§ 535 BGB). Um eine rechtssichere Dokumentation der Übergabe in der{' '}
+                <span className="font-medium text-foreground">{data.propertyAddress || 'Weddingstedter Straße 39, 25746 Heide'}</span>{' '}
+                zu gewährleisten, ist der Versand an beide Vertragsparteien zwingend erforderlich.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Vorab-Dokument / Offline-Protokoll */}
         <div className="glass-card rounded-2xl p-4">
           <p className="text-sm font-medium mb-1">Vorab-Dokument / Offline-Protokoll</p>
@@ -202,72 +322,17 @@ export const Step6Participants = () => {
           </Button>
         </div>
 
-        {/* E-Mail-Felder für Versand */}
-        <div className="glass-card rounded-2xl p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Mail className="w-4 h-4 text-primary" />
-            <p className="text-sm font-semibold">E-Mail-Adressen für Protokollversand</p>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Diese Adressen werden in Phase 12 für den automatischen Versand verwendet.
-          </p>
-          <div className="space-y-2">
-            <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                E-Mail {ownerRole} *
-              </label>
-              <Input
-                type="email"
-                value={data.landlordEmail}
-                onChange={e => updateData({ landlordEmail: e.target.value })}
-                placeholder={`E-Mail ${ownerRole}`}
-                className="rounded-xl bg-secondary/50 border-0 mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                E-Mail {clientRole} *
-              </label>
-              <Input
-                type="email"
-                value={data.tenantEmail}
-                onChange={e => updateData({ tenantEmail: e.target.value })}
-                placeholder={`E-Mail ${clientRole}`}
-                className="rounded-xl bg-secondary/50 border-0 mt-1"
-              />
-            </div>
-          </div>
-
-          {/* Legal warning if only one email */}
+        {/* Validation warning if emails missing */}
+        <AnimatePresence>
           {showEmailWarning && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="rounded-xl border-2 border-destructive/40 bg-destructive/5 p-3 space-y-2"
-            >
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-sm text-destructive">Rechtlicher Hinweis</p>
-                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                    Für die volle Beweiskraft müssen {clientRole} und {ownerRole} eine identische
-                    Kopie des Dokuments erhalten (§ 535 BGB). Um eine rechtssichere Dokumentation der Übergabe in der{' '}
-                    <span className="font-medium text-foreground">{data.propertyAddress || 'Immobilie'}</span>{' '}
-                    zu gewährleisten, ist der Versand an beide Vertragsparteien zwingend erforderlich.
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="rounded-lg text-xs"
-                onClick={() => { setShowEmailWarning(false); goToStepById('evidence'); }}
-              >
-                Trotzdem fortfahren
-              </Button>
-            </motion.div>
+            <LegalWarningBox
+              address={data.propertyAddress || 'Weddingstedter Straße 39, 25746 Heide'}
+              clientRole={clientRole}
+              ownerRole={ownerRole}
+              onDismiss={() => { setShowEmailWarning(false); goToStepById('evidence'); }}
+            />
           )}
-        </div>
+        </AnimatePresence>
 
         <Button
           onClick={() => {
