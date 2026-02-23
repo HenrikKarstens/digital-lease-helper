@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Zap, Shield, CheckCircle2, ArrowRight } from 'lucide-react';
+import { CreditCard, Zap, Shield, ArrowRight } from 'lucide-react';
 import { useHandover } from '@/context/HandoverContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -9,9 +9,10 @@ interface PaywallOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUnlocked: () => void;
+  onServiceCheck?: () => void;
 }
 
-export const PaywallOverlay = ({ open, onOpenChange, onUnlocked }: PaywallOverlayProps) => {
+export const PaywallOverlay = ({ open, onOpenChange, onUnlocked, onServiceCheck }: PaywallOverlayProps) => {
   const { data, updateData } = useHandover();
   const { toast } = useToast();
   const [processing, setProcessing] = useState(false);
@@ -20,7 +21,6 @@ export const PaywallOverlay = ({ open, onOpenChange, onUnlocked }: PaywallOverla
 
   const handlePayment = () => {
     setProcessing(true);
-    // Simulate payment flow — in production, this triggers Stripe/PayPal
     setTimeout(() => {
       updateData({ paymentStatus: 'paid' });
       setProcessing(false);
@@ -31,15 +31,8 @@ export const PaywallOverlay = ({ open, onOpenChange, onUnlocked }: PaywallOverla
   };
 
   const handleServiceCheck = () => {
-    setProcessing(true);
-    // Simulate service check completion
-    setTimeout(() => {
-      updateData({ serviceCheckStatus: 'completed' });
-      setProcessing(false);
-      toast({ title: '✅ Protokoll freigeschaltet', description: 'Vielen Dank für Ihren Tarifvergleich.' });
-      onOpenChange(false);
-      onUnlocked();
-    }, 2000);
+    onOpenChange(false);
+    onServiceCheck?.();
   };
 
   if (isUnlocked) return null;
@@ -47,7 +40,6 @@ export const PaywallOverlay = ({ open, onOpenChange, onUnlocked }: PaywallOverla
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden">
-        {/* Header gradient */}
         <div className="bg-gradient-to-br from-primary to-primary/80 p-6 text-primary-foreground">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2 text-primary-foreground">
@@ -61,7 +53,6 @@ export const PaywallOverlay = ({ open, onOpenChange, onUnlocked }: PaywallOverla
         </div>
 
         <div className="p-5 space-y-3">
-          {/* Option A: Payment */}
           <button
             onClick={handlePayment}
             disabled={processing}
@@ -73,7 +64,7 @@ export const PaywallOverlay = ({ open, onOpenChange, onUnlocked }: PaywallOverla
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <p className="font-bold text-sm">Einmalzahlung</p>
+                  <p className="font-bold text-sm">Direkt freischalten</p>
                   <span className="text-lg font-bold text-primary">9,90 €</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -84,14 +75,12 @@ export const PaywallOverlay = ({ open, onOpenChange, onUnlocked }: PaywallOverla
             </div>
           </button>
 
-          {/* Divider */}
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-border" />
             <span className="text-xs text-muted-foreground font-medium">oder</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          {/* Option B: Service Check */}
           <button
             onClick={handleServiceCheck}
             disabled={processing}
@@ -103,7 +92,7 @@ export const PaywallOverlay = ({ open, onOpenChange, onUnlocked }: PaywallOverla
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <p className="font-bold text-sm">Kostenlos durch Service-Check</p>
+                  <p className="font-bold text-sm">Kostenfrei & Zählerwechsel prüfen</p>
                   <span className="text-sm font-bold text-accent-foreground">0 €</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
@@ -115,7 +104,6 @@ export const PaywallOverlay = ({ open, onOpenChange, onUnlocked }: PaywallOverla
           </button>
         </div>
 
-        {/* Processing overlay */}
         {processing && (
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-2xl">
             <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin mb-3" />
@@ -123,7 +111,6 @@ export const PaywallOverlay = ({ open, onOpenChange, onUnlocked }: PaywallOverla
           </div>
         )}
 
-        {/* Footer note */}
         <div className="px-5 pb-4">
           <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
             Mit der Nutzung akzeptieren Sie unsere AGB und Datenschutzrichtlinie. Der Tarifvergleich ist unverbindlich und kostenlos.

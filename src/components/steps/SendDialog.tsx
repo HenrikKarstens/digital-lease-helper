@@ -105,12 +105,11 @@ export const SendDialog = ({ open, onOpenChange, onConfirmSend, sending }: SendD
               <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold text-sm text-destructive">Achtung: Eingeschränkte Beweiskraft!</p>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  Um eine rechtssichere Dokumentation der Übergabe in der{' '}
-                  <span className="font-medium text-foreground">{data.propertyAddress || 'der Immobilie'}</span>{' '}
-                  zu gewährleisten, müssen zwingend beide Vertragsparteien ({ownerRole} und {clientRole}) das identische
-                  Protokoll erhalten. Nur so ist sichergestellt, dass der Zustand des Objekts und Zählerstände im Streitfall
-                  zweifelsfrei belegt sind.
+                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                   Rechtlicher Hinweis: Für die volle Beweiskraft müssen {clientRole} und {ownerRole} eine identische
+                   Kopie des Dokuments erhalten (§ 535 BGB). Um eine rechtssichere Dokumentation der Übergabe in der{' '}
+                   <span className="font-medium text-foreground">{data.propertyAddress || 'der Immobilie'}</span>{' '}
+                   zu gewährleisten, ist der Versand an beide Vertragsparteien zwingend erforderlich.
                 </p>
               </div>
             </div>
