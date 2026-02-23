@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
 import { getFilteredSteps as getFilteredStepsImported } from '@/hooks/useStepConfig';
 
 export interface Participant {
@@ -87,8 +87,8 @@ export interface HandoverData {
   tenantEmail: string;
   tenantPhone: string;
   tenantBirthday: string;
-  priorAddress: string;   // Voranschrift (Einzug)
-  nextAddress: string;    // Nachanschrift (Auszug)
+  priorAddress: string;
+  nextAddress: string;
   depositAmount: string;
   contractStart: string;
   contractEnd: string;
@@ -109,6 +109,8 @@ export interface HandoverData {
   endRenovationAnalysis: string;
   endRenovationStatus: 'safe' | 'warning' | 'invalid' | '';
   renovationClauseAnalysis: string;
+  // Stricken clauses (user-marked as struck-through)
+  strickenClauses: string[];
   // Step 5
   floorPlanUrl: string | null;
   rooms: { id: string; name: string; x: number; y: number }[];
@@ -131,18 +133,20 @@ export interface HandoverData {
   nkRisiko: 'niedrig' | 'mittel' | 'hoch';
   // Step 12 – Kautionsart, Zinsberechnung & Zahlungsanweisung
   depositType: DepositType;
-  guaranteeNumber: string;          // Bürgschaftsurkunde Nr.
-  pledgedAccountBalance: string;    // Aktueller Stand inkl. Zinsen laut Sparbuch
-  depositPaymentDate: string;       // Datum der Kautionszahlung
-  depositInterestRate: number;      // Zinssatz in % (z.B. 1.5)
-  payeeIban: string;                // IBAN des Empfängers
-  payeeAccountHolder: string;       // Kontoinhaber des Empfängers
+  guaranteeNumber: string;
+  pledgedAccountBalance: string;
+  depositPaymentDate: string;
+  depositInterestRate: number;
+  payeeIban: string;
+  payeeAccountHolder: string;
   // Step 10 – Anschlussvermietung
-  immediateReletting: boolean;       // Sofortige Anschlussvermietung (Einzug < 7 Tage)
-  relettingDate: string;             // Datum des Neueinzugs
+  immediateReletting: boolean;
+  relettingDate: string;
   // Step 13
   protocolSent: boolean;
 }
+
+const STORAGE_KEY = 'estateturn_draft';
 
 const defaultData: HandoverData = {
   transactionType: null,
@@ -179,6 +183,7 @@ const defaultData: HandoverData = {
   endRenovationAnalysis: '',
   endRenovationStatus: '',
   renovationClauseAnalysis: '',
+  strickenClauses: [],
   floorPlanUrl: null,
   rooms: [],
   participants: [],
@@ -217,8 +222,31 @@ interface HandoverContextType {
 const HandoverContext = createContext<HandoverContextType | undefined>(undefined);
 
 export const HandoverProvider = ({ children }: { children: ReactNode }) => {
-  const [data, setData] = useState<HandoverData>(defaultData);
-  const [currentStep, setCurrentStep] = useState(0);
+  // Restore from localStorage on mount
+  const [data, setData] = useState<HandoverData>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...defaultData, ...parsed.data };
+      }
+    } catch {}
+    return defaultData;
+  });
+  const [currentStep, setCurrentStep] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return JSON.parse(saved).step || 0;
+    } catch {}
+    return 0;
+  });
+
+  // Auto-save to localStorage on every change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ data, step: currentStep }));
+    } catch {}
+  }, [data, currentStep]);
 
   const updateData = useCallback((partial: Partial<HandoverData>) => {
     setData(prev => ({ ...prev, ...partial }));
@@ -227,6 +255,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
   const resetData = useCallback(() => {
     setData(defaultData);
     setCurrentStep(0);
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
   }, []);
 
   const loadProject = useCallback((savedData: Partial<HandoverData>, step: number) => {
@@ -243,7 +272,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
       setCurrentStep(idx);
     } else {
       const MASTER_ORDER = [
-        'hero', 'transaction-type', 'role', 'direction', 'smart-entry', 'validation',
+        'hero', 'transaction-type', 'role', 'direction', 'data-check',
         'floor-plan', 'participants', 'evidence', 'meters', 'keys', 'defect-analysis',
         'deposit', 'certificate', 'utility'
       ];

@@ -10,8 +10,7 @@ import { Step1cDirection } from '@/components/steps/Step1cDirection';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// Heavy steps – lazy loaded
-const Step3SmartEntry = lazy(() => import('@/components/steps/Step3SmartEntry').then(m => ({ default: m.Step3SmartEntry })));
+// Step3SmartEntry is now integrated into Step4Validation
 const Step4Validation = lazy(() => import('@/components/steps/Step4Validation').then(m => ({ default: m.Step4Validation })));
 const Step5FloorPlan = lazy(() => import('@/components/steps/Step5FloorPlan').then(m => ({ default: m.Step5FloorPlan })));
 const Step6Participants = lazy(() => import('@/components/steps/Step6Participants').then(m => ({ default: m.Step6Participants })));
@@ -28,7 +27,6 @@ const COMPONENT_MAP: Record<string, React.ComponentType> = {
   Step1aTransactionType,
   Step2Role,
   Step1cDirection,
-  Step3SmartEntry,
   Step4Validation,
   Step5FloorPlan,
   Step6Participants,
