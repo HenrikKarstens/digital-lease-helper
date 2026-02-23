@@ -341,7 +341,7 @@ export const Step14Utility = () => {
                 <Leaf className="w-5 h-5 text-success" />
               </div>
               <div>
-                <h3 className="font-semibold">Preisvergleich</h3>
+                <h3 className="font-semibold">Tarifvergleich & kostenfreies Gutachten</h3>
                 <p className="text-xs text-muted-foreground">Check24 vs. Grundversorger</p>
               </div>
             </div>
