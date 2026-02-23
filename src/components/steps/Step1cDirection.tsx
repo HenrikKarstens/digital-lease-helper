@@ -7,7 +7,7 @@ export const Step1cDirection = () => {
 
   const select = (direction: 'move-in' | 'move-out') => {
     updateData({ handoverDirection: direction });
-    goToStepById('smart-entry');
+    goToStepById('data-check');
   };
 
   return (

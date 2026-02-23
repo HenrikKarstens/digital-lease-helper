@@ -6,18 +6,26 @@ import { useHandover } from '@/context/HandoverContext';
 import { useDocumentSteps } from './documentWizard/useDocumentSteps';
 import { SingleDocCapture } from './documentWizard/SingleDocCapture';
 
-export const Step3SmartEntry = () => {
+interface Step3Props {
+  embedded?: boolean;
+  onComplete?: () => void;
+}
+
+export const Step3SmartEntry = ({ embedded, onComplete }: Step3Props = {}) => {
   const { goToStepById } = useHandover();
   const docSteps = useDocumentSteps();
   const [currentDocIdx, setCurrentDocIdx] = useState(0);
-  const [skippedAll, setSkippedAll] = useState(false);
 
   const currentDoc = docSteps[currentDocIdx];
 
   const handleDocDone = () => {
     const next = currentDocIdx + 1;
     if (next >= docSteps.length) {
-      goToStepById('validation');
+      if (embedded && onComplete) {
+        onComplete();
+      } else {
+        goToStepById('data-check');
+      }
     } else {
       setCurrentDocIdx(next);
     }
@@ -28,7 +36,11 @@ export const Step3SmartEntry = () => {
   };
 
   if (!currentDoc) {
-    goToStepById('validation');
+    if (embedded && onComplete) {
+      onComplete();
+    } else {
+      goToStepById('data-check');
+    }
     return null;
   }
 
@@ -108,7 +120,13 @@ export const Step3SmartEntry = () => {
       {/* Skip all button */}
       <div className="px-4 pt-4">
         <button
-          onClick={() => goToStepById('validation')}
+          onClick={() => {
+            if (embedded && onComplete) {
+              onComplete();
+            } else {
+              goToStepById('data-check');
+            }
+          }}
           className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
         >
           Alle Schritte überspringen → Manuelle Eingabe
