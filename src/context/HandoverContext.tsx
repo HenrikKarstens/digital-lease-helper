@@ -255,11 +255,37 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
     return 0;
   });
 
-  // Auto-save to localStorage on every change
+  // Auto-save to localStorage on every change (strip large base64 to avoid QuotaExceededError)
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ data, step: currentStep }));
-    } catch {}
+      // Strip base64 data URLs from persistence to stay within ~5 MB localStorage quota
+      const stripped = {
+        ...data,
+        keyBundlePhotoUrl: data.keyBundlePhotoUrl?.startsWith('data:') ? '__photo_captured__' : data.keyBundlePhotoUrl,
+        floorPlanUrl: data.floorPlanUrl?.startsWith('data:') ? '__photo_captured__' : data.floorPlanUrl,
+        attendancePhotoUrl: data.attendancePhotoUrl?.startsWith('data:') ? '__photo_captured__' : data.attendancePhotoUrl,
+        signatureLandlord: data.signatureLandlord?.startsWith('data:') ? '__sig_captured__' : data.signatureLandlord,
+        signatureTenant: data.signatureTenant?.startsWith('data:') ? '__sig_captured__' : data.signatureTenant,
+        findings: data.findings.map(f => ({
+          ...f,
+          photoUrl: f.photoUrl?.startsWith('data:') ? '__photo_captured__' : f.photoUrl,
+        })),
+        meterReadings: data.meterReadings.map(m => ({
+          ...m,
+          photoUrl: m.photoUrl?.startsWith('data:') ? '__photo_captured__' : m.photoUrl,
+        })),
+        capturedDocuments: data.capturedDocuments.map(d => ({
+          ...d,
+          pages: d.pages.map(p => ({
+            ...p,
+            dataUrl: p.dataUrl?.startsWith('data:') ? '__photo_captured__' : p.dataUrl,
+          })),
+        })),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ data: stripped, step: currentStep }));
+    } catch (e) {
+      console.warn('localStorage save failed:', e);
+    }
   }, [data, currentStep]);
 
   const updateData = useCallback((partial: Partial<HandoverData>) => {
