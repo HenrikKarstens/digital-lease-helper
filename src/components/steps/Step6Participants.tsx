@@ -176,12 +176,11 @@ export const Step6Participants = () => {
     });
   };
 
-  /** Resolve email for a participant from their card OR from global landlord/tenant fields */
+  /** Resolve email for a participant – each role gets ONLY its own email, never the other's */
   const getEmailForParticipant = (p: { id: string; name: string; role: string; email?: string }) => {
-    // Check role-based global emails first
     const roleLower = p.role.toLowerCase();
-    if (roleLower.includes('mieter') || roleLower.includes('käufer')) return data.tenantEmail || p.email || '';
-    if (roleLower.includes('vermieter') || roleLower.includes('verkäufer') || roleLower.includes('eigentümer')) return data.landlordEmail || p.email || '';
+    if (roleLower.includes('mieter') || roleLower.includes('käufer')) return data.tenantEmail || '';
+    if (roleLower.includes('vermieter') || roleLower.includes('verkäufer') || roleLower.includes('eigentümer')) return data.landlordEmail || '';
     return p.email || '';
   };
 

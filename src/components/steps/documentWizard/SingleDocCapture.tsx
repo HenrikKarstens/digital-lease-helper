@@ -8,8 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { DocumentAnalysisProgress } from './DocumentAnalysisProgress';
-import { AnalysisSummaryCard } from './AnalysisSummaryCard';
-import type { SummaryField } from './AnalysisSummaryCard';
+
 import { DocumentScanner } from './DocumentScanner';
 import type { DocStep, PagePhoto, InputMode } from './types';
 
@@ -209,74 +208,6 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     onDone();
   };
 
-  const getSummaryFields = (): SummaryField[] => {
-    if (!analysisResult) return [];
-    const confidence = analysisResult.confidence || {};
-    const fields: SummaryField[] = [];
-    const add = (key: string, label: string, dataKey: keyof typeof data, opts?: { required?: boolean }) => {
-      const val = (analysisResult[key] || (data[dataKey] as string) || '').toString();
-      fields.push({
-        key,
-        label,
-        value: val,
-        required: opts?.required,
-        confidence: confidence[key] as 'high' | 'medium' | 'low' | undefined,
-        onUpdate: (v: string) => updateData({ [dataKey]: v } as any),
-      });
-    };
-    if (docStep.id === 'main-contract') {
-      add('propertyAddress', 'Objektadresse', 'propertyAddress');
-      add('landlordName', isSale ? 'Verkäufer' : 'Vermieter', 'landlordName');
-      add('landlordPhone', `Mobilnummer ${isSale ? 'Verkäufer' : 'Vermieter'}`, 'landlordPhone');
-      add('landlordBirthday', `Geburtstag ${isSale ? 'Verkäufer' : 'Vermieter'}`, 'landlordBirthday');
-      add('tenantName', isSale ? 'Käufer' : 'Mieter', 'tenantName');
-      add('tenantPhone', `Mobilnummer ${isSale ? 'Käufer' : 'Mieter'}`, 'tenantPhone');
-      add('tenantBirthday', `Geburtstag ${isSale ? 'Käufer' : 'Mieter'}`, 'tenantBirthday');
-      add('priorAddress', 'Voranschrift', 'priorAddress');
-      add('roomCount', 'Anzahl Zimmer', 'roomCount');
-      add('contractStart', isSale ? 'Übergabedatum' : 'Vertragsbeginn', 'contractStart', { required: true });
-      add('contractDuration', 'Befristung', 'contractDuration');
-      add('contractType', 'Vertragsart', 'contractType');
-      add('contractSigningDate', 'Vertragsunterzeichnung', 'contractSigningDate');
-      add('coldRent', 'Kaltmiete (€)', 'coldRent', { required: true });
-      add('nkAdvancePayment', 'Betriebskostenvorauszahlung (€)', 'nkAdvancePayment');
-      add('heatingCosts', 'Heiz-/Warmwasserkosten (€)', 'heatingCosts');
-      add('totalRent', 'Gesamtmiete (€)', 'totalRent');
-      add('depositAmount', isSale ? 'Kaufpreis (€)' : 'Kaution (€)', 'depositAmount', { required: true });
-    } else if (docStep.id === 'amendment') {
-      add('coldRent', 'Neue Kaltmiete', 'coldRent');
-      add('nkAdvancePayment', 'Neue Betriebskostenvorauszahlung', 'nkAdvancePayment');
-      add('heatingCosts', 'Neue Heiz-/Warmwasserkosten', 'heatingCosts');
-    } else if (docStep.id === 'handover-protocol') {
-      add('preDamages', 'Vorschäden', 'preDamages');
-    } else if (docStep.id === 'utility-bill') {
-      add('nkAdvancePayment', 'Monatl. Vorauszahlung', 'nkAdvancePayment');
-      add('heatingCosts', 'Heizkosten-Anteil', 'heatingCosts');
-    }
-    return fields;
-  };
-
-  const getLegalWarnings = () => {
-    if (!analysisResult) return [];
-    const warnings: { type: 'error' | 'warning' | 'info'; text: string }[] = [];
-    if (analysisResult.depositLegalCheck) {
-      const status = analysisResult.depositLegalStatus;
-      const type = status === 'invalid' ? 'error' : status === 'warning' ? 'warning' : 'info';
-      warnings.push({ type, text: `§ 551 BGB Kaution: ${analysisResult.depositLegalCheck}` });
-    }
-    if (analysisResult.smallRepairAnalysis) {
-      const status = analysisResult.smallRepairStatus;
-      const type = status === 'invalid' ? 'error' : status === 'warning' ? 'warning' : 'info';
-      warnings.push({ type, text: `Kleinreparaturen: ${analysisResult.smallRepairAnalysis}` });
-    }
-    if (analysisResult.endRenovationAnalysis) {
-      const status = analysisResult.endRenovationStatus;
-      const type = status === 'invalid' ? 'error' : status === 'warning' ? 'warning' : 'info';
-      warnings.push({ type, text: `Endrenovierung: ${analysisResult.endRenovationAnalysis}` });
-    }
-    return warnings;
-  };
-
   // ── Manual input form ──────────────────────────────────────────────────
   if (mode === 'manual') {
     const manualFields = getManualFields(docStep.id, isSale, ownerRole, clientRole);
@@ -335,19 +266,10 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     );
   }
 
-  // ── Done (analysis result) ─────────────────────────────────────────────
-  if (mode === 'done' && analysisResult) {
-    return (
-      <div className="flex flex-col items-center px-4 py-6">
-        <AnalysisSummaryCard
-          docType={docStep.id}
-          fields={getSummaryFields()}
-          analysisSummary={analysisResult._summary}
-          legalWarnings={getLegalWarnings()}
-          onContinue={onDone}
-        />
-      </div>
-    );
+  // ── Done → should not happen (we skip directly to next), fallback ──
+  if (mode === 'done') {
+    onDone();
+    return null;
   }
 
   // ── Idle / capture ────────────────────────────────────────────────────
