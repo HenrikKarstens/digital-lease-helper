@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useCallback } from 'react';
-import { CheckCircle2, MapPin, Key, Gauge, Users, Camera, FileText, Eye, Download, Printer, X, Lock, Shield, ArrowRight } from 'lucide-react';
+import { CheckCircle2, MapPin, Key, Gauge, Users, Camera, FileText, Eye, Printer, X, Shield, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
@@ -191,15 +191,11 @@ export const Step10DataComplete = () => {
 
       {/* Preview / Download actions */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}
-        className="w-full max-w-md flex gap-2 mb-4"
+        className="w-full max-w-md mb-4"
       >
-        <Button variant="outline" onClick={handlePreview} className="flex-1 h-12 rounded-2xl font-semibold gap-2 border-primary/30">
+        <Button variant="outline" onClick={handlePreview} className="w-full h-12 rounded-2xl font-semibold gap-2 border-primary/30">
           <Eye className="w-4 h-4" />
-          Vorschau
-        </Button>
-        <Button variant="outline" onClick={handleDownload} className="flex-1 h-12 rounded-2xl font-semibold gap-2 border-primary/30">
-          <Download className="w-4 h-4" />
-          Herunterladen
+          Vorschau öffnen
         </Button>
       </motion.div>
 
@@ -222,7 +218,7 @@ export const Step10DataComplete = () => {
           size="lg"
         >
           <ArrowRight className="w-5 h-5" />
-          Weiter zur Freischaltung
+          Übergabe finalisieren
         </Button>
       </motion.div>
     </div>
