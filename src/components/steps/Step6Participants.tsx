@@ -278,7 +278,7 @@ export const Step6Participants = () => {
           </Button>
         </div>
 
-        {/* Duplicate email error */}
+        {/* Duplicate email error – only when both are filled but identical */}
         {emailsIdentical && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
@@ -297,22 +297,22 @@ export const Step6Participants = () => {
           </motion.div>
         )}
 
-        {/* Conditional legal warning – only when <2 unique valid emails */}
+        {/* Legal warning – ONLY when fewer than 2 emails are provided (0 or 1) */}
         {!emailsIdentical && validEmailCount < 2 && data.participants.length > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="rounded-2xl border-2 border-destructive/40 bg-destructive/5 p-4"
+            className="rounded-2xl border-2 border-amber-400/40 bg-amber-50 dark:bg-amber-950/20 p-4"
           >
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-sm text-destructive">Rechtlicher Hinweis</p>
+                <p className="font-semibold text-sm text-amber-700 dark:text-amber-300">Rechtlicher Hinweis (§ 535 BGB)</p>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  Für die volle Beweiskraft müssen {clientRole} und {ownerRole} eine identische
-                  Kopie des Dokuments erhalten (§ 535 BGB). Um eine rechtssichere Dokumentation der Übergabe in der{' '}
-                  <span className="font-medium text-foreground">{data.propertyAddress || 'Weddingstedter Straße 39, 25746 Heide'}</span>{' '}
-                  zu gewährleisten, ist der Versand an beide Vertragsparteien zwingend erforderlich.
+                  {validEmailCount === 0
+                    ? `Es wurde keine E-Mail-Adresse hinterlegt. Für die volle Beweiskraft müssen ${clientRole} und ${ownerRole} jeweils eine Kopie des Protokolls erhalten.`
+                    : `Es wurde nur eine E-Mail-Adresse hinterlegt. Für die volle Beweiskraft müssen ${clientRole} und ${ownerRole} jeweils eine identische Kopie des Dokuments erhalten.`
+                  }
                 </p>
               </div>
             </div>
