@@ -163,6 +163,9 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
         endRenovationAnalysis: 'endRenovationAnalysis',
         endRenovationStatus: 'endRenovationStatus',
         renovationClauseAnalysis: 'renovationClauseAnalysis',
+        depositSourceRef: 'depositSourceRef',
+        smallRepairSourceRef: 'smallRepairSourceRef',
+        endRenovationSourceRef: 'endRenovationSourceRef',
         preDamages: 'preDamages',
       };
 
