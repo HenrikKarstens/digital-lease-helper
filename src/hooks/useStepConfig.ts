@@ -13,7 +13,7 @@ const ALL_STEPS: StepDef[] = [
   { id: 'role',              label: 'Rolle',       component: 'Step2Role' },
   { id: 'direction',         label: 'Richtung',    component: 'Step1cDirection' },
   { id: 'data-check',        label: 'Daten-Check', component: 'Step4Validation' },
-  { id: 'floor-plan',        label: 'Grundriss',   component: 'Step5FloorPlan' },
+  
   { id: 'participants',      label: 'Teilnehmer',  component: 'Step6Participants' },
   { id: 'evidence',          label: 'Beweis',       component: 'Step7Evidence' },
   { id: 'keys',              label: 'Schlüssel',    component: 'Step9Keys' },
