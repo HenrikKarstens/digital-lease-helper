@@ -19,7 +19,7 @@ import { Step1cDirection } from '@/components/steps/Step1cDirection';
 
 // Heavy steps – lazy loaded
 const Step4Validation = lazy(() => import('@/components/steps/Step4Validation').then(m => ({ default: m.Step4Validation })));
-const Step5FloorPlan = lazy(() => import('@/components/steps/Step5FloorPlan').then(m => ({ default: m.Step5FloorPlan })));
+
 const Step6Participants = lazy(() => import('@/components/steps/Step6Participants').then(m => ({ default: m.Step6Participants })));
 const Step7Evidence = lazy(() => import('@/components/steps/Step7Evidence').then(m => ({ default: m.Step7Evidence })));
 const Step8MeterScan = lazy(() => import('@/components/steps/Step8MeterScan').then(m => ({ default: m.Step8MeterScan })));
@@ -37,7 +37,7 @@ const COMPONENT_MAP: Record<string, React.ComponentType> = {
   Step2Role,
   Step1cDirection,
   Step4Validation,
-  Step5FloorPlan,
+  
   Step6Participants,
   Step7Evidence,
   Step8MeterScan,
