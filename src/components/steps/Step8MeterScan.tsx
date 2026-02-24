@@ -103,8 +103,14 @@ export const Step8MeterScan = () => {
         reading: aiData.reading || '',
         unit: aiData.unit || '',
         maloId: aiData.maloId || '',
+        source: 'ai',
+        aiConfidence: aiData.confidence || 'medium',
       };
       updateData({ meterReadings: [...data.meterReadings, newMeter] });
+      toast({
+        title: 'Zähler erkannt',
+        description: `${newMeter.medium} – Stand: ${newMeter.reading} ${newMeter.unit}`,
+      });
     } catch (err: any) {
       console.error('Meter AI analysis failed:', err);
       toast({
@@ -147,6 +153,7 @@ export const Step8MeterScan = () => {
       reading: manualForm.reading,
       unit: manualForm.unit,
       maloId: manualForm.maloId,
+      source: 'manual',
     };
     updateData({ meterReadings: [...data.meterReadings, newMeter] });
     setManualForm(emptyForm());
@@ -183,6 +190,16 @@ export const Step8MeterScan = () => {
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
+      {/* Hidden camera input */}
+      <input
+        ref={meterCameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleMeterPhoto}
+      />
+
       <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-2 text-center">
         Zählererfassung
       </motion.h2>
@@ -344,13 +361,24 @@ export const Step8MeterScan = () => {
             const isEditing = editingId === meter.id;
 
             return (
-              <motion.div key={meter.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-4">
+              <motion.div key={meter.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                className={`glass-card rounded-2xl p-4 ${meter.source === 'ai' ? 'ring-1 ring-primary/30 bg-primary/[0.03]' : ''}`}
+              >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                       <Icon className="w-4 h-4 text-primary" />
                     </div>
                     <span className="font-semibold">{meter.medium}</span>
+                    {meter.source === 'ai' && (
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                        meter.aiConfidence === 'high' ? 'bg-primary/15 text-primary' :
+                        meter.aiConfidence === 'low' ? 'bg-amber-500/15 text-amber-600' :
+                        'bg-primary/10 text-primary/80'
+                      }`}>
+                        KI-Vorschlag
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="sm" onClick={() => isEditing ? saveEdit(meter.id) : startEdit(meter)} className="gap-1 text-xs h-7 px-2">
