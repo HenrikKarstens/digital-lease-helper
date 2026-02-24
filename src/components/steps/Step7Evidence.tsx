@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MapPin, Camera, X, CheckCircle2, Crosshair, Clock, Compass,
@@ -110,6 +110,17 @@ export const Step7Evidence = () => {
   const [editMaterial, setEditMaterial] = useState('');
   const [editDamageType, setEditDamageType] = useState('');
   const [editDescription, setEditDescription] = useState('');
+
+  // Real camera input ref
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    // Photo captured, proceed to room selection
+    setPhase('room-select');
+  };
 
   // ── AI analysis loop ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -323,44 +334,42 @@ export const Step7Evidence = () => {
   // ═══════════════════════════════════════════════════════════════════════════
   // PHASE: CAMERA (Foto-First)
   // ═══════════════════════════════════════════════════════════════════════════
+  // When entering camera phase, immediately trigger native camera
   if (phase === 'camera') {
+    // Auto-trigger the camera input on mount
+    setTimeout(() => cameraInputRef.current?.click(), 100);
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8 gap-4">
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleCameraCapture}
+        />
         <motion.div
-          initial={{ opacity: 0, scale: 0.92 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md rounded-3xl overflow-hidden bg-foreground relative aspect-[3/4]"
+          className="glass-card rounded-3xl p-8 w-full max-w-md text-center space-y-4"
         >
-          <div className="absolute inset-0 bg-gradient-to-b from-foreground/80 to-foreground flex items-center justify-center">
-            <div className="w-48 h-48 border-2 border-accent/60 rounded-xl flex items-center justify-center">
-              <Crosshair className="w-8 h-8 text-accent/60" />
-            </div>
+          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <Camera className="w-7 h-7 text-primary" />
           </div>
-          <div className="absolute top-4 left-4 right-4 flex justify-between text-xs text-accent font-mono">
-            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> 52.5200°N</span>
-            <span className="flex items-center gap-1"><Compass className="w-3 h-3" /> NW 315°</span>
-          </div>
-          <div className="absolute top-10 left-4 text-xs text-accent font-mono flex items-center gap-1">
-            <Clock className="w-3 h-3" />{new Date().toLocaleString('de-DE')}
-          </div>
-          <div className="absolute bottom-6 inset-x-0 flex items-center justify-center gap-6">
-            <Button variant="ghost" size="icon"
-              onClick={resetFlow}
-              className="text-primary-foreground/70 hover:text-primary-foreground"
-            >
-              <X className="w-6 h-6" />
+          <h3 className="font-bold text-lg">Foto aufnehmen</h3>
+          <p className="text-sm text-muted-foreground">
+            Kamera öffnet sich – Schaden oder Zustand fotografieren, danach Raum zuordnen.
+          </p>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={resetFlow} className="flex-1 rounded-2xl">
+              Abbrechen
             </Button>
-            <motion.button
-              whileTap={{ scale: 0.92 }}
-              onClick={() => setPhase('room-select')}
-              className="w-16 h-16 rounded-full border-4 border-accent bg-accent/20 flex items-center justify-center"
-            >
-              <div className="w-12 h-12 rounded-full bg-accent" />
-            </motion.button>
-            <div className="w-10" />
+            <Button onClick={() => cameraInputRef.current?.click()} className="flex-1 rounded-2xl gap-2">
+              <Camera className="w-4 h-4" />
+              Kamera öffnen
+            </Button>
           </div>
         </motion.div>
-        <p className="text-xs text-muted-foreground text-center">Foto aufnehmen – danach Raum zuordnen</p>
       </div>
     );
   }

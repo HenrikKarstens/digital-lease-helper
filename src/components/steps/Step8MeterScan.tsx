@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useHandover, MeterReading } from '@/context/HandoverContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 
 const METER_TYPES = [
@@ -60,6 +60,19 @@ export const Step8MeterScan = () => {
   const [editForm, setEditForm] = useState<ManualForm | null>(null);
 
   const scanMessages = ['KI analysiert Zähler...', 'Erkenne Zählerstand...', 'Prüfe MaLo-ID...'];
+  const meterCameraRef = useRef<HTMLInputElement>(null);
+
+  const handleMeterPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    // Photo captured, start AI scan animation
+    startScan();
+  };
+
+  const triggerMeterCamera = () => {
+    meterCameraRef.current?.click();
+  };
 
   useEffect(() => {
     if (!scanning) return;
@@ -162,7 +175,7 @@ export const Step8MeterScan = () => {
       {/* Action buttons – only show when meters already exist */}
       {!scanning && data.meterReadings.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="w-full max-w-md mb-6 grid grid-cols-2 gap-3">
-          <Button onClick={startScan} className="h-14 rounded-2xl font-semibold gap-2" size="lg">
+          <Button onClick={triggerMeterCamera} className="h-14 rounded-2xl font-semibold gap-2" size="lg">
             <Camera className="w-5 h-5" />
             Fotoerfassung (KI)
           </Button>
@@ -377,7 +390,7 @@ export const Step8MeterScan = () => {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="w-full max-w-md grid grid-cols-2 gap-3">
           {/* Left: AI photo capture */}
           <button
-            onClick={startScan}
+            onClick={triggerMeterCamera}
             className="glass-card rounded-2xl p-6 border-2 border-primary/30 flex flex-col items-center gap-3 text-foreground hover:border-primary hover:bg-primary/5 transition-all group"
           >
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
