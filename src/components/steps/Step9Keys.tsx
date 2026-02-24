@@ -69,6 +69,12 @@ export const Step9Keys = () => {
         </div>
         <h2 className="text-2xl font-bold">Schlüssel-Inventur</h2>
       </motion.div>
+      {data.propertyAddress && (
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.08 }} className="text-sm text-muted-foreground text-center mb-1 flex items-center justify-center gap-1.5">
+          <span className="inline-block w-3.5 h-3.5">📍</span>
+          {data.propertyAddress}
+        </motion.p>
+      )}
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-muted-foreground text-center mb-6 text-sm max-w-md">
         Erfassen Sie alle übergebenen Schlüssel und Zugangsmittel.
       </motion.p>
