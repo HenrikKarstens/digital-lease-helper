@@ -155,12 +155,21 @@ export const Step12Unlock = () => {
 
   // Service-check flow: direct send + redirect
   const handleServiceCheck = () => {
+    // Open Check24 immediately on user gesture to avoid mobile popup blockers
+    const check24Url = buildCheck24Link();
+    const check24Window = window.open(check24Url, '_blank');
+    
+    // If popup was blocked, fall back to direct navigation
+    if (!check24Window) {
+      window.location.href = check24Url;
+      return;
+    }
+
     setSending(true);
     setTimeout(() => {
       updateData({ serviceCheckStatus: 'completed' });
       sendProtocol(recipientList);
       setSending(false);
-      window.open(buildCheck24Link(), '_blank');
     }, 1500);
   };
 
