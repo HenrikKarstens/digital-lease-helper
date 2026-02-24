@@ -45,6 +45,8 @@ export interface MeterReading {
   unit: string;
   maloId: string;
   photoUrl?: string;
+  source?: 'ai' | 'manual';
+  aiConfidence?: 'high' | 'medium' | 'low';
 }
 
 export interface DocumentPage {
