@@ -154,6 +154,9 @@ export const Step12Unlock = () => {
   // Check24 link builder
   const city = extractCity(data.propertyAddress);
 
+  // MaLo-ID: prefer meter reading, fall back to contract-extracted value
+  const maloId = stromMeter?.maloId || '';
+
   const buildCheck24Link = () => {
     const params = new URLSearchParams({
       zipcode: plz || '25746',
@@ -164,7 +167,16 @@ export const Step12Unlock = () => {
     });
     if (city) params.set('city', city);
     if (stromMeter?.meterNumber) params.set('meterNumber', stromMeter.meterNumber);
-    if (stromMeter?.maloId) params.set('maloId', stromMeter.maloId);
+    if (maloId) params.set('maloId', maloId);
+    // Delivery address (Lieferadresse)
+    if (data.propertyAddress) params.set('delivery_address', data.propertyAddress);
+    // Billing / customer data
+    if (data.tenantName) params.set('billing_name', data.tenantName);
+    if (data.tenantEmail) params.set('customer_email', data.tenantEmail);
+    if (data.tenantBirthday) params.set('birthdate', data.tenantBirthday);
+    // Billing address: use tenant's next address if available, otherwise property address
+    const billingAddr = data.nextAddress || data.propertyAddress;
+    if (billingAddr) params.set('billing_address', billingAddr);
     return `https://www.check24.de/strom/vergleich/?${params.toString()}`;
   };
 
@@ -431,7 +443,7 @@ export const Step12Unlock = () => {
                 className="mt-0.5"
               />
               <label htmlFor="dsgvo-unlock" className="text-[11px] text-muted-foreground leading-tight cursor-pointer">
-                Ich stimme zu, dass meine Daten (PLZ <span className="font-semibold text-foreground">{plz || '–'}</span>, geschätzter Verbrauch <span className="font-semibold text-foreground">{estimatedKwh.toLocaleString('de-DE')} kWh</span>, Zählernummer <span className="font-semibold text-foreground">{stromMeter?.meterNumber || '–'}</span>) zum Zwecke des Tarifvergleichs an Check24 übertragen werden.{' '}
+                Ich stimme zu, dass meine Daten (PLZ <span className="font-semibold text-foreground">{plz || '–'}</span>, Verbrauch <span className="font-semibold text-foreground">{estimatedKwh.toLocaleString('de-DE')} kWh</span>, Zählernummer <span className="font-semibold text-foreground">{stromMeter?.meterNumber || '–'}</span>, MaLo-ID <span className="font-semibold text-foreground">{maloId || '–'}</span> und Adressdaten) zum Zwecke des Tarifvergleichs an Check24 übertragen werden.{' '}
                 <a href="/datenschutz" className="underline text-primary">Datenschutzerklärung</a>.
               </label>
             </div>
@@ -465,7 +477,7 @@ export const Step12Unlock = () => {
             )}
 
             <p className="text-[10px] text-muted-foreground text-center mt-2">
-              PLZ {plz || '–'} · {estimatedKwh.toLocaleString('de-DE')} kWh · Zähler: {stromMeter?.meterNumber || '–'} · Umzug: {todayFormatted}
+              PLZ {plz || '–'} · {estimatedKwh.toLocaleString('de-DE')} kWh · Zähler: {stromMeter?.meterNumber || '–'} · MaLo: {maloId || '–'} · Umzug: {todayFormatted}
             </p>
           </motion.div>
 
