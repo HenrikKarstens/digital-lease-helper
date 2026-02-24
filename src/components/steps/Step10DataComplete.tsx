@@ -14,7 +14,7 @@ export const Step10DataComplete = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const address = data.propertyAddress || 'Ihr Objekt';
-  const addressShort = address.split(',')[0].trim();
+  const addressShort = address;
 
   const landlordName = data.landlordName || ownerRole;
   const tenantName = data.tenantName || clientRole;
@@ -28,6 +28,13 @@ export const Step10DataComplete = () => {
     try {
       const blob = generateMasterProtocolBlob(data);
       const url = URL.createObjectURL(blob);
+      // On mobile, blob iframes often fail – open in new tab instead
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        window.open(url, '_blank');
+        updateData({ previewViewed: true });
+        return;
+      }
       setPreviewUrl(url);
       updateData({ previewViewed: true });
     } catch (e) {
