@@ -19,20 +19,22 @@ function embedPhotos(
   pageH: number,
   col1: number
 ): number {
-  if (photos.length === 0) return y;
+  // Filter out placeholder URLs from localStorage persistence
+  const validPhotos = photos.filter(p => p.url && p.url.startsWith('data:'));
+  if (validPhotos.length === 0) return y;
   const imgW = 50;
   const imgH = 37;
   const gap = 4;
   const cols = Math.floor((pageW - 28) / (imgW + gap));
   
-  for (let i = 0; i < photos.length; i++) {
+  for (let i = 0; i < validPhotos.length; i++) {
     const colIdx = i % cols;
     const x = col1 + colIdx * (imgW + gap);
     if (colIdx === 0 && i > 0) y += imgH + 14;
     if (y + imgH + 14 > pageH - 20) { doc.addPage(); y = 36; }
     
     try {
-      doc.addImage(photos[i].url, 'JPEG', x, y, imgW, imgH);
+      doc.addImage(validPhotos[i].url, 'JPEG', x, y, imgW, imgH);
       doc.setDrawColor(200, 200, 215);
       doc.rect(x, y, imgW, imgH);
     } catch {
@@ -44,11 +46,11 @@ function embedPhotos(
     doc.setTextColor(...MUTED_COLOR);
     doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
-    doc.text(photos[i].label, x, y + imgH + 3, { maxWidth: imgW });
+    doc.text(validPhotos[i].label, x, y + imgH + 3, { maxWidth: imgW });
     // Timestamp + GPS
     const meta: string[] = [];
-    if (photos[i].timestamp) meta.push(photos[i].timestamp!);
-    if (photos[i].gps) meta.push(photos[i].gps!);
+    if (validPhotos[i].timestamp) meta.push(validPhotos[i].timestamp!);
+    if (validPhotos[i].gps) meta.push(validPhotos[i].gps!);
     if (meta.length > 0) {
       doc.setFontSize(5.5);
       doc.setFont('helvetica', 'italic');
@@ -1502,8 +1504,10 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     doc.setFont('helvetica', 'bold');
     doc.text(party2.name, party2.x + 2, y + 9);
     doc.setFont('helvetica', 'normal');
-    if (party2.sig) {
-      doc.addImage(party2.sig, 'PNG', party2.x + 2, y + 11, sigBoxW2 - 4, 18, undefined, 'FAST');
+    if (party2.sig && party2.sig.startsWith('data:')) {
+      try {
+        doc.addImage(party2.sig, 'PNG', party2.x + 2, y + 11, sigBoxW2 - 4, 18, undefined, 'FAST');
+      } catch { /* signature image invalid – skip */ }
       doc.setTextColor(...SUCCESS_COLOR);
       doc.setFontSize(6.5);
       doc.text(party2.isAppUser ? '✓ Digital geleistet (App-Nutzer)' : '✓ Digital geleistet (vor Ort)', party2.x + 2, y + sigBoxH2 - 3);
