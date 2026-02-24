@@ -124,6 +124,14 @@ export const Step12Unlock = () => {
     try {
       const blob = generateMasterProtocolBlob(data);
       const url = URL.createObjectURL(blob);
+      // On mobile, blob iframes often fail – open in new tab instead
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        window.open(url, '_blank');
+        setPreviewViewed(true);
+        updateData({ previewViewed: true });
+        return;
+      }
       setPreviewUrl(url);
       setPreviewViewed(true);
       updateData({ previewViewed: true });
