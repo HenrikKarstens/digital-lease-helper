@@ -46,6 +46,19 @@ function extractPlz(address: string): string {
   return match ? match[1] : '';
 }
 
+function extractCity(address: string): string {
+  // Try pattern: "PLZ City" (e.g. "25746 Heide")
+  const match = address.match(/\b\d{5}\s+([A-ZÄÖÜa-zäöüß][A-ZÄÖÜa-zäöüß\s\-]+)/);
+  if (match) return match[1].trim();
+  // Fallback: last comma-separated segment without PLZ
+  const parts = address.split(',').map(s => s.trim());
+  if (parts.length > 1) {
+    const last = parts[parts.length - 1].replace(/\b\d{5}\b/, '').trim();
+    if (last) return last;
+  }
+  return '';
+}
+
 function lookupGrundversorger(plz: string) {
   if (!plz) return null;
   const prefix2 = plz.substring(0, 2);
@@ -131,6 +144,8 @@ export const Step12Unlock = () => {
   }, [previewUrl]);
 
   // Check24 link builder
+  const city = extractCity(data.propertyAddress);
+
   const buildCheck24Link = () => {
     const params = new URLSearchParams({
       zipcode: plz || '25746',
@@ -139,7 +154,9 @@ export const Step12Unlock = () => {
       partnerId: CHECK24_AFFILIATE_ID,
       movingDate: todayFormatted,
     });
+    if (city) params.set('city', city);
     if (stromMeter?.meterNumber) params.set('meterNumber', stromMeter.meterNumber);
+    if (stromMeter?.maloId) params.set('maloId', stromMeter.maloId);
     return `https://www.check24.de/strom/vergleich/?${params.toString()}`;
   };
 
