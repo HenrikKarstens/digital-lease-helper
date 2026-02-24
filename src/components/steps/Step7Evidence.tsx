@@ -3,53 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   MapPin, Camera, X, CheckCircle2, Crosshair, Clock, Compass,
   AlertTriangle, Euro, ChevronDown, Pencil, Trash2, Plus,
-  FileText, StickyNote, ArrowRight
+  FileText, StickyNote, ArrowRight, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover, Finding, EntryType } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
-
-const AI_RESULTS = [
-  {
-    material: 'Eichenparkett',
-    damageType: 'Kratzer, ca. 15cm',
-    bghReference: 'BGH VIII ZR 222/15',
-    timeValueDeduction: 35,
-    recommendedWithholding: 150,
-    description: 'Oberflächlicher Kratzer im Eichenparkett. Zeitwertberechnung nach BGH-Urteil.',
-  },
-  {
-    material: 'Raufasertapete',
-    damageType: 'Verfärbung, 20x30cm',
-    bghReference: 'BGH VIII ZR 163/18',
-    timeValueDeduction: 80,
-    recommendedWithholding: 0,
-    description: 'Normale Abnutzung. Kein Einbehalt empfohlen (Schönheitsreparaturen-Klausel unwirksam).',
-  },
-  {
-    material: 'Fliesen (Feinsteinzeug)',
-    damageType: 'Abplatzung, 3cm',
-    bghReference: 'BGH VIII ZR 71/20',
-    timeValueDeduction: 20,
-    recommendedWithholding: 85,
-    description: 'Abplatzung an einer Bodenfliese im Bad. Reparatur durch Teilersatz möglich.',
-  },
-];
 
 const ROOMS_INDOOR = [
   'Flur', 'Wohnzimmer', 'Schlafzimmer', 'Kinderzimmer', 'Bad', 'Gäste-WC', 'Küche', 'Abstellraum',
 ];
 const ROOMS_OUTDOOR = [
   'Balkon/Terrasse', 'Garten', 'Garage', 'Carport', 'Keller', 'Dachboden', 'Außenbereich',
-];
-
-const analysisMessages = [
-  'Analysiere Material...',
-  'Prüfe BGH-Urteile...',
-  'Berechne Zeitwert...',
 ];
 
 type Phase = 'list' | 'camera' | 'room-select' | 'analyzing' | 'result' | 'manual-entry' | 'edit';
@@ -92,13 +61,18 @@ const RoomDropdown = ({ value, onChange, floorPlanRooms }: RoomDropdownProps) =>
 export const Step7Evidence = () => {
   const { evidenceTitle, evidenceSubtitle, isMoveIn } = useTransactionLabels();
   const { data, updateData, goToStepById } = useHandover();
+  const { toast } = useToast();
 
   const [phase, setPhase] = useState<Phase>('list');
   const [selectedRoom, setSelectedRoom] = useState('');
   const [locationDetail, setLocationDetail] = useState('');
-  const [analysisStep, setAnalysisStep] = useState(0);
-  const [currentResult, setCurrentResult] = useState<typeof AI_RESULTS[0] | null>(null);
+  const [currentResult, setCurrentResult] = useState<any>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [analysisMessage, setAnalysisMessage] = useState('KI analysiert Foto...');
+
+  // Captured photo file for AI analysis
+  const [capturedFile, setCapturedFile] = useState<File | null>(null);
+  const [capturedPreview, setCapturedPreview] = useState<string | null>(null);
 
   // Manual / note entry state
   const [manualDesc, setManualDesc] = useState('');
@@ -118,25 +92,85 @@ export const Step7Evidence = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
-    // Photo captured, proceed to room selection
+    setCapturedFile(file);
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onload = (ev) => setCapturedPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
     setPhase('room-select');
   };
 
-  // ── AI analysis loop ───────────────────────────────────────────────────────
-  useEffect(() => {
-    if (phase !== 'analyzing') return;
-    if (analysisStep >= analysisMessages.length) {
-      const result = AI_RESULTS[data.findings.length % AI_RESULTS.length];
-      setCurrentResult(result);
-      setEditMaterial(result.material);
-      setEditDamageType(result.damageType);
-      setEditDescription(result.description);
+  // ── Real AI analysis ───────────────────────────────────────────────────────
+  const runAiAnalysis = useCallback(async () => {
+    if (!capturedFile) return;
+
+    setPhase('analyzing');
+    setAnalysisMessage('KI analysiert Foto...');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', capturedFile);
+      formData.append('context', 'evidence');
+      formData.append('room', selectedRoom);
+      formData.append('isMoveIn', String(isMoveIn));
+
+      setAnalysisMessage('Erkenne Material & Schaden...');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-photo`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Keine Analysedaten erhalten');
+      }
+
+      const aiData = result.data;
+
+      // If AI suggested a room and user hasn't selected one, use it
+      if (!selectedRoom && aiData.suggestedRoom) {
+        setSelectedRoom(aiData.suggestedRoom);
+      }
+
+      setCurrentResult(aiData);
+      setEditMaterial(aiData.material || 'Nicht bestimmbar');
+      setEditDamageType(aiData.damageType || '');
+      setEditDescription(aiData.description || '');
       setPhase('result');
-      return;
+    } catch (err: any) {
+      console.error('AI analysis failed:', err);
+      toast({
+        title: 'KI-Analyse fehlgeschlagen',
+        description: err.message || 'Bitte versuchen Sie es erneut oder nutzen Sie die manuelle Eingabe.',
+        variant: 'destructive',
+      });
+      // Fall back to result phase with empty data so user can fill manually
+      setCurrentResult({
+        material: '',
+        damageType: '',
+        description: '',
+        bghReference: '',
+        timeValueDeduction: 0,
+        recommendedWithholding: 0,
+      });
+      setEditMaterial('');
+      setEditDamageType('');
+      setEditDescription('');
+      setPhase('result');
     }
-    const t = setTimeout(() => setAnalysisStep(s => s + 1), 1200);
-    return () => clearTimeout(t);
-  }, [phase, analysisStep, data.findings.length]);
+  }, [capturedFile, selectedRoom, isMoveIn, toast]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const resetFlow = () => {
@@ -144,8 +178,9 @@ export const Step7Evidence = () => {
     setSelectedRoom('');
     setLocationDetail('');
     setCurrentResult(null);
-    setAnalysisStep(0);
     setEditingId(null);
+    setCapturedFile(null);
+    setCapturedPreview(null);
   };
 
   const deleteFinding = (id: string) => {
@@ -208,21 +243,22 @@ export const Step7Evidence = () => {
   };
 
   const saveFinding = () => {
-    if (!currentResult || !selectedRoom) return;
+    if (!selectedRoom) return;
     const finding: Finding = {
       id: Date.now().toString(),
       room: selectedRoom,
       pinX: 50,
       pinY: 50,
+      photoUrl: capturedPreview || undefined,
       material: editMaterial,
       damageType: editDamageType,
-      bghReference: currentResult.bghReference,
-      timeValueDeduction: currentResult.timeValueDeduction,
-      recommendedWithholding: currentResult.recommendedWithholding,
+      bghReference: currentResult?.bghReference || '',
+      timeValueDeduction: currentResult?.timeValueDeduction || 0,
+      recommendedWithholding: currentResult?.recommendedWithholding || 0,
       description: editDescription,
       timestamp: new Date().toLocaleString('de-DE'),
       locationDetail: locationDetail.trim() || undefined,
-      entryType: currentResult.recommendedWithholding > 0 ? 'defect' : 'note',
+      entryType: (currentResult?.recommendedWithholding || 0) > 0 ? 'defect' : 'note',
     };
     updateData({ findings: [...data.findings, finding] });
     resetFlow();
@@ -334,9 +370,7 @@ export const Step7Evidence = () => {
   // ═══════════════════════════════════════════════════════════════════════════
   // PHASE: CAMERA (Foto-First)
   // ═══════════════════════════════════════════════════════════════════════════
-  // When entering camera phase, immediately trigger native camera
   if (phase === 'camera') {
-    // Auto-trigger the camera input on mount
     setTimeout(() => cameraInputRef.current?.click(), 100);
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8 gap-4">
@@ -385,6 +419,13 @@ export const Step7Evidence = () => {
           animate={{ opacity: 1, y: 0 }}
           className="glass-card rounded-3xl p-6 w-full max-w-md space-y-5"
         >
+          {/* Photo preview */}
+          {capturedPreview && (
+            <div className="w-full h-40 rounded-xl overflow-hidden bg-secondary/30">
+              <img src={capturedPreview} alt="Aufgenommenes Foto" className="w-full h-full object-cover" />
+            </div>
+          )}
+
           <div>
             <h3 className="font-bold text-lg mb-1">In welchem Raum?</h3>
             <p className="text-sm text-muted-foreground">Ordne das Foto dem richtigen Bereich zu.</p>
@@ -415,7 +456,7 @@ export const Step7Evidence = () => {
             </Button>
             <Button
               disabled={!selectedRoom}
-              onClick={() => { setAnalysisStep(0); setPhase('analyzing'); }}
+              onClick={runAiAnalysis}
               className="flex-1 rounded-xl gap-1"
             >
               KI analysieren
@@ -427,7 +468,7 @@ export const Step7Evidence = () => {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PHASE: ANALYZING
+  // PHASE: ANALYZING (real AI call in progress)
   // ═══════════════════════════════════════════════════════════════════════════
   if (phase === 'analyzing') {
     return (
@@ -437,29 +478,19 @@ export const Step7Evidence = () => {
           animate={{ opacity: 1, scale: 1 }}
           className="glass-card rounded-3xl p-8 w-full max-w-md text-center"
         >
+          {/* Photo thumbnail */}
+          {capturedPreview && (
+            <div className="w-24 h-24 rounded-xl overflow-hidden mx-auto mb-4 border-2 border-primary/20">
+              <img src={capturedPreview} alt="Wird analysiert" className="w-full h-full object-cover" />
+            </div>
+          )}
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-            className="w-16 h-16 rounded-full border-4 border-success/20 border-t-success mx-auto mb-6"
+            className="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary mx-auto mb-6"
           />
-          <h3 className="font-semibold text-lg mb-6">KI-Schadensanalyse</h3>
-          <div className="space-y-4 text-left">
-            {analysisMessages.map((msg, i) => (
-              <motion.div key={msg}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: i <= analysisStep ? 1 : 0.3, x: 0 }}
-                className="flex items-center gap-3 text-sm"
-              >
-                {i < analysisStep
-                  ? <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                  : i === analysisStep
-                    ? <div className="w-4 h-4 rounded-full border-2 border-success/30 border-t-success animate-spin shrink-0" />
-                    : <div className="w-4 h-4 rounded-full border-2 border-muted shrink-0" />
-                }
-                <span>{msg}</span>
-              </motion.div>
-            ))}
-          </div>
+          <h3 className="font-semibold text-lg mb-2">KI analysiert...</h3>
+          <p className="text-sm text-muted-foreground">{analysisMessage}</p>
         </motion.div>
       </div>
     );
@@ -468,7 +499,7 @@ export const Step7Evidence = () => {
   // ═══════════════════════════════════════════════════════════════════════════
   // PHASE: RESULT
   // ═══════════════════════════════════════════════════════════════════════════
-  if (phase === 'result' && currentResult) {
+  if (phase === 'result') {
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8">
         <motion.div
@@ -479,9 +510,29 @@ export const Step7Evidence = () => {
         >
           <div className="flex items-center gap-2 mb-4">
             <CheckCircle2 className="w-5 h-5 text-success" />
-            <h3 className="font-semibold text-lg">Smart-Analyse</h3>
+            <h3 className="font-semibold text-lg">KI-Analyse</h3>
             <span className="ml-auto text-xs text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded-full">{selectedRoom}</span>
           </div>
+
+          {/* Photo preview in result */}
+          {capturedPreview && (
+            <div className="w-full h-36 rounded-xl overflow-hidden mb-4 bg-secondary/30">
+              <img src={capturedPreview} alt="Analysiertes Foto" className="w-full h-full object-cover" />
+            </div>
+          )}
+
+          {currentResult?.confidence && (
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Konfidenz:</span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                currentResult.confidence === 'high' ? 'bg-success/20 text-success' :
+                currentResult.confidence === 'medium' ? 'bg-amber-500/20 text-amber-600' :
+                'bg-destructive/20 text-destructive'
+              }`}>
+                {currentResult.confidence === 'high' ? 'Hoch' : currentResult.confidence === 'medium' ? 'Mittel' : 'Niedrig'}
+              </span>
+            </div>
+          )}
 
           <div className="space-y-4">
             {/* Editable Material */}
@@ -506,9 +557,12 @@ export const Step7Evidence = () => {
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
               />
             </div>
-            {/* New: Detaillierte Beschreibung */}
+            {/* Detaillierte Beschreibung */}
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Detaillierte Beschreibung / Notiz</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                Detaillierte Beschreibung
+                <span className="text-[10px] font-normal ml-1 text-muted-foreground">(editierbar)</span>
+              </label>
               <textarea
                 value={editDescription}
                 onChange={e => setEditDescription(e.target.value)}
@@ -518,23 +572,23 @@ export const Step7Evidence = () => {
               />
             </div>
 
-            {!isMoveIn && (
+            {!isMoveIn && currentResult?.bghReference && (
               <div className="bg-secondary/60 rounded-xl p-3">
                 <p className="text-xs text-muted-foreground mb-1">BGH-Referenz</p>
                 <p className="text-sm font-mono font-medium">{currentResult.bghReference}</p>
               </div>
             )}
-            {!isMoveIn && (
+            {!isMoveIn && (currentResult?.timeValueDeduction || currentResult?.recommendedWithholding) && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-secondary/60 rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-1">Zeitwert-Abzug</p>
-                  <p className="text-lg font-bold">{currentResult.timeValueDeduction}%</p>
+                  <p className="text-lg font-bold">{currentResult.timeValueDeduction || 0}%</p>
                 </div>
                 <div className="bg-primary/10 rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-1">Empfohlener Einbehalt</p>
                   <div className="flex items-center gap-1">
                     <Euro className="w-4 h-4 text-primary" />
-                    <p className="text-lg font-bold text-primary">{currentResult.recommendedWithholding}</p>
+                    <p className="text-lg font-bold text-primary">{currentResult.recommendedWithholding || 0}</p>
                   </div>
                 </div>
               </div>
@@ -622,7 +676,6 @@ export const Step7Evidence = () => {
               />
             </div>
 
-            {/* Material & Schadensart – shown in edit mode */}
             {isEdit && (
               <>
                 <div>
@@ -658,7 +711,6 @@ export const Step7Evidence = () => {
               </>
             )}
 
-            {/* Manual entry – only description (no material from AI) */}
             {!isEdit && (
               <div>
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
@@ -708,7 +760,14 @@ const FindingCard = memo(({ f, onEdit, onDelete }: FindingCardProps) => {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2 flex-1 min-w-0">
-          <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${isNote ? 'bg-primary' : 'bg-amber-400'}`} />
+          {f.photoUrl && (
+            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-secondary/30">
+              <img src={f.photoUrl} alt="" className="w-full h-full object-cover" />
+            </div>
+          )}
+          {!f.photoUrl && (
+            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${isNote ? 'bg-primary' : 'bg-amber-400'}`} />
+          )}
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-semibold">{f.room}</span>
@@ -716,7 +775,7 @@ const FindingCard = memo(({ f, onEdit, onDelete }: FindingCardProps) => {
                 <span className="text-xs text-muted-foreground">· {f.locationDetail}</span>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{f.damageType || f.description}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{f.description || f.damageType}</p>
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">

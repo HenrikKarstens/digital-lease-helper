@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useHandover, MeterReading } from '@/context/HandoverContext';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 const METER_TYPES = [
   { value: 'Strom', label: 'Strom', icon: Zap, unit: 'kWh' },
@@ -24,11 +25,7 @@ const MEDIUM_ICONS: Record<string, React.ElementType> = {
   Sonstiges: HelpCircle,
 };
 
-const AI_METER_RESULTS: MeterReading[] = [
-  { id: '1', medium: 'Strom', meterNumber: '882341', reading: '14.502,4', unit: 'kWh', maloId: 'DE00056789012345678901234567890' },
-  { id: '2', medium: 'Wasser', meterNumber: '445190', reading: '234,7', unit: 'm³', maloId: '' },
-  { id: '3', medium: 'Gas', meterNumber: '991204', reading: '8.341,2', unit: 'kWh', maloId: 'DE00098765432109876543210987654' },
-];
+// Removed hardcoded AI_METER_RESULTS – now using real AI analysis
 
 const TODAY = format(new Date(), 'dd.MM.yyyy');
 
@@ -52,43 +49,80 @@ const emptyForm = (): ManualForm => ({
 
 export const Step8MeterScan = () => {
   const { data, updateData, goToStepById } = useHandover();
+  const { toast } = useToast();
   const [scanning, setScanning] = useState(false);
-  const [scanStep, setScanStep] = useState(0);
+  const [scanMessage, setScanMessage] = useState('KI analysiert Zähler...');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualForm, setManualForm] = useState<ManualForm>(emptyForm());
   const [editForm, setEditForm] = useState<ManualForm | null>(null);
 
-  const scanMessages = ['KI analysiert Zähler...', 'Erkenne Zählerstand...', 'Prüfe MaLo-ID...'];
   const meterCameraRef = useRef<HTMLInputElement>(null);
 
-  const handleMeterPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMeterPhoto = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
-    // Photo captured, start AI scan animation
-    startScan();
-  };
+
+    setScanning(true);
+    setScanMessage('KI analysiert Zähler...');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('context', 'meter');
+
+      setScanMessage('Erkenne Zählerstand...');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-photo`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Keine Analysedaten erhalten');
+      }
+
+      const aiData = result.data;
+      const newMeter: MeterReading = {
+        id: Date.now().toString(),
+        medium: aiData.medium || 'Sonstiges',
+        meterNumber: aiData.meterNumber || '',
+        reading: aiData.reading || '',
+        unit: aiData.unit || '',
+        maloId: aiData.maloId || '',
+      };
+      updateData({ meterReadings: [...data.meterReadings, newMeter] });
+    } catch (err: any) {
+      console.error('Meter AI analysis failed:', err);
+      toast({
+        title: 'KI-Analyse fehlgeschlagen',
+        description: err.message || 'Bitte erfassen Sie den Zähler manuell.',
+        variant: 'destructive',
+      });
+      // Open manual form as fallback
+      setShowManualForm(true);
+      setManualForm(emptyForm());
+    } finally {
+      setScanning(false);
+    }
+  }, [data.meterReadings, updateData, toast]);
 
   const triggerMeterCamera = () => {
     meterCameraRef.current?.click();
   };
-
-  useEffect(() => {
-    if (!scanning) return;
-    if (scanStep >= scanMessages.length) {
-      const nextIndex = data.meterReadings.length % AI_METER_RESULTS.length;
-      const result = { ...AI_METER_RESULTS[nextIndex], id: Date.now().toString() };
-      updateData({ meterReadings: [...data.meterReadings, result] });
-      setScanning(false);
-      setScanStep(0);
-      return;
-    }
-    const timer = setTimeout(() => setScanStep(s => s + 1), 800);
-    return () => clearTimeout(timer);
-  }, [scanning, scanStep]);
-
-  const startScan = () => { setScanStep(0); setScanning(true); };
 
   const updateMeter = (id: string, field: keyof MeterReading, value: string) => {
     updateData({ meterReadings: data.meterReadings.map(m => m.id === id ? { ...m, [field]: value } : m) });
@@ -159,16 +193,9 @@ export const Step8MeterScan = () => {
       {/* Scan animation */}
       {scanning && (
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card rounded-3xl p-8 w-full max-w-md text-center mb-6">
-          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} className="w-14 h-14 rounded-full border-4 border-success/20 border-t-success mx-auto mb-4" />
-          <h3 className="font-semibold mb-4">Fotoerfassung mit KI</h3>
-          <div className="space-y-3 text-left">
-            {scanMessages.map((msg, i) => (
-              <motion.div key={msg} initial={{ opacity: 0, x: -10 }} animate={{ opacity: i <= scanStep ? 1 : 0.3, x: 0 }} className="flex items-center gap-3 text-sm">
-                {i < scanStep ? <CheckCircle2 className="w-4 h-4 text-success shrink-0" /> : i === scanStep ? <div className="w-4 h-4 rounded-full border-2 border-success/30 border-t-success animate-spin shrink-0" /> : <div className="w-4 h-4 rounded-full border-2 border-muted shrink-0" />}
-                <span>{msg}</span>
-              </motion.div>
-            ))}
-          </div>
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} className="w-14 h-14 rounded-full border-4 border-primary/20 border-t-primary mx-auto mb-4" />
+          <h3 className="font-semibold mb-2">Fotoerfassung mit KI</h3>
+          <p className="text-sm text-muted-foreground">{scanMessage}</p>
         </motion.div>
       )}
 
