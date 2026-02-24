@@ -86,6 +86,7 @@ serve(async (req) => {
 - "tenantBirthday": Geburtsdatum ${isSale ? 'des Käufers' : 'des Mieters'} im Format TT.MM.JJJJ (falls vorhanden, sonst ""). Suche auch nach Angaben wie "geb." oder "geboren am" oder Datumsformaten wie "12 09 1982" die als Geburtsdatum interpretiert werden können.
 - "priorAddress": Bisherige/vorherige Adresse ${isSale ? 'des Käufers' : 'des Mieters'} (falls vorhanden, sonst ""). Suche nach "bisherige Anschrift", "Voranschrift", "alte Adresse" o.ä.
 - "roomCount": Anzahl der Zimmer der Wohnung/des Objekts als Zahl (z.B. "3"). Falls nicht erkennbar, "".
+- "maloId": Marktlokations-ID (MaLo-ID) des Stromzählers. Dies ist eine 11-stellige numerische Kennung (z.B. "50932718241"). Suche im gesamten Dokument nach "Marktlokation", "MaLo-ID", "MaLo", "Marktlokations-ID" oder ähnlichen Begriffen. Falls nicht gefunden: "".
 - "contractStart": Mietvertragsbeginn / Übergabedatum im Format TT.MM.JJJJ
 - "contractDuration": "unbefristet" wenn unbefristet, oder das Enddatum im Format TT.MM.JJJJ wenn befristet
 - "contractType": "unbefristet" oder "befristet" – suche nach Formulierungen wie "auf unbestimmte Zeit" (= unbefristet) oder "befristet bis"
