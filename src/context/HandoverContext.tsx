@@ -364,7 +364,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
       const MASTER_ORDER = [
         'hero', 'role', 'direction', 'data-check',
         'participants', 'evidence', 'keys', 'meters', 'deposit-check', 'data-complete',
-        'defect-analysis', 'deposit', 'unlock'
+        'defect-analysis', 'unlock'
       ];
       const masterIdx = MASTER_ORDER.indexOf(stepId);
       for (let i = masterIdx + 1; i < MASTER_ORDER.length; i++) {
