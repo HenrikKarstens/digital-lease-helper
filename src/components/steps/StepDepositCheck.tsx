@@ -44,27 +44,101 @@ function getLegalReasoning(damageType: string): string {
   return 'Schadensersatzpflicht gem. § 280 Abs. 1 BGB – Prüfung auf vertragswidrigen Gebrauch erforderlich.';
 }
 
-/** Zinsen = Betrag × (Zinssatz/100) × (Tage/360) – kaufmännische Methode */
-function calcInterest(amount: number, ratePercent: number, startDateStr: string, endDate: Date = new Date()): number {
-  if (!amount || !ratePercent || !startDateStr) return 0;
-  const start = new Date(startDateStr);
-  if (isNaN(start.getTime())) return 0;
-  const days = Math.max(0, Math.floor((endDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-  return amount * (ratePercent / 100) * (days / 360);
+/**
+ * Amtliche Durchschnittszinssätze (Spareinlagen 3-monatige Kündigungsfrist)
+ * Quelle: Deutsche Bundesbank – Zinsstatistik
+ */
+const BUNDESBANK_RATES: { year: number; rate: number }[] = [
+  { year: 2021, rate: 0.01 },
+  { year: 2022, rate: 0.01 },
+  { year: 2023, rate: 0.35 },
+  { year: 2024, rate: 0.80 },
+  { year: 2025, rate: 1.10 },
+  { year: 2026, rate: 1.10 },
+];
+
+function getBundesbankRate(year: number): number {
+  const entry = BUNDESBANK_RATES.find(r => r.year === year);
+  if (entry) return entry.rate;
+  // Fallback: nearest year
+  const sorted = [...BUNDESBANK_RATES].sort((a, b) => Math.abs(a.year - year) - Math.abs(b.year - year));
+  return sorted[0]?.rate ?? 0.5;
 }
 
-/** Berechne Zinsen für Raten-Modell: jede Rate separat ab Einzahlung bis heute */
+/**
+ * Berechne gewichteten Durchschnittszinssatz über den gesamten Anlagezeitraum
+ */
+function getWeightedAverageRate(startDate: Date, endDate: Date): number {
+  if (startDate >= endDate) return 0;
+  const totalDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  if (totalDays <= 0) return 0;
+
+  let weightedSum = 0;
+  let current = new Date(startDate);
+
+  while (current < endDate) {
+    const year = current.getFullYear();
+    const rate = getBundesbankRate(year);
+    const yearEnd = new Date(year + 1, 0, 1); // Jan 1 next year
+    const periodEnd = yearEnd < endDate ? yearEnd : endDate;
+    const periodDays = Math.floor((periodEnd.getTime() - current.getTime()) / (1000 * 60 * 60 * 24));
+    weightedSum += rate * periodDays;
+    current = periodEnd;
+  }
+
+  return weightedSum / totalDays;
+}
+
+/**
+ * Zinsen mit jährlicher Kapitalisierung (Zinseszins) gemäß § 551 Abs. 3 BGB.
+ * Berechnung: Für jedes Kalenderjahr werden Zinsen taggenau berechnet und
+ * zum Jahreswechsel dem Kapital zugeschlagen (Zinseszins-Effekt).
+ */
+function calcCompoundInterest(amount: number, startDateStr: string, endDate: Date = new Date()): { interest: number; days: number; breakdown: { year: number; rate: number; days: number; interest: number; capitalAfter: number }[] } {
+  if (!amount || !startDateStr) return { interest: 0, days: 0, breakdown: [] };
+  const start = new Date(startDateStr);
+  if (isNaN(start.getTime())) return { interest: 0, days: 0, breakdown: [] };
+  if (start >= endDate) return { interest: 0, days: 0, breakdown: [] };
+
+  const totalDays = Math.floor((endDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  let capital = amount;
+  let current = new Date(start);
+  const breakdown: { year: number; rate: number; days: number; interest: number; capitalAfter: number }[] = [];
+
+  while (current < endDate) {
+    const year = current.getFullYear();
+    const rate = getBundesbankRate(year);
+    const yearEnd = new Date(year + 1, 0, 1);
+    const periodEnd = yearEnd < endDate ? yearEnd : endDate;
+    const periodDays = Math.floor((periodEnd.getTime() - current.getTime()) / (1000 * 60 * 60 * 24));
+    const periodInterest = capital * (rate / 100) * (periodDays / 365);
+
+    // Capitalize at year-end (Zinseszins)
+    if (yearEnd <= endDate) {
+      capital += periodInterest;
+    }
+
+    breakdown.push({ year, rate, days: periodDays, interest: periodInterest, capitalAfter: capital + (yearEnd > endDate ? periodInterest : 0) });
+    current = periodEnd;
+  }
+
+  const totalInterest = capital + (breakdown.length > 0 && breakdown[breakdown.length - 1].year === endDate.getFullYear() ? breakdown[breakdown.length - 1].interest : 0) - amount;
+  // Simpler: sum all interest from breakdown
+  const sumInterest = breakdown.reduce((s, b) => s + b.interest, 0);
+
+  return { interest: sumInterest, days: totalDays, breakdown };
+}
+
+/** Berechne Zinsen für Raten-Modell: jede Rate separat ab Einzahlung bis heute mit Zinseszins */
 function calcInstallmentInterest(
   totalDeposit: number,
-  ratePercent: number,
   dates: [string, string, string]
-): { perRate: { amount: number; date: string; days: number; interest: number }[]; totalInterest: number } {
+): { perRate: { amount: number; date: string; days: number; interest: number; breakdown: { year: number; rate: number; days: number; interest: number }[] }[]; totalInterest: number } {
   const rateAmount = totalDeposit / 3;
   const now = new Date();
-  const perRate = dates.map((dateStr, i) => {
-    const days = daysBetween(dateStr);
-    const interest = calcInterest(rateAmount, ratePercent, dateStr, now);
-    return { amount: rateAmount, date: dateStr, days, interest };
+  const perRate = dates.map((dateStr) => {
+    const result = calcCompoundInterest(rateAmount, dateStr, now);
+    return { amount: rateAmount, date: dateStr, days: result.days, interest: result.interest, breakdown: result.breakdown };
   });
   return { perRate, totalInterest: perRate.reduce((s, r) => s + r.interest, 0) };
 }
@@ -102,14 +176,24 @@ export const StepDepositCheck = () => {
 
   const installmentDates: [string, string, string] = data.depositInstallmentDates || ['', '', ''];
   const isInstallments = data.depositPaymentMode === 'installments';
-  const singleInterest = isCash && !isInstallments ? calcInterest(deposit, data.depositInterestRate, data.depositPaymentDate) : 0;
+  const singleResult = isCash && !isInstallments ? calcCompoundInterest(deposit, data.depositPaymentDate) : null;
+  const singleInterest = singleResult?.interest || 0;
   const installmentResult = isCash && isInstallments
-    ? calcInstallmentInterest(deposit, data.depositInterestRate, installmentDates)
+    ? calcInstallmentInterest(deposit, installmentDates)
     : null;
   const interest = isCash ? (isInstallments ? (installmentResult?.totalInterest || 0) : singleInterest) : 0;
   const pledgedBalance = isPledged ? (parseFloat(data.pledgedAccountBalance) || 0) : 0;
-  const days = !isInstallments ? daysBetween(data.depositPaymentDate) : 0;
+  const days = singleResult?.days || (!isInstallments ? daysBetween(data.depositPaymentDate) : 0);
   const paymentDeadline = calcPaymentDeadline(2);
+
+  // Weighted average Bundesbank rate for display
+  const displayRate = (() => {
+    const startStr = isInstallments ? installmentDates[0] : data.depositPaymentDate;
+    if (!startStr) return getBundesbankRate(new Date().getFullYear());
+    const start = new Date(startStr);
+    if (isNaN(start.getTime())) return getBundesbankRate(new Date().getFullYear());
+    return getWeightedAverageRate(start, new Date());
+  })();
 
   const [costOverrides, setCostOverrides] = useState<Record<string, number>>(() => {
     const map: Record<string, number> = {};
@@ -299,19 +383,13 @@ export const StepDepositCheck = () => {
               </button>
             </div>
 
-            {/* Zinssatz */}
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Zinssatz (% p.a.) – editierbar bei Bankbeleg</label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                max="10"
-                value={data.depositInterestRate}
-                onChange={e => updateData({ depositInterestRate: parseFloat(e.target.value) || 0 })}
-                className="rounded-xl bg-secondary/50 border-0 h-9 text-sm w-32"
-                placeholder="0.5"
-              />
+            {/* Amtlicher Zinssatz (Info-Label) */}
+            <div className="bg-secondary/30 rounded-xl px-3 py-2.5 flex items-center gap-2">
+              <Landmark className="w-4 h-4 text-primary shrink-0" />
+              <div>
+                <span className="text-xs font-semibold block">Amtlicher Zins (Ø Bundesbank): {displayRate.toFixed(2)} % p.a.</span>
+                <span className="text-[10px] text-muted-foreground">Spareinlagen 3-monatige Kündigungsfrist · Zinseszins gem. § 551 III BGB</span>
+              </div>
             </div>
 
             {/* Einmalzahlung: ein Datumsfeld */}
@@ -324,10 +402,18 @@ export const StepDepositCheck = () => {
                   onChange={e => updateData({ depositPaymentDate: e.target.value })}
                   className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
                 />
-                {interest > 0 && (
-                  <div className="flex items-center gap-2 bg-accent/10 rounded-xl px-3 py-2 text-sm text-accent mt-2">
-                    <ArrowUp className="w-3.5 h-3.5 shrink-0" />
-                    <span>{deposit.toFixed(2)} € × {data.depositInterestRate}% × {days} Tage = <strong>+ {interest.toFixed(2)} €</strong></span>
+                {singleResult && singleResult.interest > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {singleResult.breakdown.map((b, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-accent/10 rounded-xl px-3 py-1.5 text-xs text-accent">
+                        <ArrowUp className="w-3 h-3 shrink-0" />
+                        <span>{b.year}: {deposit.toFixed(0)} € × {b.rate}% × {b.days} Tage = {b.interest.toFixed(2)} €</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-2 bg-accent/10 rounded-xl px-3 py-2 text-sm text-accent font-semibold">
+                      <ArrowUp className="w-3.5 h-3.5 shrink-0" />
+                      <span>Zinsen gesamt: <strong>+ {interest.toFixed(2)} €</strong></span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -357,10 +443,14 @@ export const StepDepositCheck = () => {
                         }}
                         className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
                       />
-                      {rateData && rateData.days > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          {rateAmount.toFixed(2)} € × {data.depositInterestRate}% × {rateData.days} Tage = {rateData.interest.toFixed(2)} €
-                        </p>
+                      {rateData && rateData.days > 0 && rateData.breakdown && (
+                        <div className="space-y-0.5">
+                          {rateData.breakdown.map((b, j) => (
+                            <p key={j} className="text-[10px] text-muted-foreground">
+                              {b.year}: {rateAmount.toFixed(0)} € × {b.rate}% × {b.days} T = {b.interest.toFixed(2)} €
+                            </p>
+                          ))}
+                        </div>
                       )}
                     </div>
                   );
