@@ -243,7 +243,7 @@ export const StepDepositCheck = () => {
       return f;
     });
     updateData({ findings: updatedFindings });
-    goToStepById('data-complete');
+    goToStepById('defect-analysis');
   };
 
   return (
