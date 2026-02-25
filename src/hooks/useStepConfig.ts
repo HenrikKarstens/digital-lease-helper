@@ -48,10 +48,11 @@ export function getFilteredSteps(
       if (step.id === 'utility') return false;
     }
 
-    // Rental Move-Out: no data-complete, no separate defect-analysis (integrated in deposit-check)
+    // Rental Move-Out: no data-complete, no separate defect-analysis, no unlock (utility is final)
     if (transactionType === 'rental' && handoverDirection === 'move-out') {
       if (step.id === 'data-complete') return false;
       if (step.id === 'defect-analysis') return false;
+      if (step.id === 'unlock') return false;
     }
 
     // Sale: no deposit-check (only for rental move-out), no utility
