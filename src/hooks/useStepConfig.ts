@@ -15,6 +15,7 @@ const ALL_STEPS: StepDef[] = [
   
   { id: 'participants',      label: 'Teilnehmer',  component: 'Step6Participants' },
   { id: 'evidence',          label: 'Beweis',       component: 'Step7Evidence' },
+  { id: 'deposit-check',     label: 'Kautionscheck', component: 'StepDepositCheck' },
   { id: 'keys',              label: 'Schlüssel',    component: 'Step9Keys' },
   { id: 'meters',            label: 'Zähler',       component: 'Step8MeterScan' },
   { id: 'data-complete',     label: 'Abschluss',    component: 'Step10DataComplete' },
@@ -41,10 +42,16 @@ export function getFilteredSteps(
       if (step.id === 'deposit') return false;
     }
 
-    // Rental Move-In: no defect-analysis (only evidence for condition), no deposit
+    // Rental Move-In: no defect-analysis, no deposit, no deposit-check
     if (transactionType === 'rental' && handoverDirection === 'move-in') {
       if (step.id === 'defect-analysis') return false;
       if (step.id === 'deposit') return false;
+      if (step.id === 'deposit-check') return false;
+    }
+
+    // Sale: no deposit-check (only for rental move-out)
+    if (transactionType === 'sale') {
+      if (step.id === 'deposit-check') return false;
     }
 
     return true;
