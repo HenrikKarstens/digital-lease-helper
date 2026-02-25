@@ -74,6 +74,30 @@ export interface DeepClause {
   reasoning: string;
   riskLevel: number;
   category: 'miete' | 'kaution' | 'nebenkosten' | 'reparaturen' | 'renovierung' | 'kuendigung' | 'nutzung' | 'sonstiges';
+  isHandwritten?: boolean;
+  handwrittenNote?: string;
+}
+
+export interface DeltaComparison {
+  room: string;
+  element: string;
+  moveInCondition: string;
+  moveOutCondition: string;
+  delta: 'unchanged' | 'new_damage' | 'pre_existing' | 'improved';
+  liability: 'tenant' | 'none' | 'landlord';
+  reasoning: string;
+  severity: number;
+}
+
+export interface DeltaCheckResult {
+  comparisons: DeltaComparison[];
+  summary: {
+    totalItems: number;
+    preExisting: number;
+    newDamages: number;
+    unchanged: number;
+    tenantLiabilityEstimate: string;
+  };
 }
 
 export interface KeyEntry {
@@ -131,6 +155,8 @@ export interface HandoverData {
   // Deep paragraph analysis
   deepLegalClauses: DeepClause[];
   deepAnalysisComplete: boolean;
+  // Delta-Check (move-in vs move-out)
+  deltaCheckResult: DeltaCheckResult | null;
   // Step 5
   floorPlanUrl: string | null;
   rooms: { id: string; name: string; x: number; y: number }[];
@@ -213,6 +239,7 @@ const defaultData: HandoverData = {
   strickenClauses: [],
   deepLegalClauses: [],
   deepAnalysisComplete: false,
+  deltaCheckResult: null,
   floorPlanUrl: null,
   rooms: [],
   participants: [],
