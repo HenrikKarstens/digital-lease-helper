@@ -75,7 +75,7 @@ export const StepDepositCheck = () => {
       return f;
     });
     updateData({ findings: updatedFindings });
-    goToStepById('keys');
+    goToStepById('data-complete');
   };
 
   const payoutPercent = deposit > 0 ? Math.min(100, (payout / deposit) * 100) : 0;
