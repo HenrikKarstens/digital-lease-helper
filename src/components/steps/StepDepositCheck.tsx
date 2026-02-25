@@ -385,11 +385,14 @@ export const StepDepositCheck = () => {
             </div>
 
             {/* Amtlicher Zinssatz (Info-Label) */}
-            <div className="bg-secondary/30 rounded-xl px-3 py-2.5 flex items-center gap-2">
-              <Landmark className="w-4 h-4 text-primary shrink-0" />
-              <div>
-                <span className="text-xs font-semibold block">Amtlicher Zins (Ø Bundesbank): {displayRate.toFixed(2)} % p.a.</span>
-                <span className="text-[10px] text-muted-foreground">Spareinlagen 3-monatige Kündigungsfrist · Zinseszins gem. § 551 III BGB</span>
+            <div className="bg-accent/5 border border-accent/20 rounded-xl px-3 py-2.5 flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <Shield className="w-4 h-4 text-accent shrink-0" />
+                <span className="text-[10px] font-bold text-accent uppercase tracking-wide">Amtlich verifiziert</span>
+              </div>
+              <div className="ml-auto text-right">
+                <span className="text-xs font-semibold block">Ø Bundesbank: {displayRate.toFixed(2)} % p.a.</span>
+                <span className="text-[10px] text-muted-foreground">Spareinlagen 3-Mon. Kündigungsfrist · Zinseszins § 551 III BGB</span>
               </div>
             </div>
 
@@ -493,21 +496,21 @@ export const StepDepositCheck = () => {
           </motion.div>
         )}
 
-        {/* ── Progress Bar ── */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card rounded-2xl p-5">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-medium text-muted-foreground">
+        {/* ── Progress Bar (Glass Effect Dashboard) ── */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card-premium p-5">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               {isCash ? 'Kaution + Zinsen' : isPledged ? 'Kontostand' : 'Kaution'} (§ 6 MV)
             </span>
-            <span className="text-sm font-bold">{baseAmount.toFixed(2)} €</span>
+            <span className="text-lg font-bold font-display">{baseAmount.toFixed(2)} €</span>
           </div>
-          <div className="w-full h-4 bg-secondary rounded-full overflow-hidden flex">
+          <div className="w-full h-5 bg-secondary/60 backdrop-blur-sm rounded-full overflow-hidden flex border border-border/30">
             {totalDeductions > 0 && (
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${deductPercent}%` }}
                 transition={{ duration: 0.8, ease: 'easeOut' }}
-                className="h-full bg-destructive/70 rounded-l-full"
+                className="h-full bg-destructive/70 rounded-l-full backdrop-blur-sm"
               />
             )}
             {payout > 0 && (
@@ -515,15 +518,15 @@ export const StepDepositCheck = () => {
                 initial={{ width: 0 }}
                 animate={{ width: `${payoutPercent}%` }}
                 transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
-                className="h-full bg-accent rounded-r-full"
+                className="h-full bg-accent rounded-r-full backdrop-blur-sm"
               />
             )}
           </div>
-          <div className="flex justify-between mt-2 text-xs">
-            <span className="text-destructive font-medium flex items-center gap-1">
+          <div className="flex justify-between mt-3 text-xs">
+            <span className="text-destructive font-semibold flex items-center gap-1">
               <ArrowDown className="w-3 h-3" /> Abzüge: {totalDeductions.toFixed(2)} €
             </span>
-            <span className="text-accent font-medium">
+            <span className="text-accent font-semibold">
               Auszahlung: {payout.toFixed(2)} €
             </span>
           </div>
