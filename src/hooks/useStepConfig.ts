@@ -46,6 +46,11 @@ export function getFilteredSteps(
       if (step.id === 'deposit-check') return false;
     }
 
+    // Rental Move-Out: no data-complete summary (settlement handled in deposit-check)
+    if (transactionType === 'rental' && handoverDirection === 'move-out') {
+      if (step.id === 'data-complete') return false;
+    }
+
     // Sale: no deposit-check (only for rental move-out)
     if (transactionType === 'sale') {
       if (step.id === 'deposit-check') return false;
