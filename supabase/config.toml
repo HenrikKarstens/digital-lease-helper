@@ -3,5 +3,8 @@ project_id = "bmtneadgvrwxdsmiqwhe"
 [functions.analyze-contract]
 verify_jwt = false
 
+[functions.analyze-contract-deep]
+verify_jwt = false
+
 [functions.analyze-photo]
 verify_jwt = false
