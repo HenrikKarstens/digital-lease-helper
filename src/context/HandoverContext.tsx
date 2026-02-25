@@ -179,6 +179,8 @@ export interface HandoverData {
   nkRisiko: 'niedrig' | 'mittel' | 'hoch';
   // Step 12 – Kautionsart, Zinsberechnung & Zahlungsanweisung
   depositType: DepositType;
+  depositPaymentMode: 'single' | 'installments';
+  depositInstallmentDates: [string, string, string];
   guaranteeNumber: string;
   pledgedAccountBalance: string;
   depositPaymentDate: string;
@@ -257,10 +259,12 @@ const defaultData: HandoverData = {
   nkPrognose: 210,
   nkRisiko: 'hoch',
   depositType: 'cash',
+  depositPaymentMode: 'single',
+  depositInstallmentDates: ['', '', ''],
   guaranteeNumber: '',
   pledgedAccountBalance: '',
   depositPaymentDate: '',
-  depositInterestRate: 1.5,
+  depositInterestRate: 0.5,
   payeeIban: '',
   payeeAccountHolder: '',
   immediateReletting: false,
