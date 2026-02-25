@@ -100,10 +100,11 @@ export const StepDepositCheck = () => {
   const isGuarantee = data.depositType === 'guarantee';
   const isPledged = data.depositType === 'pledged-account';
 
+  const installmentDates: [string, string, string] = data.depositInstallmentDates || ['', '', ''];
   const isInstallments = data.depositPaymentMode === 'installments';
   const singleInterest = isCash && !isInstallments ? calcInterest(deposit, data.depositInterestRate, data.depositPaymentDate) : 0;
   const installmentResult = isCash && isInstallments
-    ? calcInstallmentInterest(deposit, data.depositInterestRate, data.depositInstallmentDates)
+    ? calcInstallmentInterest(deposit, data.depositInterestRate, installmentDates)
     : null;
   const interest = isCash ? (isInstallments ? (installmentResult?.totalInterest || 0) : singleInterest) : 0;
   const pledgedBalance = isPledged ? (parseFloat(data.pledgedAccountBalance) || 0) : 0;
@@ -278,7 +279,7 @@ export const StepDepositCheck = () => {
                 onClick={() => {
                   // Auto-fill installment dates from contractStart
                   const start = data.depositPaymentDate || data.contractStart;
-                  let dates = data.depositInstallmentDates;
+                  let dates = installmentDates;
                   if (start && dates[0] === '' && dates[1] === '' && dates[2] === '') {
                     const d0 = new Date(start);
                     const d1 = new Date(start); d1.setMonth(d1.getMonth() + 1);
@@ -348,9 +349,9 @@ export const StepDepositCheck = () => {
                       </div>
                       <Input
                         type="date"
-                        value={data.depositInstallmentDates[i]}
+                        value={installmentDates[i]}
                         onChange={e => {
-                          const newDates = [...data.depositInstallmentDates] as [string, string, string];
+                          const newDates = [...installmentDates] as [string, string, string];
                           newDates[i] = e.target.value;
                           updateData({ depositInstallmentDates: newDates });
                         }}
