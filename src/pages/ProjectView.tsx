@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 
 // Light steps – loaded eagerly
 import { Step1Hero } from '@/components/steps/Step1Hero';
-import { Step1aTransactionType } from '@/components/steps/Step1aTransactionType';
+
 import { Step2Role } from '@/components/steps/Step2Role';
 import { Step1cDirection } from '@/components/steps/Step1cDirection';
 
@@ -33,7 +33,6 @@ const Step12Unlock = lazy(() => import('@/components/steps/Step12Unlock').then(m
 
 const COMPONENT_MAP: Record<string, React.ComponentType> = {
   Step1Hero,
-  Step1aTransactionType,
   Step2Role,
   Step1cDirection,
   Step4Validation,
