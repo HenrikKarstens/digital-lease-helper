@@ -194,6 +194,9 @@ export interface HandoverData {
   // Paywall
   paymentStatus: 'unpaid' | 'paid';
   serviceCheckStatus: 'none' | 'completed';
+  // Kautions-Schiedsrichter: beiderseitiges Anerkenntnis
+  depositAgreementReached: boolean;
+  depositAgreementTimestamp: string;
 }
 
 const STORAGE_KEY = 'estateturn_draft';
@@ -266,6 +269,8 @@ const defaultData: HandoverData = {
   previewViewed: false,
   paymentStatus: 'unpaid',
   serviceCheckStatus: 'none',
+  depositAgreementReached: false,
+  depositAgreementTimestamp: '',
 };
 
 interface HandoverContextType {
@@ -358,7 +363,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
     } else {
       const MASTER_ORDER = [
         'hero', 'role', 'direction', 'data-check',
-        'participants', 'evidence', 'keys', 'meters', 'deposit-check', 'data-complete',
+        'participants', 'evidence', 'deposit-check', 'keys', 'meters', 'data-complete',
         'defect-analysis', 'deposit', 'unlock'
       ];
       const masterIdx = MASTER_ORDER.indexOf(stepId);
