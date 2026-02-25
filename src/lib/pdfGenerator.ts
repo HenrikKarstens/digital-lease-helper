@@ -1631,6 +1631,22 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   doc.setTextColor(120, 80, 20); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
   doc.text(clauseLines, 18, y + 5); y += clauseH + 6;
 
+  // §8b – Zukünftige Erreichbarkeit des Mieters (Nachsendeadresse)
+  if (!isSale && data.nextAddress) {
+    if (y > pageH - 50) { doc.addPage(); y = 36; }
+    y = sectionTitle(doc, '§8b  Zukünftige Erreichbarkeit des Mieters', y, pageW);
+    doc.setFillColor(238, 242, 255);
+    const addrBoxH = 18;
+    doc.roundedRect(14, y, pageW - 28, addrBoxH, 2, 2, 'F');
+    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.text('Neue Anschrift (für Endabrechnung, Kautionsrückzahlung & Nachsendung):', 18, y + 5);
+    doc.setTextColor(...TEXT_COLOR); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text(data.nextAddress, 18, y + 11);
+    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
+    doc.text(`Angegeben von: ${data.tenantName || 'Mieter'} am ${new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`, 18, y + 16);
+    y += addrBoxH + 6;
+  }
+
   if (y > pageH - 70) { doc.addPage(); y = 36; }
   y = sectionTitle(doc, '§9  Unterschriften & Bestätigung', y, pageW);
   const sigBoxW2 = (pageW - 28 - 8) / 2;

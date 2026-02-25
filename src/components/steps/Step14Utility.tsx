@@ -2,7 +2,8 @@ import { motion } from 'framer-motion';
 import {
   Zap, Leaf, TrendingDown, Euro, ArrowRight, FileText, CheckCircle2,
   PartyPopper, Info, Users, ExternalLink, Building2, Pencil, ShieldCheck,
-  Home, Wifi, MapPin, Mail, Eye, Printer, X, CreditCard, Shield
+  Home, Wifi, MapPin, Mail, Eye, Printer, X, CreditCard, Shield,
+  AlertTriangle, Flame, Droplets, Phone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -70,22 +71,54 @@ function getTodayFormatted(): string {
   return `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
 }
 
+function getMoveDateFormatted(): string {
+  const d = new Date();
+  // Next month 1st as default move-in date
+  d.setMonth(d.getMonth() + 1);
+  d.setDate(1);
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+}
+
+/** Detect if heating/water are covered by landlord via Vorauszahlungen (§4/§7) */
+function detectVorauszahlungen(data: { heatingCosts: string; nkAdvancePayment: string; deepLegalClauses: any[] }): { heatingViaLandlord: boolean; waterViaLandlord: boolean } {
+  const hasHeatingVorauszahlung = parseFloat(data.heatingCosts) > 0;
+  const hasNkVorauszahlung = parseFloat(data.nkAdvancePayment) > 0;
+
+  // Check deep clauses for §4 / §7 mentioning Vorauszahlungen
+  const clauseTexts = (data.deepLegalClauses || []).map(c =>
+    `${c.paragraphRef} ${c.title} ${c.originalText}`.toLowerCase()
+  );
+  const mentionsVorauszahlung = clauseTexts.some(t =>
+    (t.includes('§ 4') || t.includes('§ 7') || t.includes('§4') || t.includes('§7')) &&
+    (t.includes('vorauszahlung') || t.includes('nebenkosten') || t.includes('betriebskosten'))
+  );
+
+  return {
+    heatingViaLandlord: hasHeatingVorauszahlung || mentionsVorauszahlung,
+    waterViaLandlord: hasNkVorauszahlung || mentionsVorauszahlung,
+  };
+}
+
 export const Step14Utility = () => {
   const { data, updateData, resetData, goToStepById } = useHandover();
   const { cancellationTarget, isSale, ownerRole, clientRole } = useTransactionLabels();
   const isMoveOut = data.handoverDirection === 'move-out';
-  const isTenant = data.role === 'tenant';
 
-  const [cancellation, setCancellation] = useState(false);
+  const [cancellationStarted, setCancellationStarted] = useState(false);
+  const [cancellationDone, setCancellationDone] = useState(false);
   const [dsgvoConsent, setDsgvoConsent] = useState(false);
   const [manualKwhEdit, setManualKwhEdit] = useState(false);
   const [manualKwh, setManualKwh] = useState<number | null>(null);
-  const [nextAddress, setNextAddress] = useState(data.nextAddress || '');
+  // Forwarding address fields
+  const [streetNew, setStreetNew] = useState(data.nextAddress?.split(',')[0]?.trim() || '');
+  const [plzCityNew, setPlzCityNew] = useState(data.nextAddress?.split(',')[1]?.trim() || '');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewViewed, setPreviewViewed] = useState(data.previewViewed ?? false);
   const [sending, setSending] = useState(false);
   const [processing, setProcessing] = useState(false);
   const { toast } = useToast();
+
+  const nextAddress = [streetNew, plzCityNew].filter(Boolean).join(', ');
 
   const roomCount = data.rooms.length || 2;
   const [persons, setPersons] = useState(2);
@@ -105,10 +138,36 @@ export const Step14Utility = () => {
   const ersparnis = grundversorgerJahr - check24Jahr;
 
   const todayFormatted = getTodayFormatted();
+  const moveDateFormatted = getMoveDateFormatted();
   const tenantName = data.tenantName || 'Mieter';
   const landlordName = data.landlordName || 'Vermieter';
 
   const isUnlocked = data.paymentStatus === 'paid' || data.serviceCheckStatus === 'completed';
+
+  // Dynamic contract detection
+  const { heatingViaLandlord, waterViaLandlord } = useMemo(
+    () => detectVorauszahlungen(data),
+    [data.heatingCosts, data.nkAdvancePayment, data.deepLegalClauses]
+  );
+
+  // Meters that need self-cancellation (only Strom if heating/water via landlord)
+  const selfCancelMeters = useMemo(() => {
+    return data.meterReadings.filter(m => {
+      const medium = m.medium.toLowerCase();
+      if ((medium.includes('heiz') || medium.includes('gas') || medium.includes('fernwärme')) && heatingViaLandlord) return false;
+      if (medium.includes('wasser') && waterViaLandlord) return false;
+      return true;
+    });
+  }, [data.meterReadings, heatingViaLandlord, waterViaLandlord]);
+
+  const landlordManagedMeters = useMemo(() => {
+    return data.meterReadings.filter(m => {
+      const medium = m.medium.toLowerCase();
+      if ((medium.includes('heiz') || medium.includes('gas') || medium.includes('fernwärme')) && heatingViaLandlord) return true;
+      if (medium.includes('wasser') && waterViaLandlord) return true;
+      return false;
+    });
+  }, [data.meterReadings, heatingViaLandlord, waterViaLandlord]);
 
   const recipientList = useMemo(() => {
     const list: { name: string; email: string }[] = [];
@@ -124,31 +183,40 @@ export const Step14Utility = () => {
     }
   }, [nextAddress]);
 
+  const newPlz = extractPlz(plzCityNew);
+  const newCity = extractCity(plzCityNew);
+
   const buildCheck24Link = () => {
+    const targetPlz = newPlz || plz || '25746';
+    const targetCity = newCity || city;
     const params = new URLSearchParams({
-      zipcode: plz || '25746',
+      zipcode: targetPlz,
       totalConsumption: String(estimatedKwh),
       affiliate_id: CHECK24_AFFILIATE_ID,
       partnerId: CHECK24_AFFILIATE_ID,
       meterNumber: stromMeter?.meterNumber || '',
-      movingDate: todayFormatted,
+      movingDate: moveDateFormatted,
     });
-    if (city) params.set('city', city);
+    if (targetCity) params.set('city', targetCity);
     if (maloId) params.set('maloId', maloId);
     if (data.tenantName) params.set('billing_name', data.tenantName);
     if (data.tenantEmail) params.set('customer_email', data.tenantEmail);
     if (data.tenantBirthday) params.set('birthdate', data.tenantBirthday);
-    const billingAddr = data.nextAddress || data.propertyAddress;
-    if (billingAddr) params.set('billing_address', billingAddr);
+    if (nextAddress) params.set('billing_address', nextAddress);
+    if (streetNew) params.set('delivery_street', streetNew);
+    if (plzCityNew) params.set('delivery_zipcode_city', plzCityNew);
     return `https://www.check24.de/strom/vergleich/?${params.toString()}`;
   };
 
   const handleCancellation = () => {
-    setCancellation(true);
-    toast({
-      title: '📄 Kündigung vorbereitet!',
-      description: `Die Kündigung für ${cancellationTarget} wurde als PDF-Entwurf erstellt.`,
-    });
+    setCancellationStarted(true);
+    setTimeout(() => {
+      setCancellationDone(true);
+      toast({
+        title: '📄 Kündigungsschreiben erstellt',
+        description: `Kündigung für Strom an ${city} wurde als PDF-Entwurf generiert. Zählerstand ${stromMeter?.reading || '–'} ${stromMeter?.unit || ''} übernommen.`,
+      });
+    }, 1200);
   };
 
   // PDF Preview
@@ -285,21 +353,19 @@ export const Step14Utility = () => {
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-xs font-semibold mb-3">
             <MapPin className="w-3.5 h-3.5" />
-            {isMoveOut ? 'Abschluss & Versorger-Service' : 'Versorger-Service & Adresse'}
+            Versorger-Management & Nachsendeadresse
           </div>
           <h2 className="text-2xl font-bold font-heading">
-            {isMoveOut ? 'Übergabe abschließen' : 'Umzug abschließen'}
+            Umzug abschließen
           </h2>
           <p className="text-muted-foreground text-sm mt-1">
-            {isMoveOut
-              ? 'Nachsendeadresse, Versorger & Protokoll-Versand'
-              : 'Nachsendeadresse, Versorgerkündigung & neuer Tarif'}
+            Nachsendeadresse, Versorger-Abmeldung & neuer Tarif
           </p>
         </motion.div>
 
         <div className="w-full max-w-md space-y-4">
 
-          {/* ── 1. Nachsendeadresse ── */}
+          {/* ── 1. Nachsendeadresse (structured) ── */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
             className="glass-card-premium rounded-2xl p-5 space-y-4"
           >
@@ -309,18 +375,29 @@ export const Step14Utility = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-sm">Neue Adresse von {tenantName}</h3>
-                <p className="text-xs text-muted-foreground">Wird für Kautionsrückzahlung & Nachsendung übernommen</p>
+                <p className="text-xs text-muted-foreground">Pflichtangabe für Endabrechnung & Kautionsrückzahlung</p>
               </div>
             </div>
 
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Straße & Hausnummer, PLZ Ort</label>
-              <Input
-                value={nextAddress}
-                onChange={e => setNextAddress(e.target.value)}
-                placeholder="z. B. Musterstraße 12, 20095 Hamburg"
-                className="rounded-xl bg-secondary/50 border-0 h-10 text-sm"
-              />
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Straße & Hausnummer</label>
+                <Input
+                  value={streetNew}
+                  onChange={e => setStreetNew(e.target.value)}
+                  placeholder="z. B. Musterstraße 12"
+                  className="rounded-xl bg-secondary/50 border-0 h-10 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">PLZ & Ort</label>
+                <Input
+                  value={plzCityNew}
+                  onChange={e => setPlzCityNew(e.target.value)}
+                  placeholder="z. B. 20095 Hamburg"
+                  className="rounded-xl bg-secondary/50 border-0 h-10 text-sm"
+                />
+              </div>
             </div>
 
             {nextAddress && (
@@ -329,26 +406,89 @@ export const Step14Utility = () => {
                 <div>
                   <p className="font-medium text-accent">Adresse übernommen</p>
                   <p className="text-muted-foreground mt-0.5">
-                    Diese Adresse wird automatisch als Rücksendeadresse für die Kautionsrückzahlung im Zertifikat verwendet.
+                    Wird automatisch als Rücksendeadresse für die Kautionsrückzahlung und im PDF-Zertifikat unter „Zukünftige Erreichbarkeit" verwendet.
                   </p>
                 </div>
               </div>
             )}
           </motion.div>
 
-          {/* ── 2. Zähler-Zusammenfassung ── */}
-          {data.meterReadings.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          {/* ── 2. Versorger über Vermieter (§4/§7 Hinweis) ── */}
+          {landlordManagedMeters.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
               className="glass-card-premium rounded-2xl p-5 space-y-3"
             >
               <div className="flex items-center gap-2 mb-1">
-                <Zap className="w-4 h-4 text-primary" />
-                <h3 className="font-semibold text-sm">Erfasste Zählerstände</h3>
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Über Vermieter abgerechnet</h3>
+                  <p className="text-xs text-muted-foreground">Laut §§ 4, 7 Ihres Mietvertrags</p>
+                </div>
               </div>
+
+              <div className="bg-blue-500/10 rounded-xl p-3 flex items-start gap-2.5">
+                <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <p className="font-medium text-blue-600 dark:text-blue-400">Keine Eigenkündigung nötig</p>
+                  <p className="text-muted-foreground mt-1">
+                    Heizung und Wasser werden über den Vermieter ({landlordName}) per Vorauszahlung abgerechnet (
+                    {data.heatingCosts ? `Heizung: ${data.heatingCosts} €` : ''}
+                    {data.heatingCosts && data.nkAdvancePayment ? ' / ' : ''}
+                    {data.nkAdvancePayment ? `NK: ${data.nkAdvancePayment} €` : ''}
+                    ). Die Endabrechnung erfolgt durch den Vermieter.
+                  </p>
+                </div>
+              </div>
+
               <div className="space-y-2">
-                {data.meterReadings.map(m => (
+                {landlordManagedMeters.map(m => (
                   <div key={m.id} className="flex items-center justify-between bg-secondary/30 rounded-xl px-3 py-2">
                     <div className="flex items-center gap-2">
+                      {m.medium.toLowerCase().includes('heiz') || m.medium.toLowerCase().includes('gas')
+                        ? <Flame className="w-3.5 h-3.5 text-orange-500" />
+                        : <Droplets className="w-3.5 h-3.5 text-blue-500" />
+                      }
+                      <span className="text-xs font-medium">{m.medium}</span>
+                      {m.meterNumber && <span className="text-[10px] text-muted-foreground">Nr. {m.meterNumber}</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-primary">{m.reading} {m.unit}</span>
+                      <span className="text-[9px] bg-blue-500/10 text-blue-600 px-1.5 py-0.5 rounded-full">Vermieter</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── 3. Eigene Verträge kündigen (Strom) ── */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="glass-card-premium rounded-2xl p-5 space-y-3"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Eigene Verträge kündigen</h3>
+                <p className="text-xs text-muted-foreground">
+                  {selfCancelMeters.length > 0
+                    ? `${selfCancelMeters.map(m => m.medium).join(', ')} – Eigenkündigung erforderlich`
+                    : 'Nur Strom – Eigenkündigung erforderlich'
+                  }
+                </p>
+              </div>
+            </div>
+
+            {/* Self-cancel meter readings */}
+            {selfCancelMeters.length > 0 && (
+              <div className="space-y-2">
+                {selfCancelMeters.map(m => (
+                  <div key={m.id} className="flex items-center justify-between bg-secondary/30 rounded-xl px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-3.5 h-3.5 text-amber-500" />
                       <span className="text-xs font-medium">{m.medium}</span>
                       {m.meterNumber && <span className="text-[10px] text-muted-foreground">Nr. {m.meterNumber}</span>}
                     </div>
@@ -356,167 +496,202 @@ export const Step14Utility = () => {
                   </div>
                 ))}
               </div>
-
-              <div className="flex gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  className="flex-1 rounded-xl gap-1.5 text-xs h-10"
-                  onClick={handleCancellation}
-                  disabled={cancellation}
-                >
-                  <FileText className="w-4 h-4" />
-                  {cancellation ? 'Vorbereitet ✓' : 'Kündigungsschreiben'}
-                </Button>
-                <Button variant="outline" className="flex-1 rounded-xl gap-1.5 text-xs h-10" disabled>
-                  <ExternalLink className="w-4 h-4" />
-                  Online abmelden
-                  <span className="text-[9px] text-muted-foreground">(bald)</span>
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ── 3. Smart-Switch: Check24 Lead ── */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="glass-card-premium rounded-2xl p-5 border-2 border-accent/30 bg-gradient-to-br from-accent/5 to-transparent"
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5 text-accent" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm">Strom am alten Standort {city} abgemeldet</h3>
-                <p className="text-xs text-muted-foreground">Zählerstand dokumentiert & verifiziert</p>
-              </div>
-            </div>
-
-            <div className="bg-accent/10 rounded-xl p-3 mb-4 flex items-center gap-2 text-sm">
-              <ShieldCheck className="w-5 h-5 text-accent shrink-0" />
-              <span className="font-medium">Jetzt Strom für dein neues Zuhause sichern und bis zu <span className="text-accent font-bold">50 € Bonus</span> erhalten</span>
-            </div>
-
-            {/* Verbrauchsschätzung */}
-            <div className="space-y-3 mb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <label className="text-xs text-muted-foreground">Personenanzahl</label>
-                </div>
-                <span className="text-sm font-semibold">{persons}</span>
-              </div>
-              <Slider value={[persons]} onValueChange={([v]) => setPersons(v)} min={1} max={5} step={1} />
-
-              <div className="bg-primary/10 rounded-xl p-3 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Jahresverbrauch</span>
-                {manualKwhEdit ? (
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      className="w-20 h-7 text-right text-sm font-bold"
-                      value={manualKwh ?? heuristicKwh}
-                      onChange={(e) => setManualKwh(Number(e.target.value) || null)}
-                      onBlur={() => setManualKwhEdit(false)}
-                      autoFocus
-                    />
-                    <span className="text-sm font-bold text-primary">kWh</span>
-                  </div>
-                ) : (
-                  <button onClick={() => setManualKwhEdit(true)} className="flex items-center gap-1 group cursor-pointer">
-                    <span className="text-lg font-bold text-primary">{estimatedKwh.toLocaleString('de-DE')} kWh</span>
-                    <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Tarifvergleich */}
-            {grundversorger && (
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-secondary/50 rounded-xl p-3">
-                  <p className="text-xs text-muted-foreground">Grundversorger</p>
-                  <p className="text-lg font-bold text-destructive">{grundversorgerJahr.toLocaleString('de-DE')} €<span className="text-xs font-normal text-muted-foreground">/J.</span></p>
-                  <p className="text-[10px] text-muted-foreground">{grundversorger.name}</p>
-                </div>
-                <div className="bg-accent/10 rounded-xl p-3">
-                  <div className="flex items-center gap-1">
-                    <TrendingDown className="w-3.5 h-3.5 text-accent" />
-                    <p className="text-xs text-muted-foreground">Check24 ab</p>
-                  </div>
-                  <p className="text-lg font-bold text-accent">{check24Jahr.toLocaleString('de-DE')} €<span className="text-xs font-normal text-muted-foreground">/J.</span></p>
-                </div>
-              </div>
             )}
 
-            <div className="bg-accent/15 rounded-xl p-3 mb-4 text-center">
-              <span className="text-xs text-muted-foreground">Jährliche Ersparnis</span>
-              <p className="text-2xl font-bold text-accent">bis zu {ersparnis} €</p>
-            </div>
-
-            {/* DSGVO + CTA */}
-            <div className="flex items-start gap-2.5 mb-3">
-              <Checkbox
-                id="dsgvo-check24"
-                checked={dsgvoConsent}
-                onCheckedChange={(v) => setDsgvoConsent(v === true)}
-                className="mt-0.5"
-              />
-              <label htmlFor="dsgvo-check24" className="text-[11px] text-muted-foreground leading-tight cursor-pointer">
-                Ich stimme zu, dass meine Daten (PLZ {plz || '–'}, {estimatedKwh.toLocaleString('de-DE')} kWh, Zähler {stromMeter?.meterNumber || '–'}) zum Tarifvergleich an Check24 übertragen werden.
-              </label>
-            </div>
-
-            {isMoveOut ? (
-              /* Move-out: Check24 triggers protocol send */
-              dsgvoConsent ? (
-                <Button
-                  onClick={handleServiceCheck}
-                  disabled={sending}
-                  className="w-full h-12 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-                  size="lg"
-                >
-                  {sending ? (
-                    <>
-                      <div className="w-4 h-4 rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground animate-spin" />
-                      Wird verarbeitet…
-                    </>
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl gap-1.5 text-xs h-10"
+                onClick={handleCancellation}
+                disabled={cancellationStarted}
+              >
+                {cancellationStarted ? (
+                  cancellationDone ? (
+                    <><CheckCircle2 className="w-4 h-4 text-accent" /> Erstellt ✓</>
                   ) : (
-                    <>
-                      <Zap className="w-5 h-5" />
-                      Tarifvergleich & kostenloses Protokoll
-                      <ExternalLink className="w-4 h-4" />
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <Button disabled className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
-                  <Zap className="w-5 h-5" />
-                  Tarifvergleich & kostenloses Protokoll
-                </Button>
-              )
-            ) : (
-              /* Non-move-out: simple CTA */
-              dsgvoConsent ? (
-                <Button
-                  onClick={() => {
-                    updateData({ serviceCheckStatus: 'completed' });
-                    toast({ title: '✅ Protokoll freigeschaltet', description: 'Ihr Protokoll ist jetzt ohne Wasserzeichen verfügbar.' });
-                    window.open(buildCheck24Link(), '_blank');
-                  }}
-                  className="w-full h-12 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-                  size="lg"
-                >
-                  <Zap className="w-5 h-5" />
-                  Tarifvergleich & kostenloses Protokoll
-                  <ExternalLink className="w-4 h-4" />
-                </Button>
-              ) : (
-                <Button disabled className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
-                  <Zap className="w-5 h-5" />
-                  Tarifvergleich & kostenloses Protokoll
-                </Button>
-              )
+                    <><div className="w-3.5 h-3.5 rounded-full border-2 border-primary/30 border-t-primary animate-spin" /> Wird erstellt…</>
+                  )
+                ) : (
+                  <><FileText className="w-4 h-4" /> Kündigungs-Assistent starten</>
+                )}
+              </Button>
+              <Button variant="outline" className="flex-1 rounded-xl gap-1.5 text-xs h-10" disabled>
+                <Phone className="w-4 h-4" />
+                Online abmelden
+                <span className="text-[9px] text-muted-foreground">(bald)</span>
+              </Button>
+            </div>
+
+            {cancellationDone && (
+              <div className="bg-accent/10 rounded-xl p-3 text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-medium text-accent">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Kündigungsschreiben generiert
+                </div>
+                <p className="text-muted-foreground">
+                  Zählerstand {stromMeter?.reading || '–'} {stromMeter?.unit || 'kWh'} zum {todayFormatted} übernommen.
+                  {stromMeter?.meterNumber && ` Zählernr.: ${stromMeter.meterNumber}`}
+                </p>
+              </div>
             )}
           </motion.div>
+
+          {/* ── 4. Smart-Switch: Check24 Lead (shown after cancellation) ── */}
+          {cancellationDone && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+              className="glass-card-premium rounded-2xl p-5 border-2 border-accent/30 bg-gradient-to-br from-accent/5 to-transparent"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-accent" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Strom am alten Standort {city} abgemeldet</h3>
+                  <p className="text-xs text-muted-foreground">Zählerstand dokumentiert & verifiziert</p>
+                </div>
+              </div>
+
+              <div className="bg-accent/10 rounded-xl p-3 mb-4 flex items-center gap-2 text-sm">
+                <ShieldCheck className="w-5 h-5 text-accent shrink-0" />
+                <span className="font-medium">
+                  Neues Zuhause, neuer Tarif? Vergleiche jetzt Strom & Gas für deine neue Adresse und sichere dir <span className="text-accent font-bold">20 € Cashback</span>
+                </span>
+              </div>
+
+              {/* New address preview */}
+              {nextAddress && (
+                <div className="bg-primary/5 rounded-xl p-2.5 mb-3 flex items-center gap-2 text-xs">
+                  <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <div>
+                    <span className="text-muted-foreground">Lieferadresse: </span>
+                    <span className="font-medium">{nextAddress}</span>
+                    <span className="text-muted-foreground"> · Einzug: {moveDateFormatted}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Verbrauchsschätzung */}
+              <div className="space-y-3 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <label className="text-xs text-muted-foreground">Personenanzahl</label>
+                  </div>
+                  <span className="text-sm font-semibold">{persons}</span>
+                </div>
+                <Slider value={[persons]} onValueChange={([v]) => setPersons(v)} min={1} max={5} step={1} />
+
+                <div className="bg-primary/10 rounded-xl p-3 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Jahresverbrauch</span>
+                  {manualKwhEdit ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        className="w-20 h-7 text-right text-sm font-bold"
+                        value={manualKwh ?? heuristicKwh}
+                        onChange={(e) => setManualKwh(Number(e.target.value) || null)}
+                        onBlur={() => setManualKwhEdit(false)}
+                        autoFocus
+                      />
+                      <span className="text-sm font-bold text-primary">kWh</span>
+                    </div>
+                  ) : (
+                    <button onClick={() => setManualKwhEdit(true)} className="flex items-center gap-1 group cursor-pointer">
+                      <span className="text-lg font-bold text-primary">{estimatedKwh.toLocaleString('de-DE')} kWh</span>
+                      <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Tarifvergleich */}
+              {grundversorger && (
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-secondary/50 rounded-xl p-3">
+                    <p className="text-xs text-muted-foreground">Grundversorger</p>
+                    <p className="text-lg font-bold text-destructive">{grundversorgerJahr.toLocaleString('de-DE')} €<span className="text-xs font-normal text-muted-foreground">/J.</span></p>
+                    <p className="text-[10px] text-muted-foreground">{grundversorger.name}</p>
+                  </div>
+                  <div className="bg-accent/10 rounded-xl p-3">
+                    <div className="flex items-center gap-1">
+                      <TrendingDown className="w-3.5 h-3.5 text-accent" />
+                      <p className="text-xs text-muted-foreground">Check24 ab</p>
+                    </div>
+                    <p className="text-lg font-bold text-accent">{check24Jahr.toLocaleString('de-DE')} €<span className="text-xs font-normal text-muted-foreground">/J.</span></p>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-accent/15 rounded-xl p-3 mb-4 text-center">
+                <span className="text-xs text-muted-foreground">Jährliche Ersparnis</span>
+                <p className="text-2xl font-bold text-accent">bis zu {ersparnis} €</p>
+              </div>
+
+              {/* DSGVO + CTA */}
+              <div className="flex items-start gap-2.5 mb-3">
+                <Checkbox
+                  id="dsgvo-check24"
+                  checked={dsgvoConsent}
+                  onCheckedChange={(v) => setDsgvoConsent(v === true)}
+                  className="mt-0.5"
+                />
+                <label htmlFor="dsgvo-check24" className="text-[11px] text-muted-foreground leading-tight cursor-pointer">
+                  Ich stimme zu, dass meine Daten (PLZ {newPlz || plz || '–'}, {estimatedKwh.toLocaleString('de-DE')} kWh, Zähler {stromMeter?.meterNumber || '–'}) zum Tarifvergleich an Check24 übertragen werden.
+                </label>
+              </div>
+
+              {isMoveOut ? (
+                dsgvoConsent ? (
+                  <Button
+                    onClick={handleServiceCheck}
+                    disabled={sending}
+                    className="w-full h-12 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                    size="lg"
+                  >
+                    {sending ? (
+                      <>
+                        <div className="w-4 h-4 rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground animate-spin" />
+                        Wird verarbeitet…
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-5 h-5" />
+                        Tarifvergleich & kostenloses Protokoll
+                        <ExternalLink className="w-4 h-4" />
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button disabled className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+                    <Zap className="w-5 h-5" />
+                    Tarifvergleich & kostenloses Protokoll
+                  </Button>
+                )
+              ) : (
+                dsgvoConsent ? (
+                  <Button
+                    onClick={() => {
+                      updateData({ serviceCheckStatus: 'completed' });
+                      toast({ title: '✅ Protokoll freigeschaltet', description: 'Ihr Protokoll ist jetzt ohne Wasserzeichen verfügbar.' });
+                      window.open(buildCheck24Link(), '_blank');
+                    }}
+                    className="w-full h-12 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                    size="lg"
+                  >
+                    <Zap className="w-5 h-5" />
+                    Tarifvergleich & kostenloses Protokoll
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                ) : (
+                  <Button disabled className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+                    <Zap className="w-5 h-5" />
+                    Tarifvergleich & kostenloses Protokoll
+                  </Button>
+                )
+              )}
+            </motion.div>
+          )}
 
           {/* ── Move-Out: PDF Preview & Protocol Send ── */}
           {isMoveOut && (
