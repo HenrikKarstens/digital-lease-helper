@@ -65,6 +65,17 @@ export interface CapturedDocument {
 
 export type DepositType = 'cash' | 'guarantee' | 'pledged-account';
 
+export interface DeepClause {
+  paragraphRef: string;
+  title: string;
+  originalText: string;
+  status: 'SICHER' | 'KRITISCH' | 'UNWIRKSAM';
+  legalBasis: string;
+  reasoning: string;
+  riskLevel: number;
+  category: 'miete' | 'kaution' | 'nebenkosten' | 'reparaturen' | 'renovierung' | 'kuendigung' | 'nutzung' | 'sonstiges';
+}
+
 export interface KeyEntry {
   id: string;
   type: string;
@@ -117,6 +128,9 @@ export interface HandoverData {
   endRenovationSourceRef: string;
   // Stricken clauses (user-marked as struck-through)
   strickenClauses: string[];
+  // Deep paragraph analysis
+  deepLegalClauses: DeepClause[];
+  deepAnalysisComplete: boolean;
   // Step 5
   floorPlanUrl: string | null;
   rooms: { id: string; name: string; x: number; y: number }[];
@@ -197,6 +211,8 @@ const defaultData: HandoverData = {
   smallRepairSourceRef: '',
   endRenovationSourceRef: '',
   strickenClauses: [],
+  deepLegalClauses: [],
+  deepAnalysisComplete: false,
   floorPlanUrl: null,
   rooms: [],
   participants: [],
