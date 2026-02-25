@@ -243,7 +243,7 @@ export const StepDepositCheck = () => {
       return f;
     });
     updateData({ findings: updatedFindings });
-    goToStepById('defect-analysis');
+    goToStepById('unlock');
   };
 
   return (
@@ -899,7 +899,7 @@ export const StepDepositCheck = () => {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="pt-2">
           <Button onClick={handleContinue} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
             <CheckCircle2 className="w-4 h-4" />
-            Abrechnung übernehmen & weiter
+            Abrechnung übernehmen & Protokoll freischalten
             <ArrowRight className="w-4 h-4" />
           </Button>
           <p className="text-xs text-center text-muted-foreground mt-2">
