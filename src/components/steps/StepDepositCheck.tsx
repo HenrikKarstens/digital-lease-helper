@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, Euro, AlertTriangle, CheckCircle2, ArrowDown, ArrowUp, ArrowRight,
   Info, Scale, Pencil, Sparkles, ChevronDown, ChevronUp, Gavel,
-  Handshake, Key, Landmark, FileText, PiggyBank, Calendar, CreditCard
+  Handshake, Key, Landmark, FileText, PiggyBank, Calendar, CreditCard, CalendarClock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { useHandover, DepositType } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
@@ -604,6 +605,59 @@ export const StepDepositCheck = () => {
                     <span className="text-sm font-bold text-destructive">50.00 €</span>
                   </div>
                 ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* ── Anschlussvermietung / § 281 Abs. 2 BGB ── */}
+        {!isGuarantee && tenantDefects.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}
+            className="glass-card rounded-2xl p-5 space-y-3">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="immediateReletting"
+                checked={data.immediateReletting}
+                onCheckedChange={(checked) => updateData({ immediateReletting: !!checked })}
+                className="mt-0.5"
+              />
+              <label htmlFor="immediateReletting" className="text-sm font-medium cursor-pointer leading-snug">
+                Sofortige Anschlussvermietung (Einzug innerhalb von 7 Tagen)
+              </label>
+            </div>
+            <AnimatePresence>
+              {data.immediateReletting && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Datum des Neueinzugs</label>
+                    <Input
+                      type="date"
+                      value={data.relettingDate}
+                      onChange={e => updateData({ relettingDate: e.target.value })}
+                      className="rounded-xl bg-secondary/50 border-0 h-9 text-sm max-w-[200px]"
+                    />
+                  </div>
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="text-xs leading-relaxed">
+                      <p className="font-semibold text-amber-600">§ 281 Abs. 2 BGB – Fristsetzung entbehrlich</p>
+                      <p className="text-muted-foreground mt-1">
+                        Aufgrund der Anschlussvermietung ist eine Nachbesserung durch den Mieter unzumutbar.
+                        Schadensersatz erfolgt direkt in Geld. Alle Mängelposten werden als <strong>endgültiger Schadensersatz</strong> deklariert.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <CalendarClock className="w-3 h-3 text-primary shrink-0" />
+                    <span>{tenantDefects.length} Schäden werden als endgültiger Schadensersatz verrechnet – keine 14-Tage-Frist.</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {!data.immediateReletting && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Info className="w-3 h-3 text-primary shrink-0" />
+                <span>Ohne Anschlussvermietung: Mieter erhält 14-Tage-Frist zur Nachbesserung (§ 281 Abs. 1 BGB).</span>
               </div>
             )}
           </motion.div>
