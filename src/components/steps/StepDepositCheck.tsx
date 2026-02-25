@@ -53,6 +53,18 @@ export const StepDepositCheck = () => {
   const tenantDefects = data.findings.filter(f => f.entryType !== 'note');
   const deposit = parseFloat(data.depositAmount) || 0;
 
+  const depositTypeLabel: Record<string, string> = {
+    'cash': 'Barkaution (§ 551 Abs. 3 BGB)',
+    'guarantee': 'Bankbürgschaft',
+    'pledged-account': 'Verpfändetes Mieterkonto',
+  };
+  const depositTypeIcon: Record<string, string> = {
+    'cash': '💶',
+    'guarantee': '🏦',
+    'pledged-account': '🔒',
+  };
+  const currentDepositType = data.depositType || 'cash';
+
   // Missing keys deduction
   const missingKeys = data.keyEntries.filter(k => k.count <= 0);
 
@@ -170,6 +182,35 @@ export const StepDepositCheck = () => {
             <span className="text-accent font-medium">
               Auszahlung: {payout.toFixed(2)} €
             </span>
+          </div>
+        </motion.div>
+
+        {/* ── Kautionsform ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="glass-card rounded-2xl p-4 flex items-center gap-4"
+        >
+          <span className="text-2xl">{depositTypeIcon[currentDepositType]}</span>
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground">Kautionsform</p>
+            <p className="text-sm font-semibold">{depositTypeLabel[currentDepositType]}</p>
+            {currentDepositType === 'guarantee' && data.guaranteeNumber && (
+              <p className="text-xs text-muted-foreground mt-0.5">Bürgschafts-Nr.: {data.guaranteeNumber}</p>
+            )}
+            {currentDepositType === 'pledged-account' && data.pledgedAccountBalance && (
+              <p className="text-xs text-muted-foreground mt-0.5">Kontostand: {parseFloat(data.pledgedAccountBalance).toFixed(2)} €</p>
+            )}
+            {currentDepositType === 'cash' && data.depositPaymentDate && (
+              <p className="text-xs text-muted-foreground mt-0.5">Eingezahlt am: {data.depositPaymentDate}</p>
+            )}
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-bold">{deposit.toFixed(2)} €</p>
+            {currentDepositType === 'cash' && (
+              <p className="text-[10px] text-muted-foreground">zzgl. Zinsen gem. § 551</p>
+            )}
           </div>
         </motion.div>
 
