@@ -159,7 +159,7 @@ export interface HandoverData {
 const STORAGE_KEY = 'estateturn_draft';
 
 const defaultData: HandoverData = {
-  transactionType: null,
+  transactionType: 'rental',
   handoverDirection: null,
   role: null,
   capturedDocuments: [],
@@ -314,7 +314,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
       setCurrentStep(idx);
     } else {
       const MASTER_ORDER = [
-        'hero', 'transaction-type', 'role', 'direction', 'data-check',
+        'hero', 'role', 'direction', 'data-check',
         'participants', 'evidence', 'keys', 'meters', 'data-complete',
         'defect-analysis', 'deposit', 'unlock'
       ];

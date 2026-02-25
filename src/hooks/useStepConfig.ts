@@ -9,7 +9,6 @@ export interface StepDef {
 // All possible steps with their IDs
 const ALL_STEPS: StepDef[] = [
   { id: 'hero',              label: 'Start',       component: 'Step1Hero' },
-  { id: 'transaction-type',  label: 'Art',         component: 'Step1aTransactionType' },
   { id: 'role',              label: 'Rolle',       component: 'Step2Role' },
   { id: 'direction',         label: 'Richtung',    component: 'Step1cDirection' },
   { id: 'data-check',        label: 'Daten-Check', component: 'Step4Validation' },

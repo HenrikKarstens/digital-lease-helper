@@ -80,7 +80,7 @@ export const Step1Hero = () => {
         className="w-full max-w-md"
       >
         <Button
-          onClick={() => goToStepById('transaction-type')}
+          onClick={() => goToStepById('role')}
           className="w-full h-14 rounded-2xl text-base font-semibold bg-primary hover:bg-primary/90 gap-2"
           size="lg"
         >

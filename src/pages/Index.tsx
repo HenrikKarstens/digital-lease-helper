@@ -4,7 +4,6 @@ import { useStepConfig } from '@/hooks/useStepConfig';
 import { ProgressBar } from '@/components/ProgressBar';
 import { PageTransition } from '@/components/PageTransition';
 import { Step1Hero } from '@/components/steps/Step1Hero';
-import { Step1aTransactionType } from '@/components/steps/Step1aTransactionType';
 import { Step2Role } from '@/components/steps/Step2Role';
 import { Step1cDirection } from '@/components/steps/Step1cDirection';
 import { ArrowLeft } from 'lucide-react';
@@ -24,7 +23,6 @@ const Step14Utility = lazy(() => import('@/components/steps/Step14Utility').then
 
 const COMPONENT_MAP: Record<string, React.ComponentType> = {
   Step1Hero,
-  Step1aTransactionType,
   Step2Role,
   Step1cDirection,
   Step4Validation,
