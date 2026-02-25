@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, Scale, Pencil, Check, X, Shield, AlertTriangle, CheckCircle2, XCircle, Strikethrough, FileText, BookOpen } from 'lucide-react';
+import { ArrowRight, Scale, Pencil, Check, X, Shield, AlertTriangle, CheckCircle2, XCircle, Strikethrough, BookOpen } from 'lucide-react';
 import { DeepParagraphCheck } from './DeepParagraphCheck';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,6 @@ import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Step3SmartEntry } from './Step3SmartEntry';
 
 // ── Editable Row ──────────────────────────────────────────────────────
 interface EditableRowProps {
@@ -189,7 +188,6 @@ export const Step4Validation = () => {
   const { ownerRole, clientRole, depositLabel, contractStartLabel, contractEndLabel } = useTransactionLabels();
 
   const hasAnalysisData = !!(data.propertyAddress || data.landlordName || data.tenantName || data.coldRent);
-  const [showScanner, setShowScanner] = useState(!hasAnalysisData);
 
   const isMoveIn = data.handoverDirection === 'move-in';
   const dynamicDeposit = computeDepositCheck(data.coldRent, data.depositAmount);
@@ -246,13 +244,6 @@ export const Step4Validation = () => {
     goToStepById('participants');
   };
 
-  if (showScanner) {
-    return (
-      <div className="min-h-[80vh] flex flex-col">
-        <Step3SmartEntry onComplete={() => setShowScanner(false)} embedded />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-4">
@@ -269,13 +260,6 @@ export const Step4Validation = () => {
             <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold">
               {filledCount}/{rows.length}
             </span>
-            <button
-              onClick={() => setShowScanner(true)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-secondary text-muted-foreground text-[11px] font-medium hover:text-foreground transition-colors"
-            >
-              <FileText className="w-3 h-3" />
-              + Dokument
-            </button>
           </div>
         </div>
       </motion.div>
