@@ -27,7 +27,7 @@ const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId }: Editabl
   const handleBlur = () => { if (draft !== value) { onSave(draft); } setEditing(false); };
 
   return (
-    <div id={rowId} className="flex items-center gap-2 py-2.5 border-b border-border/40 last:border-0 scroll-mt-48">
+    <div id={rowId} className="flex items-center gap-2 py-2.5 border-b border-border/40 last:border-0 scroll-mt-20">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
@@ -281,7 +281,7 @@ export const Step4Validation = () => {
 
       {/* Sticky Legal Analysis Cards */}
       {hasLegalAnalysis && (
-        <div className="w-full max-w-md sticky top-0 z-30 pb-3">
+        <div className="w-full max-w-md pb-3">
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
