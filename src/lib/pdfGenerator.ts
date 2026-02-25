@@ -3,12 +3,15 @@ import autoTable from 'jspdf-autotable';
 import { HandoverData } from '@/context/HandoverContext';
 import { createThumbnail } from '@/lib/imageUtils';
 
-const BRAND_COLOR: [number, number, number] = [79, 70, 229]; // indigo-600
-const BRAND_LIGHT: [number, number, number] = [238, 242, 255];
+// Executive Certificate Theme
+const BRAND_COLOR: [number, number, number] = [15, 23, 42];      // Midnight Blue #0F172A
+const BRAND_LIGHT: [number, number, number] = [241, 245, 249];   // Soft slate-100
 const DANGER_COLOR: [number, number, number] = [220, 38, 38];
-const SUCCESS_COLOR: [number, number, number] = [22, 163, 74];
-const TEXT_COLOR: [number, number, number] = [30, 30, 40];
-const MUTED_COLOR: [number, number, number] = [100, 100, 120];
+const SUCCESS_COLOR: [number, number, number] = [5, 150, 105];   // Rich Emerald #059669
+const TEXT_COLOR: [number, number, number] = [15, 23, 42];
+const MUTED_COLOR: [number, number, number] = [100, 116, 139];   // Slate-500
+const GOLD_COLOR: [number, number, number] = [197, 160, 89];     // Muted Gold #C5A059
+const GOLD_LIGHT: [number, number, number] = [254, 249, 235];    // Gold background
 
 // Helper: embed photos with timestamp/GPS metadata below a section
 function embedPhotos(
@@ -63,41 +66,74 @@ function embedPhotos(
 }
 
 function addHeader(doc: jsPDF, title: string, subtitle: string, pageW: number) {
+  // Midnight blue header band
   doc.setFillColor(...BRAND_COLOR);
-  doc.rect(0, 0, pageW, 28, 'F');
+  doc.rect(0, 0, pageW, 30, 'F');
+  
+  // Brand name
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
+  doc.setFontSize(17);
   doc.setFont('helvetica', 'bold');
-  doc.text('EstateTurn', 14, 11);
-  doc.setFontSize(8);
+  doc.text('EstateTurn', 14, 12);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
-  doc.text('Rechtssichere Immobilienübergabe', 14, 17);
+  doc.setTextColor(180, 200, 230);
+  doc.text('Rechtssicheres Übergabe-Zertifikat', 14, 18);
+  
+  // Title
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
-  doc.text(title, 14, 23);
-  doc.setTextColor(200, 200, 255);
+  doc.text(title, 14, 25);
+  doc.setTextColor(180, 200, 230);
   doc.setFontSize(8);
-  doc.text(subtitle, pageW - 14, 23, { align: 'right' });
+  doc.text(subtitle, pageW - 14, 25, { align: 'right' });
+  
+  // Gold seal badge (top right)
+  const sealX = pageW - 30;
+  const sealY = 4;
+  const sealR = 9;
+  doc.setFillColor(...GOLD_COLOR);
+  doc.circle(sealX, sealY + sealR, sealR, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('VERIFIZIERT', sealX, sealY + sealR - 1, { align: 'center' });
+  doc.setFontSize(4);
+  doc.setFont('helvetica', 'normal');
+  doc.text('SHA-256', sealX, sealY + sealR + 2, { align: 'center' });
 }
 
 function addFooter(doc: jsPDF, pageNum: number, totalPages: number, pageW: number, pageH: number) {
-  doc.setDrawColor(200, 200, 215);
-  doc.line(14, pageH - 14, pageW - 14, pageH - 14);
+  // Subtle gold line
+  doc.setDrawColor(...GOLD_COLOR);
+  doc.setLineWidth(0.3);
+  doc.line(14, pageH - 15, pageW - 14, pageH - 15);
+  doc.setLineWidth(0.1);
   doc.setTextColor(...MUTED_COLOR);
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setFont('helvetica', 'normal');
-  doc.text(`EstateTurn • Seite ${pageNum} von ${totalPages} • SHA-256 versiegelt`, 14, pageH - 8);
-  doc.text(new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }), pageW - 14, pageH - 8, { align: 'right' });
+  doc.text(`EstateTurn Übergabe-Zertifikat • Seite ${pageNum} von ${totalPages} • SHA-256 versiegelt`, 14, pageH - 9);
+  doc.text(new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }), pageW - 14, pageH - 9, { align: 'right' });
+  // Watermark
+  doc.setTextColor(230, 230, 235);
+  doc.setFontSize(40);
+  doc.setFont('helvetica', 'bold');
+  const waterY = pageH / 2;
+  doc.text('EstateTurn Verified', pageW / 2, waterY, { align: 'center', angle: 45 });
 }
 
 function sectionTitle(doc: jsPDF, text: string, y: number, pageW: number): number {
   doc.setFillColor(...BRAND_LIGHT);
-  doc.roundedRect(14, y, pageW - 28, 8, 2, 2, 'F');
+  doc.roundedRect(14, y, pageW - 28, 9, 2, 2, 'F');
+  // Gold left accent bar
+  doc.setFillColor(...GOLD_COLOR);
+  doc.rect(14, y, 2, 9, 'F');
   doc.setTextColor(...BRAND_COLOR);
-  doc.setFontSize(9);
+  doc.setFontSize(9.5);
   doc.setFont('helvetica', 'bold');
-  doc.text(text, 18, y + 5.5);
-  return y + 12;
+  doc.text(text, 20, y + 6);
+  return y + 13;
 }
 
 function labelValue(doc: jsPDF, label: string, value: string, x: number, y: number, colWidth: number) {
