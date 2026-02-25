@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import {
   Zap, Leaf, TrendingDown, Euro, ArrowRight, FileText, CheckCircle2,
   PartyPopper, Info, Users, ExternalLink, Building2, Pencil, ShieldCheck,
-  Home, Wifi, MapPin, Mail, Phone
+  Home, Wifi, MapPin, Mail, Eye, Printer, X, CreditCard, Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -10,8 +10,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { generateMasterProtocolBlob } from '@/lib/pdfGenerator';
 import {
   Tooltip,
   TooltipContent,
@@ -19,7 +20,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-// ── PLZ → Grundversorger lookup (top cities) ──
+// ── PLZ → Grundversorger lookup ──
 const GRUNDVERSORGER_DB: Record<string, { name: string; tarif: string; pricePerKwh: number; grundpreis: number }> = {
   '10': { name: 'Vattenfall Berlin', tarif: 'Basis', pricePerKwh: 0.3890, grundpreis: 148 },
   '20': { name: 'Vattenfall Hamburg', tarif: 'Basis', pricePerKwh: 0.3750, grundpreis: 142 },
@@ -70,8 +71,8 @@ function getTodayFormatted(): string {
 }
 
 export const Step14Utility = () => {
-  const { data, updateData, goToStepById } = useHandover();
-  const { cancellationTarget, isSale } = useTransactionLabels();
+  const { data, updateData, resetData, goToStepById } = useHandover();
+  const { cancellationTarget, isSale, ownerRole, clientRole } = useTransactionLabels();
   const isMoveOut = data.handoverDirection === 'move-out';
   const isTenant = data.role === 'tenant';
 
@@ -80,16 +81,19 @@ export const Step14Utility = () => {
   const [manualKwhEdit, setManualKwhEdit] = useState(false);
   const [manualKwh, setManualKwh] = useState<number | null>(null);
   const [nextAddress, setNextAddress] = useState(data.nextAddress || '');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewViewed, setPreviewViewed] = useState(data.previewViewed ?? false);
+  const [sending, setSending] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const { toast } = useToast();
 
   const roomCount = data.rooms.length || 2;
   const [persons, setPersons] = useState(2);
   const stromMeter = data.meterReadings.find(m => m.medium === 'Strom');
-  const gasMeter = data.meterReadings.find(m => m.medium === 'Gas');
-  const wasserMeter = data.meterReadings.find(m => m.medium === 'Wasser');
   const plz = extractPlz(data.propertyAddress);
   const city = extractCity(data.propertyAddress) || 'Heide';
   const grundversorger = lookupGrundversorger(plz);
+  const maloId = stromMeter?.maloId || '';
 
   const heuristicKwh = useMemo(() => estimateConsumption(roomCount, persons), [roomCount, persons]);
   const estimatedKwh = manualKwh ?? heuristicKwh;
@@ -103,6 +107,15 @@ export const Step14Utility = () => {
   const todayFormatted = getTodayFormatted();
   const tenantName = data.tenantName || 'Mieter';
   const landlordName = data.landlordName || 'Vermieter';
+
+  const isUnlocked = data.paymentStatus === 'paid' || data.serviceCheckStatus === 'completed';
+
+  const recipientList = useMemo(() => {
+    const list: { name: string; email: string }[] = [];
+    if (data.tenantEmail) list.push({ name: data.tenantName || clientRole, email: data.tenantEmail });
+    if (data.landlordEmail) list.push({ name: data.landlordName || ownerRole, email: data.landlordEmail });
+    return list;
+  }, [data.tenantEmail, data.tenantName, data.landlordEmail, data.landlordName, clientRole, ownerRole]);
 
   // Sync nextAddress to context
   useEffect(() => {
@@ -120,6 +133,13 @@ export const Step14Utility = () => {
       meterNumber: stromMeter?.meterNumber || '',
       movingDate: todayFormatted,
     });
+    if (city) params.set('city', city);
+    if (maloId) params.set('maloId', maloId);
+    if (data.tenantName) params.set('billing_name', data.tenantName);
+    if (data.tenantEmail) params.set('customer_email', data.tenantEmail);
+    if (data.tenantBirthday) params.set('birthdate', data.tenantBirthday);
+    const billingAddr = data.nextAddress || data.propertyAddress;
+    if (billingAddr) params.set('billing_address', billingAddr);
     return `https://www.check24.de/strom/vergleich/?${params.toString()}`;
   };
 
@@ -131,23 +151,149 @@ export const Step14Utility = () => {
     });
   };
 
+  // PDF Preview
+  const handlePreview = useCallback(() => {
+    try {
+      updateData({ nextAddress });
+      const blob = generateMasterProtocolBlob(data);
+      const url = URL.createObjectURL(blob);
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        window.open(url, '_blank');
+        setPreviewViewed(true);
+        updateData({ previewViewed: true });
+        return;
+      }
+      setPreviewUrl(url);
+      setPreviewViewed(true);
+      updateData({ previewViewed: true });
+    } catch {
+      toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
+    }
+  }, [data, toast, updateData, nextAddress]);
+
+  const closePreview = useCallback(() => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+  }, [previewUrl]);
+
+  const handlePrint = useCallback(() => {
+    if (!previewUrl) return;
+    const win = window.open(previewUrl, '_blank');
+    win?.focus();
+  }, [previewUrl]);
+
+  const sendProtocol = (recipients: { name: string; email: string }[]) => {
+    updateData({ protocolSent: true });
+    const emails = recipients.map(r => r.email).join(', ');
+    toast({
+      title: '✅ Protokoll versendet!',
+      description: `Das rechtssichere Protokoll wurde an ${emails || 'die Beteiligten'} gesendet.`,
+    });
+  };
+
+  const handleServiceCheck = () => {
+    const check24Url = buildCheck24Link();
+    const check24Window = window.open(check24Url, '_blank');
+    if (!check24Window) {
+      window.location.href = check24Url;
+      return;
+    }
+    setSending(true);
+    setTimeout(() => {
+      updateData({ serviceCheckStatus: 'completed', nextAddress });
+      sendProtocol(recipientList);
+      setSending(false);
+    }, 1500);
+  };
+
+  const handlePaymentSelect = () => {
+    setProcessing(true);
+    setTimeout(() => {
+      updateData({ paymentStatus: 'paid', nextAddress });
+      setProcessing(false);
+      sendProtocol(recipientList);
+    }, 2000);
+  };
+
   const handleContinue = () => {
     updateData({ nextAddress });
     goToStepById('unlock');
   };
 
+  // For move-out: if already sent, show completion screen
+  if (isMoveOut && data.protocolSent && isUnlocked) {
+    return (
+      <TooltipProvider>
+        <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md glass-card-premium rounded-2xl p-6 text-center"
+          >
+            <PartyPopper className="w-14 h-14 text-primary mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">Übergabe abgeschlossen!</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Das rechtssichere Protokoll wurde an alle Beteiligten gesendet.
+            </p>
+            <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mb-6">
+              <Mail className="w-3.5 h-3.5" />
+              <span>{recipientList.map(r => r.email).join(', ') || 'Alle Beteiligten'}</span>
+            </div>
+            <Button variant="outline" onClick={resetData} className="rounded-xl gap-2">
+              Neue Übergabe starten
+            </Button>
+          </motion.div>
+        </div>
+      </TooltipProvider>
+    );
+  }
+
   return (
     <TooltipProvider>
       <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
+        {/* PDF Preview Modal */}
+        {previewUrl && (
+          <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                <span className="font-semibold text-sm">Protokoll-Vorschau</span>
+                <span className="text-[10px] bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium">VORABZUG</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 rounded-xl">
+                  <Printer className="w-4 h-4" />
+                  Drucken
+                </Button>
+                <Button size="icon" variant="ghost" onClick={closePreview} className="rounded-xl">
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex-1 relative">
+              <iframe src={previewUrl} className="w-full h-full border-0" title="Protokoll PDF Vorschau" />
+              <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center">
+                <div className="text-destructive/15 font-black text-2xl sm:text-4xl whitespace-nowrap select-none"
+                  style={{ transform: 'rotate(-35deg)', letterSpacing: '0.05em' }}>
+                  VORABZUG – Kein Original
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-xs font-semibold mb-3">
             <MapPin className="w-3.5 h-3.5" />
-            Versorger-Service & Adresse
+            {isMoveOut ? 'Abschluss & Versorger-Service' : 'Versorger-Service & Adresse'}
           </div>
-          <h2 className="text-2xl font-bold font-heading">Umzug abschließen</h2>
+          <h2 className="text-2xl font-bold font-heading">
+            {isMoveOut ? 'Übergabe abschließen' : 'Umzug abschließen'}
+          </h2>
           <p className="text-muted-foreground text-sm mt-1">
-            Nachsendeadresse, Versorgerkündigung & neuer Tarif
+            {isMoveOut
+              ? 'Nachsendeadresse, Versorger & Protokoll-Versand'
+              : 'Nachsendeadresse, Versorgerkündigung & neuer Tarif'}
           </p>
         </motion.div>
 
@@ -190,7 +336,7 @@ export const Step14Utility = () => {
             )}
           </motion.div>
 
-          {/* ── 2. Zähler-Zusammenfassung (aus Phase 8) ── */}
+          {/* ── 2. Zähler-Zusammenfassung ── */}
           {data.meterReadings.length > 0 && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="glass-card-premium rounded-2xl p-5 space-y-3"
@@ -211,7 +357,6 @@ export const Step14Utility = () => {
                 ))}
               </div>
 
-              {/* Buttons: Kündigung & Online-Abmeldung */}
               <div className="flex gap-2 pt-2">
                 <Button
                   variant="outline"
@@ -228,17 +373,10 @@ export const Step14Utility = () => {
                   <span className="text-[9px] text-muted-foreground">(bald)</span>
                 </Button>
               </div>
-
-              {cancellation && (
-                <div className="bg-accent/10 rounded-xl p-3 text-xs text-accent flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  Kündigungsschreiben für {cancellationTarget} erstellt. Wird im PDF-Zertifikat angehängt.
-                </div>
-              )}
             </motion.div>
           )}
 
-          {/* ── 3. Smart-Switch: Strom abgemeldet → Check24 Lead ── */}
+          {/* ── 3. Smart-Switch: Check24 Lead ── */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
             className="glass-card-premium rounded-2xl p-5 border-2 border-accent/30 bg-gradient-to-br from-accent/5 to-transparent"
           >
@@ -305,7 +443,6 @@ export const Step14Utility = () => {
                     <p className="text-xs text-muted-foreground">Check24 ab</p>
                   </div>
                   <p className="text-lg font-bold text-accent">{check24Jahr.toLocaleString('de-DE')} €<span className="text-xs font-normal text-muted-foreground">/J.</span></p>
-                  <p className="text-[10px] text-muted-foreground">{CHECK24_BEST_PRICE_PER_KWH.toFixed(2).replace('.', ',')} ct/kWh</p>
                 </div>
               </div>
             )}
@@ -328,39 +465,121 @@ export const Step14Utility = () => {
               </label>
             </div>
 
-            {dsgvoConsent ? (
-              <Button
-                onClick={() => {
-                  updateData({ serviceCheckStatus: 'completed' });
-                  toast({ title: '✅ Protokoll freigeschaltet', description: 'Ihr Protokoll ist jetzt ohne Wasserzeichen verfügbar.' });
-                  window.open(buildCheck24Link(), '_blank');
-                }}
-                className="w-full h-12 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-                size="lg"
-              >
-                <Zap className="w-5 h-5" />
-                Tarifvergleich & kostenloses Protokoll
-                <ExternalLink className="w-4 h-4" />
-              </Button>
+            {isMoveOut ? (
+              /* Move-out: Check24 triggers protocol send */
+              dsgvoConsent ? (
+                <Button
+                  onClick={handleServiceCheck}
+                  disabled={sending}
+                  className="w-full h-12 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                  size="lg"
+                >
+                  {sending ? (
+                    <>
+                      <div className="w-4 h-4 rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground animate-spin" />
+                      Wird verarbeitet…
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-5 h-5" />
+                      Tarifvergleich & kostenloses Protokoll
+                      <ExternalLink className="w-4 h-4" />
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button disabled className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+                  <Zap className="w-5 h-5" />
+                  Tarifvergleich & kostenloses Protokoll
+                </Button>
+              )
             ) : (
-              <Button disabled className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
-                <Zap className="w-5 h-5" />
-                Tarifvergleich & kostenloses Protokoll
-              </Button>
+              /* Non-move-out: simple CTA */
+              dsgvoConsent ? (
+                <Button
+                  onClick={() => {
+                    updateData({ serviceCheckStatus: 'completed' });
+                    toast({ title: '✅ Protokoll freigeschaltet', description: 'Ihr Protokoll ist jetzt ohne Wasserzeichen verfügbar.' });
+                    window.open(buildCheck24Link(), '_blank');
+                  }}
+                  className="w-full h-12 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                  size="lg"
+                >
+                  <Zap className="w-5 h-5" />
+                  Tarifvergleich & kostenloses Protokoll
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              ) : (
+                <Button disabled className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+                  <Zap className="w-5 h-5" />
+                  Tarifvergleich & kostenloses Protokoll
+                </Button>
+              )
             )}
           </motion.div>
 
-          {/* ── CTA: Weiter zur Zusammenfassung ── */}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="pt-2">
-            <Button onClick={handleContinue} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
-              <ArrowRight className="w-4 h-4" />
-              Weiter zur Freischaltung
-            </Button>
-            <p className="text-xs text-center text-muted-foreground mt-2">
-              Versorger-Nachweis wird im Zertifikat dokumentiert
-            </p>
-          </motion.div>
+          {/* ── Move-Out: PDF Preview & Protocol Send ── */}
+          {isMoveOut && (
+            <>
+              {/* Preview Button */}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <Button
+                  variant={previewViewed ? 'outline' : 'default'}
+                  onClick={handlePreview}
+                  className="w-full h-12 rounded-2xl font-semibold gap-2 border-primary/30"
+                >
+                  <Eye className="w-4 h-4" />
+                  {previewViewed ? 'Vorschau erneut öffnen' : 'Protokoll-Vorschau öffnen (Pflicht)'}
+                  {previewViewed && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                </Button>
+                {!previewViewed && (
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Bitte öffnen Sie zuerst die Vorschau, um fortzufahren.
+                  </p>
+                )}
+              </motion.div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground font-medium">oder</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+
+              {/* Payment fallback */}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+                className="text-center"
+              >
+                <button
+                  onClick={handlePaymentSelect}
+                  disabled={processing || !previewViewed}
+                  className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>Einmalzahlung <strong>9,90 €</strong> – Rechtssicher versenden</span>
+                </button>
+              </motion.div>
+            </>
+          )}
+
+          {/* ── Non-Move-Out: simple continue ── */}
+          {!isMoveOut && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="pt-2">
+              <Button onClick={handleContinue} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+                <ArrowRight className="w-4 h-4" />
+                Weiter zur Freischaltung
+              </Button>
+            </motion.div>
+          )}
         </div>
+
+        {/* Payment processing overlay */}
+        {processing && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+            <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin mb-3" />
+            <p className="text-sm font-medium">Zahlung wird verarbeitet…</p>
+          </div>
+        )}
       </div>
     </TooltipProvider>
   );
