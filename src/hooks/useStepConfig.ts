@@ -20,6 +20,7 @@ const ALL_STEPS: StepDef[] = [
   { id: 'deposit-check',     label: 'Kautionscheck', component: 'StepDepositCheck' },
   { id: 'data-complete',     label: 'Abschluss',    component: 'Step10DataComplete' },
   { id: 'defect-analysis',   label: 'Mängel',       component: 'Step10DefectAnalysis' },
+  { id: 'utility',           label: 'Versorger',    component: 'Step14Utility' },
   { id: 'unlock',            label: 'Freischaltung', component: 'Step12Unlock' },
 ];
 
@@ -40,10 +41,11 @@ export function getFilteredSteps(
       if (step.id === 'direction') return false;
     }
 
-    // Rental Move-In: no defect-analysis, no deposit, no deposit-check
+    // Rental Move-In: no defect-analysis, no deposit, no deposit-check, no utility (no Auszug)
     if (transactionType === 'rental' && handoverDirection === 'move-in') {
       if (step.id === 'defect-analysis') return false;
       if (step.id === 'deposit-check') return false;
+      if (step.id === 'utility') return false;
     }
 
     // Rental Move-Out: no data-complete, no separate defect-analysis (integrated in deposit-check)
@@ -52,9 +54,10 @@ export function getFilteredSteps(
       if (step.id === 'defect-analysis') return false;
     }
 
-    // Sale: no deposit-check (only for rental move-out)
+    // Sale: no deposit-check (only for rental move-out), no utility
     if (transactionType === 'sale') {
       if (step.id === 'deposit-check') return false;
+      if (step.id === 'utility') return false;
     }
 
     return true;

@@ -1087,6 +1087,119 @@ export function generateMasterProtocol(data: HandoverData): void {
   y += 8;
   doc.setFont('helvetica', 'normal');
 
+  // ── §10 Versorgungs-Anhang ──────────────────────────────────────────────
+  if (!isMoveIn && data.meterReadings.length > 0) {
+    doc.addPage();
+    y = 36;
+    addHeader(doc, 'Versorgungs-Anhang', `${date} · ID: ${protocolId}`, pageW);
+    y = 36;
+
+    // Gold seal for utility appendix
+    doc.setFillColor(...GOLD_LIGHT);
+    doc.roundedRect(14, y, pageW - 28, 12, 2, 2, 'F');
+    doc.setFillColor(...GOLD_COLOR);
+    doc.rect(14, y, 2, 12, 'F');
+    doc.setTextColor(...GOLD_COLOR);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('EstateTurn Verified · Versorgungs-Nachweis', 20, y + 7);
+    y += 16;
+
+    // Meter readings table
+    y = sectionTitle(doc, '§10a  Zählerablesungen zur Endabrechnung', y, pageW);
+    autoTable(doc, {
+      startY: y,
+      margin: { left: 14, right: 14 },
+      head: [['Typ / Medium', 'Zählernummer', 'Ablesewert', 'Einheit', 'MaLo-ID']],
+      body: data.meterReadings.map(m => [
+        m.medium,
+        m.meterNumber || '–',
+        m.reading,
+        m.unit,
+        m.maloId || '–',
+      ]),
+      headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
+      bodyStyles: { fontSize: 8, textColor: TEXT_COLOR },
+      alternateRowStyles: { fillColor: [248, 249, 255] },
+      columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } },
+    });
+    y = (doc as any).lastAutoTable.finalY + 4;
+
+    // Embed meter photos
+    const meterPhotosAppendix = data.meterReadings
+      .filter(m => m.photoUrl && m.photoUrl.startsWith('data:'))
+      .map(m => ({
+        url: m.photoUrl!,
+        label: `${m.medium} – Zähler ${m.meterNumber || '–'}`,
+        timestamp: date,
+      }));
+    y = embedPhotos(doc, meterPhotosAppendix, y, pageW, pageH, col1);
+
+    // Confirmation text
+    if (y > pageH - 40) { doc.addPage(); y = 36; }
+    doc.setFillColor(...GOLD_LIGHT);
+    const confirmText = `Hiermit bestätigt der Vermieter ${data.landlordName || '(Name)'} die Richtigkeit der Zählerstände zum ${date} für die Endabrechnung des Mieters ${data.tenantName || '(Name)'}.`;
+    const confirmLines = doc.splitTextToSize(confirmText, pageW - 36);
+    const confirmH = confirmLines.length * 4 + 10;
+    doc.roundedRect(14, y, pageW - 28, confirmH, 2, 2, 'F');
+    doc.setTextColor(...BRAND_COLOR);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(confirmLines, 18, y + 6);
+    y += confirmH + 6;
+
+    // Financial summary from deposit
+    if (!isSale && deposit > 0) {
+      y = sectionTitle(doc, '§10b  Finanzielle Zusammenfassung (Kaution)', y, pageW);
+      const summaryBody: string[][] = [
+        ['Hinterlegte Kaution (Basis)', `${deposit.toFixed(2)} €`],
+      ];
+      const totalInterest = data.findings.reduce((s, f) => s + f.recommendedWithholding, 0);
+      if (totalInterest > 0) {
+        summaryBody.push(['./. Mängelkosten', `- ${totalInterest.toFixed(2)} €`]);
+      }
+      if (nkBuffer > 0) {
+        summaryBody.push(['./. NK-Rücklage', `- ${nkBuffer.toFixed(2)} €`]);
+      }
+      summaryBody.push(['= Auszahlungsbetrag', `${payout.toFixed(2)} €`]);
+
+      autoTable(doc, {
+        startY: y,
+        margin: { left: 14, right: 14 },
+        head: [['Position', 'Betrag']],
+        body: summaryBody,
+        headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
+        bodyStyles: { fontSize: 9 },
+        alternateRowStyles: { fillColor: [248, 249, 255] },
+        columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
+      });
+      y = (doc as any).lastAutoTable.finalY + 4;
+
+      // Payout highlight
+      doc.setFillColor(230, 255, 240);
+      doc.roundedRect(14, y, pageW - 28, 10, 2, 2, 'F');
+      doc.setTextColor(...SUCCESS_COLOR);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Endbetrag: ${payout.toFixed(2)} € + Zinsen gem. § 551 BGB`, pageW / 2, y + 6.5, { align: 'center' });
+      y += 14;
+    }
+
+    // Nachsendeadresse
+    if (data.nextAddress) {
+      if (y > pageH - 30) { doc.addPage(); y = 36; }
+      y = sectionTitle(doc, '§10c  Nachsendeadresse (Mieter)', y, pageW);
+      doc.setTextColor(...TEXT_COLOR);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text(data.tenantName || 'Mieter', col1, y);
+      y += 4;
+      doc.setFont('helvetica', 'normal');
+      doc.text(data.nextAddress, col1, y);
+      y += 8;
+    }
+  }
+
   // Page numbers
   const totalPages = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
