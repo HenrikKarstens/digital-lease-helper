@@ -1,12 +1,12 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, ArrowRight, Check, X, PenTool, ChevronDown, FileDown, AlertTriangle, Mail } from 'lucide-react';
+import { UserPlus, ArrowRight, Check, X, PenTool, ChevronDown, AlertTriangle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState } from 'react';
 import { SignaturePad } from '@/components/SignaturePad';
-import { generateBeweisanker } from '@/lib/pdfGenerator';
+
 
 /* ── Participant Card (with inline email) ───────────────────────── */
 interface ParticipantCardProps {
@@ -343,21 +343,6 @@ export const Step6Participants = () => {
           </motion.div>
         )}
 
-        {/* Vorab-Dokument / Offline-Protokoll */}
-        <div className="glass-card rounded-2xl p-4">
-          <p className="text-sm font-medium mb-1">Vorab-Dokument / Offline-Protokoll</p>
-          <p className="text-xs text-muted-foreground mb-3">
-            Druckbares PDF mit allen bisher erfassten Daten, Schlüsseltabelle, Raum-Checkliste und Unterschriftenfeldern – als rechtssichere Offline-Alternative für die Begehung.
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => generateBeweisanker(data)}
-            className="w-full rounded-xl gap-2"
-          >
-            <FileDown className="w-4 h-4" />
-            Vorab-Dokument / Offline-Protokoll drucken
-          </Button>
-        </div>
 
         {/* Confirmation dialog for proceeding with incomplete emails */}
         <AlertDialog open={showEmailWarning} onOpenChange={setShowEmailWarning}>
