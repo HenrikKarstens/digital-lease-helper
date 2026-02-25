@@ -125,7 +125,7 @@ export const Step10DefectAnalysis = () => {
       remediationDeadline: f.recommendedWithholding > 0 && !isReletting ? deadline : undefined,
     }));
     updateData({ findings: updatedFindings });
-    goToStepById('deposit');
+    goToStepById('unlock');
   };
 
   return (
