@@ -20,7 +20,6 @@ const ALL_STEPS: StepDef[] = [
   { id: 'deposit-check',     label: 'Kautionscheck', component: 'StepDepositCheck' },
   { id: 'data-complete',     label: 'Abschluss',    component: 'Step10DataComplete' },
   { id: 'defect-analysis',   label: 'Mängel',       component: 'Step10DefectAnalysis' },
-  { id: 'deposit',           label: 'Kaution',      component: 'Step12Deposit' },
   { id: 'unlock',            label: 'Freischaltung', component: 'Step12Unlock' },
 ];
 
@@ -39,13 +38,11 @@ export function getFilteredSteps(
     // Sale: no direction step (simultaneous), no deposit/kaution
     if (transactionType === 'sale') {
       if (step.id === 'direction') return false;
-      if (step.id === 'deposit') return false;
     }
 
     // Rental Move-In: no defect-analysis, no deposit, no deposit-check
     if (transactionType === 'rental' && handoverDirection === 'move-in') {
       if (step.id === 'defect-analysis') return false;
-      if (step.id === 'deposit') return false;
       if (step.id === 'deposit-check') return false;
     }
 
