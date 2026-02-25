@@ -44,13 +44,29 @@ function getLegalReasoning(damageType: string): string {
   return 'Schadensersatzpflicht gem. § 280 Abs. 1 BGB – Prüfung auf vertragswidrigen Gebrauch erforderlich.';
 }
 
-/** Zinsen = Kaution × (Zinssatz/100) × (Tage/360) */
-function calcInterest(depositAmount: number, ratePercent: number, paymentDateStr: string): number {
-  if (!depositAmount || !ratePercent || !paymentDateStr) return 0;
-  const start = new Date(paymentDateStr);
+/** Zinsen = Betrag × (Zinssatz/100) × (Tage/360) – kaufmännische Methode */
+function calcInterest(amount: number, ratePercent: number, startDateStr: string, endDate: Date = new Date()): number {
+  if (!amount || !ratePercent || !startDateStr) return 0;
+  const start = new Date(startDateStr);
   if (isNaN(start.getTime())) return 0;
-  const days = Math.max(0, Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24)));
-  return depositAmount * (ratePercent / 100) * (days / 360);
+  const days = Math.max(0, Math.floor((endDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+  return amount * (ratePercent / 100) * (days / 360);
+}
+
+/** Berechne Zinsen für Raten-Modell: jede Rate separat ab Einzahlung bis heute */
+function calcInstallmentInterest(
+  totalDeposit: number,
+  ratePercent: number,
+  dates: [string, string, string]
+): { perRate: { amount: number; date: string; days: number; interest: number }[]; totalInterest: number } {
+  const rateAmount = totalDeposit / 3;
+  const now = new Date();
+  const perRate = dates.map((dateStr, i) => {
+    const days = daysBetween(dateStr);
+    const interest = calcInterest(rateAmount, ratePercent, dateStr, now);
+    return { amount: rateAmount, date: dateStr, days, interest };
+  });
+  return { perRate, totalInterest: perRate.reduce((s, r) => s + r.interest, 0) };
 }
 
 function daysBetween(dateStr: string): number {
@@ -84,9 +100,14 @@ export const StepDepositCheck = () => {
   const isGuarantee = data.depositType === 'guarantee';
   const isPledged = data.depositType === 'pledged-account';
 
-  const interest = isCash ? calcInterest(deposit, data.depositInterestRate, data.depositPaymentDate) : 0;
+  const isInstallments = data.depositPaymentMode === 'installments';
+  const singleInterest = isCash && !isInstallments ? calcInterest(deposit, data.depositInterestRate, data.depositPaymentDate) : 0;
+  const installmentResult = isCash && isInstallments
+    ? calcInstallmentInterest(deposit, data.depositInterestRate, data.depositInstallmentDates)
+    : null;
+  const interest = isCash ? (isInstallments ? (installmentResult?.totalInterest || 0) : singleInterest) : 0;
   const pledgedBalance = isPledged ? (parseFloat(data.pledgedAccountBalance) || 0) : 0;
-  const days = daysBetween(data.depositPaymentDate);
+  const days = !isInstallments ? daysBetween(data.depositPaymentDate) : 0;
   const paymentDeadline = calcPaymentDeadline(2);
 
   const [costOverrides, setCostOverrides] = useState<Record<string, number>>(() => {
@@ -234,7 +255,7 @@ export const StepDepositCheck = () => {
 
         {/* ── Zinsberechnung (nur Bar-Kaution) ── */}
         {!isSale && isCash && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="glass-card rounded-2xl p-5 space-y-3">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="glass-card rounded-2xl p-5 space-y-4">
             <div className="flex items-center gap-2 mb-1">
               <Calendar className="w-4 h-4 text-primary" />
               <h3 className="font-semibold text-sm">Zinsen (§ 551 Abs. 3 BGB)</h3>
@@ -242,36 +263,141 @@ export const StepDepositCheck = () => {
             <p className="text-xs text-muted-foreground">
               Zinsen stehen gemäß § 551 Abs. 3 BGB dem Mieter zu und erhöhen die rückzugebende Kaution.
             </p>
-            <div className="grid grid-cols-2 gap-3">
+
+            {/* Einmalzahlung / 3 Raten Toggle */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => updateData({ depositPaymentMode: 'single' })}
+                className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium transition-all border ${
+                  !isInstallments ? 'border-primary bg-primary/10 text-primary' : 'border-border/40 bg-secondary/30 text-muted-foreground hover:bg-secondary/50'
+                }`}
+              >
+                Einmalzahlung
+              </button>
+              <button
+                onClick={() => {
+                  // Auto-fill installment dates from contractStart
+                  const start = data.depositPaymentDate || data.contractStart;
+                  let dates = data.depositInstallmentDates;
+                  if (start && dates[0] === '' && dates[1] === '' && dates[2] === '') {
+                    const d0 = new Date(start);
+                    const d1 = new Date(start); d1.setMonth(d1.getMonth() + 1);
+                    const d2 = new Date(start); d2.setMonth(d2.getMonth() + 2);
+                    const fmt = (d: Date) => d.toISOString().split('T')[0];
+                    dates = [fmt(d0), fmt(d1), fmt(d2)];
+                    updateData({ depositPaymentMode: 'installments', depositInstallmentDates: dates });
+                  } else {
+                    updateData({ depositPaymentMode: 'installments' });
+                  }
+                }}
+                className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium transition-all border ${
+                  isInstallments ? 'border-primary bg-primary/10 text-primary' : 'border-border/40 bg-secondary/30 text-muted-foreground hover:bg-secondary/50'
+                }`}
+              >
+                3 Raten (§ 551 II)
+              </button>
+            </div>
+
+            {/* Zinssatz */}
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Zinssatz (% p.a.) – editierbar bei Bankbeleg</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                max="10"
+                value={data.depositInterestRate}
+                onChange={e => updateData({ depositInterestRate: parseFloat(e.target.value) || 0 })}
+                className="rounded-xl bg-secondary/50 border-0 h-9 text-sm w-32"
+                placeholder="0.5"
+              />
+            </div>
+
+            {/* Einmalzahlung: ein Datumsfeld */}
+            {!isInstallments && (
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Kautionszahlung</label>
+                <label className="text-xs text-muted-foreground mb-1 block">Kautionszahlung am</label>
                 <Input
                   type="date"
                   value={data.depositPaymentDate}
                   onChange={e => updateData({ depositPaymentDate: e.target.value })}
                   className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
                 />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Zinssatz (% p.a.)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="10"
-                  value={data.depositInterestRate}
-                  onChange={e => updateData({ depositInterestRate: parseFloat(e.target.value) || 0 })}
-                  className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
-                  placeholder="1.5"
-                />
-              </div>
-            </div>
-            {interest > 0 && (
-              <div className="flex items-center gap-2 bg-accent/10 rounded-xl px-3 py-2 text-sm text-accent">
-                <ArrowUp className="w-3.5 h-3.5 shrink-0" />
-                <span>Aufgelaufene Zinsen ({days} Tage): <strong>+ {interest.toFixed(2)} €</strong></span>
+                {interest > 0 && (
+                  <div className="flex items-center gap-2 bg-accent/10 rounded-xl px-3 py-2 text-sm text-accent mt-2">
+                    <ArrowUp className="w-3.5 h-3.5 shrink-0" />
+                    <span>{deposit.toFixed(2)} € × {data.depositInterestRate}% × {days} Tage = <strong>+ {interest.toFixed(2)} €</strong></span>
+                  </div>
+                )}
               </div>
             )}
+
+            {/* 3 Raten: drei Datumsfelder */}
+            {isInstallments && (
+              <div className="space-y-3">
+                {[0, 1, 2].map(i => {
+                  const rateAmount = deposit / 3;
+                  const rateData = installmentResult?.perRate[i];
+                  return (
+                    <div key={i} className="border border-border/30 rounded-xl p-3 space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold">{i + 1}. Rate: {rateAmount.toFixed(2)} €</span>
+                        {rateData && rateData.interest > 0 && (
+                          <span className="text-xs font-medium text-accent">+ {rateData.interest.toFixed(2)} € Zinsen</span>
+                        )}
+                      </div>
+                      <Input
+                        type="date"
+                        value={data.depositInstallmentDates[i]}
+                        onChange={e => {
+                          const newDates = [...data.depositInstallmentDates] as [string, string, string];
+                          newDates[i] = e.target.value;
+                          updateData({ depositInstallmentDates: newDates });
+                        }}
+                        className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
+                      />
+                      {rateData && rateData.days > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          {rateAmount.toFixed(2)} € × {data.depositInterestRate}% × {rateData.days} Tage = {rateData.interest.toFixed(2)} €
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Gesamtzinsen */}
+            {interest > 0 && isInstallments && (
+              <div className="flex items-center gap-2 bg-accent/10 rounded-xl px-3 py-2 text-sm text-accent">
+                <ArrowUp className="w-3.5 h-3.5 shrink-0" />
+                <span>Zinsen gesamt (alle Raten): <strong>+ {interest.toFixed(2)} €</strong></span>
+              </div>
+            )}
+
+            {/* Transparente Zusammenfassung */}
+            <div className="bg-secondary/30 rounded-xl p-3 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span>Eingezahlte Kaution</span>
+                <span className="font-semibold">{deposit.toFixed(2)} €</span>
+              </div>
+              <div className="flex justify-between text-sm text-accent">
+                <span>+ Errechnete Zinsen</span>
+                <span className="font-semibold">+ {interest.toFixed(2)} €</span>
+              </div>
+              <div className="border-t border-border/30 my-1" />
+              <div className="flex justify-between text-sm font-bold">
+                <span>Gesamt-Guthaben</span>
+                <span>{(deposit + interest).toFixed(2)} €</span>
+              </div>
+            </div>
+
+            {/* § 551 Abs. 3 BGB Hinweis */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-xs leading-relaxed">
+              <Info className="w-3.5 h-3.5 inline mr-1 text-primary" />
+              <strong>§ 551 Abs. 3 BGB:</strong> Die Kaution muss getrennt vom Privatvermögen des Vermieters
+              bei einem Kreditinstitut zu dem für Spareinlagen mit dreimonatiger Kündigungsfrist üblichen Zinssatz angelegt werden.
+            </div>
           </motion.div>
         )}
 
@@ -403,10 +529,10 @@ export const StepDepositCheck = () => {
             {isCash && (
               <>
                 <div className="flex justify-between items-center py-2 border-b border-border/30">
-                  <span className="text-sm">{depositLabel || 'Mietsicherheit'}</span>
+                  <span className="text-sm">{depositLabel || 'Mietsicherheit'}{isInstallments ? ' (3 Raten)' : ''}</span>
                   <span className="font-semibold">+ {deposit.toFixed(2)} €</span>
                 </div>
-                {interest > 0 && (
+                {interest > 0 && !isInstallments && (
                   <div className="flex justify-between items-center py-2 border-b border-border/30 text-accent">
                     <div className="flex items-center gap-2">
                       <ArrowUp className="w-3 h-3" />
@@ -414,6 +540,19 @@ export const StepDepositCheck = () => {
                     </div>
                     <span className="font-semibold">+ {interest.toFixed(2)} €</span>
                   </div>
+                )}
+                {interest > 0 && isInstallments && installmentResult && (
+                  <>
+                    {installmentResult.perRate.map((r, i) => r.interest > 0 && (
+                      <div key={i} className="flex justify-between items-center py-1.5 border-b border-border/20 text-accent">
+                        <div className="flex items-center gap-2">
+                          <ArrowUp className="w-3 h-3" />
+                          <span className="text-xs">{i+1}. Rate Zinsen ({r.days} Tage)</span>
+                        </div>
+                        <span className="font-medium text-xs">+ {r.interest.toFixed(2)} €</span>
+                      </div>
+                    ))}
+                  </>
                 )}
               </>
             )}
