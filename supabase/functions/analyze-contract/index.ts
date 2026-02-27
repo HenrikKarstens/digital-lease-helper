@@ -104,7 +104,7 @@ serve(async (req) => {
 - "depositSourceRef": Quellennachweis für die Kautionsklausel im Vertrag, z.B. "§ 6 Abs. 1 – Kaution". Nenne den genauen Paragrafen und Absatz aus dem Dokument. Falls nicht zuordbar: ""
 - "smallRepairSourceRef": Quellennachweis für die Kleinreparaturklausel, z.B. "§ 16 Abs. 6 – Kleinreparaturen". Nenne den genauen Paragrafen und Absatz. Falls nicht zuordbar: ""
 - "endRenovationSourceRef": Quellennachweis für die Renovierungs-/Schönheitsreparaturklausel, z.B. "§ 27 – Schönheitsreparaturen". Nenne den genauen Paragrafen und Absatz. Falls nicht zuordbar: ""
-- "confidence": Ein JSON-Objekt mit Feldnamen als Keys und Werten "high", "medium" oder "low" je nachdem, wie sicher die Extraktion war. Z.B. {"coldRent": "high", "roomCount": "low"}`;
+- "confidence": Ein JSON-Objekt mit den wichtigsten unsicheren Feldern und Werten "high", "medium" oder "low". Nur Felder mit "medium" oder "low" auflisten.`;
     } else if (documentType === 'amendment') {
       docTypeLabel = 'Miet-Nachtrag / Änderungsvereinbarung';
       extraFields = `
@@ -135,18 +135,19 @@ serve(async (req) => {
 - "confidence": Ein JSON-Objekt mit Feldnamen als Keys und Werten "high", "medium" oder "low"`;
     }
 
-    const prompt = `Du bist ein deutscher Immobilienrechtsexperte und Gutachter.
+    const prompt = `Du bist ein deutscher Immobilienrechtsexperte.
 Analysiere alle bereitgestellten Seiten (${maxPages} Seite${maxPages > 1 ? 'n' : ''}) dieses Dokuments: ${docTypeLabel}.
 
 Extrahiere die folgenden Informationen als JSON:
 ${extraFields}
 
 WICHTIG: 
-- Antworte NUR mit validem JSON, keine Erklärungen davor oder danach.
+- Antworte NUR mit validem JSON, keine Erklärungen davor oder danach. KEIN Markdown-Codeblock.
 - Felder, die nicht gefunden werden, mit leerem String "" befüllen, nicht weglassen.
 - Zahlen ohne Währungssymbol, nur die Zahl (z.B. "1250" nicht "1.250 €").
 - Datumsformat immer TT.MM.JJJJ (z.B. "01.01.2024").
-- Das "confidence"-Objekt MUSS für jedes extrahierte Feld einen Eintrag haben.`;
+- Halte die Antwort KOMPAKT. Bewertungen in max 1 Satz. Kein confidence-Objekt nötig.
+- Beginne direkt mit { und ende mit }.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -222,22 +223,41 @@ WICHTIG:
 
       parsedData = JSON.parse(jsonStr);
     } catch {
-      console.error('Failed to parse AI response as JSON:', textContent);
-
-      // Check for truncation
-      const openBraces = (textContent.match(/{/g) || []).length;
-      const closeBraces = (textContent.match(/}/g) || []).length;
-      const isTruncated = openBraces !== closeBraces;
-
-      return new Response(
-        JSON.stringify({
-          error: isTruncated
-            ? 'KI-Antwort wurde abgeschnitten. Bitte erneut versuchen.'
-            : 'KI-Antwort konnte nicht verarbeitet werden',
-          raw: textContent.substring(0, 500),
-        }),
-        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Attempt to recover truncated JSON by closing open braces/brackets
+      try {
+        let recoverable = textContent;
+        const codeMatch = recoverable.match(/```(?:json)?\s*([\s\S]*)/);
+        if (codeMatch) recoverable = codeMatch[1];
+        
+        const startIdx = recoverable.search(/[\{\[]/);
+        if (startIdx !== -1) {
+          recoverable = recoverable.substring(startIdx);
+        }
+        // Remove trailing incomplete key-value pairs (e.g. `"key": "incompl`)
+        recoverable = recoverable.replace(/,\s*"[^"]*":\s*"[^"]*$/, '');
+        recoverable = recoverable.replace(/,\s*"[^"]*":\s*$/, '');
+        recoverable = recoverable.replace(/,\s*$/, '');
+        // Close any unclosed braces
+        const openB = (recoverable.match(/{/g) || []).length;
+        const closeB = (recoverable.match(/}/g) || []).length;
+        for (let b = 0; b < openB - closeB; b++) recoverable += '}';
+        const openA = (recoverable.match(/\[/g) || []).length;
+        const closeA = (recoverable.match(/]/g) || []).length;
+        for (let a = 0; a < openA - closeA; a++) recoverable += ']';
+        
+        recoverable = recoverable.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']').replace(/[\x00-\x1F\x7F]/g, ' ');
+        parsedData = JSON.parse(recoverable);
+        console.log('Recovered truncated JSON successfully');
+      } catch {
+        console.error('Failed to parse AI response as JSON:', textContent);
+        return new Response(
+          JSON.stringify({
+            error: 'KI-Antwort konnte nicht verarbeitet werden. Bitte erneut versuchen.',
+            raw: textContent.substring(0, 500),
+          }),
+          { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Compute totalRent if we have the component parts
