@@ -108,6 +108,22 @@ const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike,
             </p>
           )}
         </div>
+        {/* Always-visible manual strike button */}
+        {!isPendingConfirmation && (
+          <div className="shrink-0 ml-1" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={isStricken ? onToggleStrike : onOpenManualStrikeDialog}
+              className={`p-1 rounded-md transition-colors ${
+                isStricken
+                  ? 'text-primary hover:bg-primary/10'
+                  : 'text-muted-foreground/50 hover:text-foreground hover:bg-secondary'
+              }`}
+              title={isStricken ? 'Wiederherstellen' : 'Klausel manuell streichen'}
+            >
+              <Strikethrough className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </button>
 
       {/* Pending confirmation quick-action banner */}
