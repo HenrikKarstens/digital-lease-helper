@@ -693,6 +693,7 @@ export const DeepParagraphCheck = () => {
                   isPendingConfirmation={isPendingConfirmation(clause)}
                   onToggleStrike={() => toggleClause(`deep-${clause.paragraphRef}`)}
                   onOpenConfirmDialog={() => setConfirmDialogClause(clause)}
+                  onOpenManualStrikeDialog={() => setManualStrikeClause(clause)}
                 />
               ))}
               {filteredClauses.length === 0 && (
