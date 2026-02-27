@@ -78,6 +78,8 @@ export interface DeepClause {
   handwrittenNote?: string;
   visuallyStricken?: boolean;
   strikeNote?: string;
+  pageIndex?: number;
+  detailLoaded?: boolean;
 }
 
 export interface DeltaComparison {

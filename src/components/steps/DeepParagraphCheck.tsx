@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Scale, Shield, AlertTriangle, CheckCircle2, XCircle, 
@@ -20,6 +20,43 @@ import { useHandover, DeepClause, DeltaComparison } from '@/context/HandoverCont
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// ── Cache helpers ──────────────────────────────────────────────────
+const CLAUSE_CACHE_KEY = 'estateturn_clause_cache';
+const CLAUSE_CACHE_VERSION_KEY = 'estateturn_clause_cache_version';
+
+function getDocumentHash(pages: Array<{ dataUrl: string }>): string {
+  // Simple hash based on page count + first few chars of first page
+  const first = pages[0]?.dataUrl || '';
+  return `${pages.length}-${first.substring(0, 100).length}-${first.substring(first.length - 20)}`;
+}
+
+function getClauseCache(docHash: string): Record<string, DeepClause> {
+  try {
+    const version = localStorage.getItem(CLAUSE_CACHE_VERSION_KEY);
+    if (version !== docHash) return {};
+    return JSON.parse(localStorage.getItem(CLAUSE_CACHE_KEY) || '{}');
+  } catch { return {}; }
+}
+
+function setCachedClause(docHash: string, ref: string, clause: DeepClause) {
+  try {
+    localStorage.setItem(CLAUSE_CACHE_VERSION_KEY, docHash);
+    const cache = getClauseCache(docHash);
+    cache[ref] = clause;
+    localStorage.setItem(CLAUSE_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    console.warn('Could not cache clause detail');
+  }
+}
+
+function clearClauseCache() {
+  try {
+    localStorage.removeItem(CLAUSE_CACHE_KEY);
+    localStorage.removeItem(CLAUSE_CACHE_VERSION_KEY);
+  } catch {}
+}
+
+// ── Status config ──────────────────────────────────────────────────
 const STATUS_CONFIG = {
   SICHER: { icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800', badge: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' },
   KRITISCH: { icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800', badge: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300' },
@@ -44,15 +81,31 @@ interface ClauseCardProps {
   clause: DeepClause;
   isStricken: boolean;
   isPendingConfirmation: boolean;
+  isLoadingDetail: boolean;
   onToggleStrike: () => void;
   onOpenConfirmDialog: () => void;
   onOpenManualStrikeDialog: () => void;
+  onRequestDetail: () => void;
 }
 
-const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike, onOpenConfirmDialog, onOpenManualStrikeDialog }: ClauseCardProps) => {
+const ClauseCard = ({ clause, isStricken, isPendingConfirmation, isLoadingDetail, onToggleStrike, onOpenConfirmDialog, onOpenManualStrikeDialog, onRequestDetail }: ClauseCardProps) => {
   const [expanded, setExpanded] = useState(false);
+  const hasDetail = clause.detailLoaded || !!clause.reasoning;
   const config = STATUS_CONFIG[clause.status] || STATUS_CONFIG.SICHER;
   const Icon = config.icon;
+
+  const handleExpand = () => {
+    if (isPendingConfirmation) {
+      onOpenConfirmDialog();
+      return;
+    }
+    const newExpanded = !expanded;
+    setExpanded(newExpanded);
+    // Lazy-load detail when expanding for the first time
+    if (newExpanded && !hasDetail && !isLoadingDetail) {
+      onRequestDetail();
+    }
+  };
 
   return (
     <motion.div
@@ -65,7 +118,7 @@ const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike,
             : config.bg
       }`}
     >
-      <button onClick={() => isPendingConfirmation ? onOpenConfirmDialog() : setExpanded(!expanded)} className="w-full text-left p-3 flex items-start gap-2.5">
+      <button onClick={handleExpand} className="w-full text-left p-3 flex items-start gap-2.5">
         <div className={`shrink-0 mt-0.5 ${isStricken ? 'text-muted-foreground' : isPendingConfirmation ? 'text-amber-600 dark:text-amber-400' : config.color}`}>
           {isPendingConfirmation ? <AlertTriangle className="w-4 h-4" /> : isStricken ? <Strikethrough className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
         </div>
@@ -86,9 +139,11 @@ const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike,
                   ? 'bg-muted text-muted-foreground'
                   : isPendingConfirmation
                     ? 'bg-amber-200 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200 animate-pulse'
-                    : config.badge
+                    : !hasDetail
+                      ? 'bg-secondary text-muted-foreground'
+                      : config.badge
               }`}>
-                {isStricken ? 'Gestrichen' : isPendingConfirmation ? '⚠ Bestätigung nötig' : clause.status}
+                {isStricken ? 'Gestrichen' : isPendingConfirmation ? '⚠ Bestätigung nötig' : !hasDetail ? 'Tippen für Details' : clause.status}
               </span>
               {!isPendingConfirmation && (expanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />)}
             </div>
@@ -102,13 +157,12 @@ const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike,
               Streichung erkannt – Bitte bestätigen
             </p>
           )}
-          {!isStricken && !isPendingConfirmation && (
+          {!isStricken && !isPendingConfirmation && hasDetail && (
             <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
               „{clause.originalText}"
             </p>
           )}
         </div>
-        {/* Always-visible manual strike button */}
         {!isPendingConfirmation && (
           <div className="shrink-0 ml-1" onClick={e => e.stopPropagation()}>
             <button
@@ -126,7 +180,6 @@ const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike,
         )}
       </button>
 
-      {/* Pending confirmation quick-action banner */}
       {isPendingConfirmation && !expanded && (
         <div className="px-3 pb-2 flex gap-2" onClick={e => e.stopPropagation()}>
           <button
@@ -143,52 +196,69 @@ const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike,
         {expanded && !isStricken && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
             <div className="px-3 pb-3 pt-0 space-y-2 border-t border-border/30">
-              {/* AI strike note */}
-              {clause.visuallyStricken && clause.strikeNote && (
-                <div className="pt-2 flex items-start gap-1.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                  <Strikethrough className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="text-[9px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">KI-Streichungserkennung</span>
-                    <p className="text-[10px] text-amber-800 dark:text-amber-200 leading-relaxed mt-0.5">{clause.strikeNote}</p>
-                  </div>
+              {isLoadingDetail && (
+                <div className="flex items-center gap-2 py-3 justify-center">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <span className="text-[11px] text-muted-foreground">Analysiere {clause.paragraphRef}...</span>
                 </div>
               )}
-              {/* Handwriting note */}
-              {clause.isHandwritten && clause.handwrittenNote && (
-                <div className="pt-2 flex items-start gap-1.5 p-2 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800">
-                  <PenTool className="w-3 h-3 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="text-[9px] font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wider">Individualvereinbarung (§ 305b BGB)</span>
-                    <p className="text-[10px] text-violet-800 dark:text-violet-200 leading-relaxed mt-0.5">{clause.handwrittenNote}</p>
+              {!isLoadingDetail && hasDetail && (
+                <>
+                  {clause.visuallyStricken && clause.strikeNote && (
+                    <div className="pt-2 flex items-start gap-1.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                      <Strikethrough className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-[9px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">KI-Streichungserkennung</span>
+                        <p className="text-[10px] text-amber-800 dark:text-amber-200 leading-relaxed mt-0.5">{clause.strikeNote}</p>
+                      </div>
+                    </div>
+                  )}
+                  {clause.isHandwritten && clause.handwrittenNote && (
+                    <div className="pt-2 flex items-start gap-1.5 p-2 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800">
+                      <PenTool className="w-3 h-3 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-[9px] font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wider">Individualvereinbarung (§ 305b BGB)</span>
+                        <p className="text-[10px] text-violet-800 dark:text-violet-200 leading-relaxed mt-0.5">{clause.handwrittenNote}</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="pt-2">
+                    <div className="flex items-center gap-1 mb-1">
+                      <Gavel className="w-3 h-3 text-primary" />
+                      <span className="text-[10px] font-semibold text-primary">Rechtliche Begründung</span>
+                    </div>
+                    <p className="text-[11px] text-foreground/80 leading-relaxed">{clause.reasoning}</p>
                   </div>
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <BookOpen className="w-2.5 h-2.5" />
+                      {clause.legalBasis}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Scale className="w-2.5 h-2.5" />
+                      Risiko: {clause.riskLevel}/10
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-secondary text-[9px] font-medium">
+                      {CATEGORY_LABELS[clause.category] || clause.category}
+                    </span>
+                  </div>
+                </>
+              )}
+              {!isLoadingDetail && !hasDetail && (
+                <div className="py-3 text-center">
+                  <button
+                    onClick={onRequestDetail}
+                    className="text-[11px] text-primary font-medium hover:underline flex items-center gap-1 mx-auto"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    Detailanalyse laden
+                  </button>
                 </div>
               )}
-              
-              <div className="pt-2">
-                <div className="flex items-center gap-1 mb-1">
-                  <Gavel className="w-3 h-3 text-primary" />
-                  <span className="text-[10px] font-semibold text-primary">Rechtliche Begründung</span>
-                </div>
-                <p className="text-[11px] text-foreground/80 leading-relaxed">{clause.reasoning}</p>
-              </div>
-              <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
-                <span className="flex items-center gap-1">
-                  <BookOpen className="w-2.5 h-2.5" />
-                  {clause.legalBasis}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Scale className="w-2.5 h-2.5" />
-                  Risiko: {clause.riskLevel}/10
-                </span>
-                <span className="px-1.5 py-0.5 rounded bg-secondary text-[9px] font-medium">
-                  {CATEGORY_LABELS[clause.category] || clause.category}
-                </span>
-              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
     </motion.div>
   );
 };
@@ -221,7 +291,6 @@ const DeltaCard = ({ item }: { item: DeltaComparison }) => {
           )}
         </div>
       </button>
-
       <AnimatePresence>
         {expanded && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
@@ -271,6 +340,7 @@ export const DeepParagraphCheck = () => {
   const { data, updateData } = useHandover();
   const [loading, setLoading] = useState(false);
   const [deltaLoading, setDeltaLoading] = useState(false);
+  const [loadingClauseRef, setLoadingClauseRef] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>('actionable');
   const [activeTab, setActiveTab] = useState<'clauses' | 'delta'>('clauses');
   const [confirmDialogClause, setConfirmDialogClause] = useState<DeepClause | null>(null);
@@ -278,21 +348,19 @@ export const DeepParagraphCheck = () => {
   const autoScanStartedRef = useRef(false);
   const stricken = data.strickenClauses || [];
 
-  const hasDocs = data.capturedDocuments?.some(d => d.type === 'main-contract' && d.pages.length > 0);
+  const mainContract = data.capturedDocuments?.find(d => d.type === 'main-contract');
+  const hasDocs = mainContract && mainContract.pages.length > 0;
   const hasProtocol = data.capturedDocuments?.some(d => d.type === 'handover-protocol' && d.pages.length > 0);
   const clauses = data.deepLegalClauses || [];
   const deltaResult = data.deltaCheckResult;
 
-  // Track which AI-detected strikes the user has explicitly confirmed or denied
-  // Confirmed = in strickenClauses; Denied = we mark them as "reviewed" 
-  // We store reviewed (denied) clause refs to avoid re-prompting
+  const docHash = hasDocs ? getDocumentHash(mainContract.pages) : '';
+
   const isClauseStricken = (c: DeepClause) => stricken.includes(`deep-${c.paragraphRef}`);
   
-  // A clause needs confirmation if AI detected a strike AND user hasn't confirmed/denied it yet
   const isPendingConfirmation = (c: DeepClause) => {
     if (!c.visuallyStricken) return false;
     const key = `deep-${c.paragraphRef}`;
-    // If already stricken (confirmed) or explicitly denied (stored with deny- prefix), no longer pending
     if (stricken.includes(key)) return false;
     if (stricken.includes(`deny-${c.paragraphRef}`)) return false;
     return true;
@@ -303,10 +371,9 @@ export const DeepParagraphCheck = () => {
   const handleConfirmStrike = (clause: DeepClause) => {
     const key = `deep-${clause.paragraphRef}`;
     const denyKey = `deny-${clause.paragraphRef}`;
-    // Remove deny marker if present, add stricken
     const updated = stricken.filter(c => c !== denyKey);
     updateData({ strickenClauses: [...updated, key] });
-    toast.success(`${clause.paragraphRef} als gestrichen bestätigt.`);
+    toast.success(`${clause.paragraphRef} als gestrichen bestätigt – keine rechtliche Relevanz mehr.`);
     setConfirmDialogClause(null);
   };
 
@@ -315,12 +382,12 @@ export const DeepParagraphCheck = () => {
     if (!stricken.includes(denyKey)) {
       updateData({ strickenClauses: [...stricken, denyKey] });
     }
-    toast.info(`${clause.paragraphRef} bleibt aktiv – Rechtsanalyse wird fortgesetzt.`);
+    toast.info(`${clause.paragraphRef} bleibt aktiv.`);
     setConfirmDialogClause(null);
   };
 
-  const triggerDeepAnalysis = async () => {
-    const mainContract = data.capturedDocuments?.find(d => d.type === 'main-contract');
+  // ── TOC-SCAN: Lightweight initial scan ────────────────────────────
+  const triggerTocScan = useCallback(async () => {
     if (!mainContract || mainContract.pages.length === 0) {
       toast.error('Kein Mietvertrag vorhanden.');
       return;
@@ -329,7 +396,7 @@ export const DeepParagraphCheck = () => {
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append('mode', 'deep-check');
+      formData.append('mode', 'toc-scan');
       for (let i = 0; i < mainContract.pages.length; i++) {
         const page = mainContract.pages[i];
         const resp = await fetch(page.dataUrl);
@@ -339,52 +406,120 @@ export const DeepParagraphCheck = () => {
 
       const { data: result, error } = await supabase.functions.invoke('analyze-contract-deep', { body: formData });
       if (error) throw error;
-      if (!result?.success) throw new Error(result?.error || 'Analyse fehlgeschlagen');
+      if (!result?.success) throw new Error(result?.error || 'TOC-Scan fehlgeschlagen');
 
-      updateData({ deepLegalClauses: result.clauses, deepAnalysisComplete: true });
+      // Convert TOC entries to partial DeepClauses (without detail)
+      const tocClauses: DeepClause[] = (result.entries || []).map((entry: any) => ({
+        paragraphRef: entry.paragraphRef || '',
+        title: entry.title || '',
+        originalText: '',
+        status: 'SICHER' as const, // placeholder until detail loaded
+        legalBasis: '',
+        reasoning: '',
+        riskLevel: 0,
+        category: entry.category || 'sonstiges',
+        isHandwritten: entry.isHandwritten || false,
+        handwrittenNote: '',
+        visuallyStricken: entry.visuallyStricken || false,
+        strikeNote: entry.strikeNote || '',
+        pageIndex: entry.pageIndex ?? 0,
+        detailLoaded: false,
+      }));
 
-      // Count AI-detected strikes
-      const aiStrikes = (result.clauses as DeepClause[]).filter(c => c.visuallyStricken).length;
+      updateData({ deepLegalClauses: tocClauses, deepAnalysisComplete: true });
 
-      const stats = result.stats;
-      const parts: string[] = [];
-      if (stats.invalid > 0) parts.push(`${stats.invalid}× unwirksam`);
-      if (stats.critical > 0) parts.push(`${stats.critical}× kritisch`);
-      if (stats.handwritten > 0) parts.push(`${stats.handwritten}× Handschrift`);
-      if (aiStrikes > 0) parts.push(`${aiStrikes}× Streichung erkannt`);
-
-      if (aiStrikes > 0) {
-        toast.warning(`${aiStrikes} Streichung(en) erkannt – Bitte bestätigen`, { duration: 6000 });
+      const strikes = tocClauses.filter(c => c.visuallyStricken).length;
+      if (strikes > 0) {
+        toast.warning(`${strikes} Streichung(en) erkannt – Bitte bestätigen`, { duration: 6000 });
         setFilter('pending');
-      } else if (stats.invalid > 0) {
-        toast.warning(`Analyse: ${parts.join(', ')}`);
-      } else if (stats.critical > 0) {
-        toast.info(`Analyse: ${parts.join(', ')}`);
       } else {
-        toast.success('Alle Klauseln sind rechtlich unbedenklich!');
+        toast.success(`${tocClauses.length} Paragraphen erkannt. Tippe auf einen § für die Detailanalyse.`);
       }
     } catch (err: any) {
-      console.error('Deep analysis error:', err);
-      toast.error(err.message || 'Fehler bei der Tiefenanalyse');
+      console.error('TOC scan error:', err);
+      toast.error(err.message || 'Fehler beim Scan');
     } finally {
       setLoading(false);
     }
-  };
+  }, [mainContract, updateData]);
 
-  // Auto-start deep scan once a main contract is available (no extra click required)
+  // ── CLAUSE-DETAIL: On-demand per-clause analysis ──────────────────
+  const loadClauseDetail = useCallback(async (clause: DeepClause) => {
+    if (!mainContract || !clause.paragraphRef) return;
+
+    // Check cache first
+    const cache = getClauseCache(docHash);
+    if (cache[clause.paragraphRef]) {
+      const cached = cache[clause.paragraphRef];
+      const updatedClauses = clauses.map(c =>
+        c.paragraphRef === clause.paragraphRef ? { ...c, ...cached, detailLoaded: true } : c
+      );
+      updateData({ deepLegalClauses: updatedClauses });
+      return;
+    }
+
+    setLoadingClauseRef(clause.paragraphRef);
+    try {
+      const pageIdx = clause.pageIndex ?? 0;
+      const page = mainContract.pages[pageIdx];
+      if (!page) {
+        toast.error('Seite nicht gefunden');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('mode', 'clause-detail');
+      formData.append('paragraphRef', clause.paragraphRef);
+      if (clause.visuallyStricken) {
+        formData.append('isStricken', 'true');
+        formData.append('strikeNote', clause.strikeNote || '');
+      }
+
+      const resp = await fetch(page.dataUrl);
+      const blob = await resp.blob();
+      formData.append('file_0', blob, `page_${pageIdx}.${page.mimeType.includes('png') ? 'png' : 'jpg'}`);
+
+      const { data: result, error } = await supabase.functions.invoke('analyze-contract-deep', { body: formData });
+      if (error) throw error;
+      if (!result?.success) throw new Error(result?.error || 'Analyse fehlgeschlagen');
+
+      const detail = result.clause;
+      const enrichedClause: DeepClause = {
+        ...clause,
+        ...detail,
+        pageIndex: clause.pageIndex,
+        detailLoaded: true,
+      };
+
+      // Cache the result
+      setCachedClause(docHash, clause.paragraphRef, enrichedClause);
+
+      // Update global state
+      const updatedClauses = clauses.map(c =>
+        c.paragraphRef === clause.paragraphRef ? enrichedClause : c
+      );
+      updateData({ deepLegalClauses: updatedClauses });
+    } catch (err: any) {
+      console.error('Clause detail error:', err);
+      toast.error(`Fehler bei ${clause.paragraphRef}: ${err.message}`);
+    } finally {
+      setLoadingClauseRef(null);
+    }
+  }, [mainContract, clauses, docHash, updateData]);
+
+  // Auto-start TOC scan
   useEffect(() => {
     if (!hasDocs) {
       autoScanStartedRef.current = false;
       return;
     }
-
     const shouldAutoStart = !autoScanStartedRef.current && !loading && clauses.length === 0 && !data.deepAnalysisComplete;
     if (!shouldAutoStart) return;
-
     autoScanStartedRef.current = true;
-    void triggerDeepAnalysis();
-  }, [hasDocs, loading, clauses.length, data.deepAnalysisComplete]);
+    void triggerTocScan();
+  }, [hasDocs, loading, clauses.length, data.deepAnalysisComplete, triggerTocScan]);
 
+  // ── Delta Check ───────────────────────────────────────────────────
   const triggerDeltaCheck = async () => {
     const moveInProtocol = data.capturedDocuments?.find(d => d.type === 'handover-protocol');
     if (!moveInProtocol || moveInProtocol.pages.length === 0) {
@@ -396,14 +531,12 @@ export const DeepParagraphCheck = () => {
     try {
       const formData = new FormData();
       formData.append('mode', 'delta-check');
-
       for (let i = 0; i < moveInProtocol.pages.length; i++) {
         const page = moveInProtocol.pages[i];
         const resp = await fetch(page.dataUrl);
         const blob = await resp.blob();
         formData.append(`movein_${i}`, blob, `movein_${i}.jpg`);
       }
-
       const moveOutProtocol = data.capturedDocuments?.find(d => d.type === 'handover-protocol');
       if (moveOutProtocol) {
         for (let i = 0; i < moveOutProtocol.pages.length; i++) {
@@ -453,20 +586,26 @@ export const DeepParagraphCheck = () => {
   const filteredClauses = clauses.filter(c => {
     if (filter === 'stricken') return isClauseStricken(c);
     if (filter === 'pending') return isPendingConfirmation(c);
-    if (filter === 'actionable') return c.status === 'KRITISCH' || c.status === 'UNWIRKSAM' || isPendingConfirmation(c) || c.visuallyStricken;
+    if (filter === 'actionable') {
+      // For clauses without detail yet, only show if strike-pending
+      if (!c.detailLoaded) return isPendingConfirmation(c) || c.visuallyStricken;
+      return c.status === 'KRITISCH' || c.status === 'UNWIRKSAM' || isPendingConfirmation(c) || c.visuallyStricken;
+    }
     if (filter === 'all') return true;
     if (filter === 'handwritten') return c.isHandwritten;
+    if (!c.detailLoaded) return false; // Can't filter by status without detail
     return c.status === filter;
   });
 
-  // Exclude stricken clauses from legal stats
-  const activeClauses = clauses.filter(c => !isClauseStricken(c));
+  // Stats based on detail-loaded clauses only
+  const detailedClauses = clauses.filter(c => c.detailLoaded && !isClauseStricken(c));
   const strickenCount = clauses.filter(c => isClauseStricken(c)).length;
   const stats = {
-    safe: activeClauses.filter(c => c.status === 'SICHER').length,
-    critical: activeClauses.filter(c => c.status === 'KRITISCH').length,
-    invalid: activeClauses.filter(c => c.status === 'UNWIRKSAM').length,
-    handwritten: activeClauses.filter(c => c.isHandwritten).length,
+    safe: detailedClauses.filter(c => c.status === 'SICHER').length,
+    critical: detailedClauses.filter(c => c.status === 'KRITISCH').length,
+    invalid: detailedClauses.filter(c => c.status === 'UNWIRKSAM').length,
+    handwritten: clauses.filter(c => c.isHandwritten && !isClauseStricken(c)).length,
+    detailLoaded: detailedClauses.length,
   };
 
   if (!hasDocs && clauses.length === 0) return null;
@@ -481,11 +620,11 @@ export const DeepParagraphCheck = () => {
             <h3 className="text-sm font-semibold">Deep Paragraph Check</h3>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Sequenzieller Paragrafenscan: Jeder § wird einzeln gegen BGB & BGH-Rechtsprechung geprüft. Handschriftliche Ergänzungen erhalten höchste Priorität.
+            Sequenzieller Paragrafenscan: Jeder § wird einzeln gegen BGB & BGH-Rechtsprechung geprüft.
           </p>
-          <Button onClick={triggerDeepAnalysis} disabled={loading} className="w-full rounded-xl gap-2" size="sm">
+          <Button onClick={triggerTocScan} disabled={loading} className="w-full rounded-xl gap-2" size="sm">
             {loading ? (
-              <><Loader2 className="w-4 h-4 animate-spin" />Analysiere §§ sequenziell...</>
+              <><Loader2 className="w-4 h-4 animate-spin" />Scanne Paragraphen...</>
             ) : (
               <><Scale className="w-4 h-4" />Paragrafenscan starten</>
             )}
@@ -498,7 +637,7 @@ export const DeepParagraphCheck = () => {
   // ── Results ───────────────────────────────────────────────────────
   return (
     <div className="w-full max-w-md">
-      {/* ── Confirmation Dialog (obligatory interaction stop) ────── */}
+      {/* Confirmation Dialog */}
       <AlertDialog open={!!confirmDialogClause} onOpenChange={(open) => { if (!open) setConfirmDialogClause(null); }}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
@@ -518,7 +657,7 @@ export const DeepParagraphCheck = () => {
                 </div>
               )}
               <p className="text-sm font-medium text-foreground">
-                Ist dieser Abschnitt im Originaldokument offiziell gestrichen oder ungültig markiert?
+                Ist dieser Abschnitt im Originaldokument offiziell gestrichen?
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -537,7 +676,7 @@ export const DeepParagraphCheck = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Manual Strike Confirmation Dialog ────── */}
+      {/* Manual Strike Dialog */}
       <AlertDialog open={!!manualStrikeClause} onOpenChange={(open) => { if (!open) setManualStrikeClause(null); }}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
@@ -547,10 +686,10 @@ export const DeepParagraphCheck = () => {
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <p className="text-sm">
-                Möchten Sie <strong>{manualStrikeClause?.paragraphRef}</strong> ({manualStrikeClause?.title}) manuell als gestrichen markieren?
+                Möchten Sie <strong>{manualStrikeClause?.paragraphRef}</strong> ({manualStrikeClause?.title}) als gestrichen markieren?
               </p>
               <p className="text-xs text-muted-foreground">
-                Die Klausel wird aus der rechtlichen Bewertung ausgeschlossen und im Zertifikat als „Vom Nutzer manuell verifizierte Streichung" dokumentiert.
+                Die Klausel wird aus der rechtlichen Bewertung ausgeschlossen.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -582,7 +721,7 @@ export const DeepParagraphCheck = () => {
                 {pendingCount} Streichung(en) erkannt – Bestätigung erforderlich
               </p>
               <p className="text-[10px] text-amber-700 dark:text-amber-300">
-                Die Rechtsanalyse kann erst abgeschlossen werden, wenn alle erkannten Streichungen bestätigt oder abgelehnt wurden.
+                Bitte bestätigen oder ablehnen, bevor die Analyse abgeschlossen wird.
               </p>
             </div>
             <button
@@ -594,7 +733,7 @@ export const DeepParagraphCheck = () => {
           </div>
         )}
 
-        {/* Tab switcher: Clauses vs Delta */}
+        {/* Tab switcher */}
         <div className="flex gap-1 mb-3 p-0.5 bg-secondary/40 rounded-xl">
           <button
             onClick={() => setActiveTab('clauses')}
@@ -624,7 +763,7 @@ export const DeepParagraphCheck = () => {
         {/* ── Clauses Tab ──────────────────────────────────────────── */}
         {activeTab === 'clauses' && (
           <>
-            {/* Progress & Stats */}
+            {/* Stats */}
             <div className="mb-2 space-y-1.5">
               <div className="flex items-center justify-between">
                 <h3 className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
@@ -632,52 +771,47 @@ export const DeepParagraphCheck = () => {
                   Paragrafenscan
                 </h3>
                 <span className="text-[10px] font-medium text-muted-foreground">
-                  {activeClauses.length}/{clauses.length} aktiv geprüft
+                  {stats.detailLoaded}/{clauses.length} analysiert
                 </span>
               </div>
-              {/* Progress bar */}
-              <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden flex">
-                {stats.safe > 0 && (
-                  <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(stats.safe / clauses.length) * 100}%` }} />
-                )}
-                {stats.critical > 0 && (
-                  <div className="h-full bg-amber-500 transition-all" style={{ width: `${(stats.critical / clauses.length) * 100}%` }} />
-                )}
-                {stats.invalid > 0 && (
-                  <div className="h-full bg-red-500 transition-all" style={{ width: `${(stats.invalid / clauses.length) * 100}%` }} />
-                )}
-                {strickenCount > 0 && (
-                  <div className="h-full bg-muted-foreground/30 transition-all" style={{ width: `${(strickenCount / clauses.length) * 100}%` }} />
-                )}
-              </div>
-              <div className="flex gap-1 flex-wrap">
-                {pendingCount > 0 && (
-                  <span className="text-[9px] font-bold bg-amber-200 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded-md animate-pulse">
-                    {pendingCount}× Bestätigung nötig
-                  </span>
-                )}
-                {stats.invalid > 0 && (
-                  <span className="text-[9px] font-bold bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded-md">
-                    {stats.invalid}× Unwirksam
-                  </span>
-                )}
-                {stats.critical > 0 && (
-                  <span className="text-[9px] font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-md">
-                    {stats.critical}× Kritisch
-                  </span>
-                )}
-                {stats.handwritten > 0 && (
-                  <span className="text-[9px] font-bold bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                    <PenTool className="w-2 h-2" />
-                    {stats.handwritten}× Handschrift
-                  </span>
-                )}
-                {strickenCount > 0 && (
-                  <span className="text-[9px] font-bold bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
-                    {strickenCount}× Gestrichen
-                  </span>
-                )}
-              </div>
+              {stats.detailLoaded > 0 && (
+                <>
+                  <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden flex">
+                    {stats.safe > 0 && <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(stats.safe / clauses.length) * 100}%` }} />}
+                    {stats.critical > 0 && <div className="h-full bg-amber-500 transition-all" style={{ width: `${(stats.critical / clauses.length) * 100}%` }} />}
+                    {stats.invalid > 0 && <div className="h-full bg-red-500 transition-all" style={{ width: `${(stats.invalid / clauses.length) * 100}%` }} />}
+                    {strickenCount > 0 && <div className="h-full bg-muted-foreground/30 transition-all" style={{ width: `${(strickenCount / clauses.length) * 100}%` }} />}
+                  </div>
+                  <div className="flex gap-1 flex-wrap">
+                    {pendingCount > 0 && (
+                      <span className="text-[9px] font-bold bg-amber-200 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded-md animate-pulse">
+                        {pendingCount}× Bestätigung nötig
+                      </span>
+                    )}
+                    {stats.invalid > 0 && (
+                      <span className="text-[9px] font-bold bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded-md">
+                        {stats.invalid}× Unwirksam
+                      </span>
+                    )}
+                    {stats.critical > 0 && (
+                      <span className="text-[9px] font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-md">
+                        {stats.critical}× Kritisch
+                      </span>
+                    )}
+                    {stats.handwritten > 0 && (
+                      <span className="text-[9px] font-bold bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
+                        <PenTool className="w-2 h-2" />
+                        {stats.handwritten}× Handschrift
+                      </span>
+                    )}
+                    {strickenCount > 0 && (
+                      <span className="text-[9px] font-bold bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
+                        {strickenCount}× Gestrichen
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Filter tabs */}
@@ -708,26 +842,29 @@ export const DeepParagraphCheck = () => {
                   clause={clause}
                   isStricken={isClauseStricken(clause)}
                   isPendingConfirmation={isPendingConfirmation(clause)}
+                  isLoadingDetail={loadingClauseRef === clause.paragraphRef}
                   onToggleStrike={() => toggleClause(`deep-${clause.paragraphRef}`)}
                   onOpenConfirmDialog={() => setConfirmDialogClause(clause)}
                   onOpenManualStrikeDialog={() => setManualStrikeClause(clause)}
+                  onRequestDetail={() => loadClauseDetail(clause)}
                 />
               ))}
               {filteredClauses.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-4">
-                  Keine Klauseln mit diesem Filter gefunden.
+                  {filter === 'actionable' && clauses.length > 0 && clauses.every(c => !c.detailLoaded)
+                    ? 'Tippe auf einen Paragraphen, um die Rechtsanalyse zu laden.'
+                    : 'Keine Klauseln mit diesem Filter gefunden.'}
                 </p>
               )}
             </div>
 
-            <div className="mt-3">
+            <div className="mt-3 flex gap-2">
               <button
-                onClick={triggerDeepAnalysis}
-                disabled={loading}
-                className="w-full text-center text-[10px] text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center justify-center gap-1"
+                onClick={() => { clearClauseCache(); updateData({ deepLegalClauses: [], deepAnalysisComplete: false }); autoScanStartedRef.current = false; }}
+                className="flex-1 text-center text-[10px] text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center justify-center gap-1"
               >
-                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                {loading ? 'Analysiere...' : 'Erneut analysieren'}
+                <Sparkles className="w-3 h-3" />
+                Erneut scannen
               </button>
             </div>
           </>
@@ -743,20 +880,15 @@ export const DeepParagraphCheck = () => {
                   <h3 className="text-sm font-semibold">Delta-Check: Einzug vs. Auszug</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-1">
-                  Vergleiche das Einzugsprotokoll mit dem aktuellen Zustand. Vorschäden werden automatisch als „Bestandsschutz" markiert (§ 538 BGB).
+                  Vergleiche das Einzugsprotokoll mit dem aktuellen Zustand.
                 </p>
                 {!hasProtocol && (
                   <p className="text-[10px] text-amber-600 dark:text-amber-400 mb-3 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" />
-                    Bitte lade zuerst ein Einzugsprotokoll im Dokumenten-Scanner hoch.
+                    Bitte lade zuerst ein Einzugsprotokoll hoch.
                   </p>
                 )}
-                <Button
-                  onClick={triggerDeltaCheck}
-                  disabled={deltaLoading || !hasProtocol}
-                  className="w-full rounded-xl gap-2"
-                  size="sm"
-                >
+                <Button onClick={triggerDeltaCheck} disabled={deltaLoading || !hasProtocol} className="w-full rounded-xl gap-2" size="sm">
                   {deltaLoading ? (
                     <><Loader2 className="w-4 h-4 animate-spin" />Vergleiche Protokolle...</>
                   ) : (
@@ -766,7 +898,6 @@ export const DeepParagraphCheck = () => {
               </div>
             ) : (
               <>
-                {/* Summary */}
                 <div className="rounded-xl border border-border bg-card p-3 mb-3">
                   <h4 className="text-[11px] font-semibold mb-2 flex items-center gap-1.5">
                     <Shield className="w-3.5 h-3.5 text-primary" />
@@ -792,14 +923,11 @@ export const DeepParagraphCheck = () => {
                     </div>
                   )}
                 </div>
-
-                {/* Comparisons */}
                 <div className="space-y-2">
                   {deltaResult.comparisons.map((item, idx) => (
                     <DeltaCard key={`${item.room}-${item.element}-${idx}`} item={item} />
                   ))}
                 </div>
-
                 <div className="mt-3">
                   <button
                     onClick={triggerDeltaCheck}
