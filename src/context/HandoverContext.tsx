@@ -76,6 +76,8 @@ export interface DeepClause {
   category: 'miete' | 'kaution' | 'nebenkosten' | 'reparaturen' | 'renovierung' | 'kuendigung' | 'nutzung' | 'sonstiges';
   isHandwritten?: boolean;
   handwrittenNote?: string;
+  visuallyStricken?: boolean;
+  strikeNote?: string;
 }
 
 export interface DeltaComparison {
