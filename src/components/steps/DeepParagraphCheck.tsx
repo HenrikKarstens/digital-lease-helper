@@ -46,9 +46,10 @@ interface ClauseCardProps {
   isPendingConfirmation: boolean;
   onToggleStrike: () => void;
   onOpenConfirmDialog: () => void;
+  onOpenManualStrikeDialog: () => void;
 }
 
-const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike, onOpenConfirmDialog }: ClauseCardProps) => {
+const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike, onOpenConfirmDialog, onOpenManualStrikeDialog }: ClauseCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const config = STATUS_CONFIG[clause.status] || STATUS_CONFIG.SICHER;
   const Icon = config.icon;
