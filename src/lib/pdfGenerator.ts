@@ -495,6 +495,38 @@ export function generateMasterProtocol(data: HandoverData): void {
   });
   y = (doc as any).lastAutoTable.finalY + 4;
 
+  // ── §3a Individuelle Vertragsanpassungen (gestrichene Klauseln) ──────────
+  const strickenClauseIds = (data.strickenClauses || []).filter(id => id.startsWith('deep-'));
+  const strickenDeepClauses = (data.deepLegalClauses || []).filter(c =>
+    strickenClauseIds.includes(`deep-${c.paragraphRef}`)
+  );
+  if (strickenDeepClauses.length > 0) {
+    if (y > pageH - 50) { doc.addPage(); y = 36; }
+    y = sectionTitle(doc, '§3a  Individuelle Vertragsanpassungen', y, pageW);
+    autoTable(doc, {
+      startY: y,
+      margin: { left: 14, right: 14 },
+      head: [['Paragraf', 'Klausel', 'Status', 'Vermerk']],
+      body: strickenDeepClauses.map(c => [
+        c.paragraphRef,
+        c.title,
+        'GESTRICHEN',
+        'Vom Nutzer als gestrichen verifiziert',
+      ]),
+      headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7.5 },
+      bodyStyles: { fontSize: 7.5 },
+      alternateRowStyles: { fillColor: [245, 245, 250] },
+      columnStyles: { 2: { fontStyle: 'bold', textColor: [100, 116, 139] }, 3: { fontStyle: 'italic' } },
+    });
+    y = (doc as any).lastAutoTable.finalY + 2;
+    doc.setTextColor(...MUTED_COLOR);
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Gestrichene Klauseln haben keinen Einfluss auf die Gesamtbewertung des Vertragsdokuments.', col1, y);
+    doc.setFont('helvetica', 'normal');
+    y += 6;
+  }
+
   // ── §4 Teilnehmer & Unterschriften ────────────────────────────────────────
   if (y > pageH - 60) { doc.addPage(); y = 36; }
   y = sectionTitle(doc, '§4  Anwesende Teilnehmer & Unterschriften', y, pageW);
@@ -1313,6 +1345,38 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     columnStyles: { 0: { cellWidth: 65, fontStyle: 'bold' } },
   });
   y = (doc as any).lastAutoTable.finalY + 4;
+
+  // ── §3a Individuelle Vertragsanpassungen (gestrichene Klauseln) ──────────
+  const strickenClauseIds2 = (data.strickenClauses || []).filter(id => id.startsWith('deep-'));
+  const strickenDeepClauses2 = (data.deepLegalClauses || []).filter(c =>
+    strickenClauseIds2.includes(`deep-${c.paragraphRef}`)
+  );
+  if (strickenDeepClauses2.length > 0) {
+    if (y > pageH - 50) { doc.addPage(); y = 36; }
+    y = sectionTitle(doc, '§3a  Individuelle Vertragsanpassungen', y, pageW);
+    autoTable(doc, {
+      startY: y,
+      margin: { left: 14, right: 14 },
+      head: [['Paragraf', 'Klausel', 'Status', 'Vermerk']],
+      body: strickenDeepClauses2.map(c => [
+        c.paragraphRef,
+        c.title,
+        'GESTRICHEN',
+        'Vom Nutzer als gestrichen verifiziert',
+      ]),
+      headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7.5 },
+      bodyStyles: { fontSize: 7.5 },
+      alternateRowStyles: { fillColor: [245, 245, 250] },
+      columnStyles: { 2: { fontStyle: 'bold', textColor: [100, 116, 139] }, 3: { fontStyle: 'italic' } },
+    });
+    y = (doc as any).lastAutoTable.finalY + 2;
+    doc.setTextColor(...MUTED_COLOR);
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Gestrichene Klauseln haben keinen Einfluss auf die Gesamtbewertung des Vertragsdokuments.', col1, y);
+    doc.setFont('helvetica', 'normal');
+    y += 6;
+  }
 
   if (data.participants.length > 0) {
     if (y > pageH - 60) { doc.addPage(); y = 36; }

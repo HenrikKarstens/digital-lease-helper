@@ -6,6 +6,16 @@ import {
   Sparkles, PenTool, ArrowLeftRight, ShieldAlert, ShieldCheck, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import { useHandover, DeepClause, DeltaComparison } from '@/context/HandoverContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -33,14 +43,15 @@ const CATEGORY_LABELS: Record<string, string> = {
 interface ClauseCardProps {
   clause: DeepClause;
   isStricken: boolean;
+  isPendingConfirmation: boolean;
   onToggleStrike: () => void;
+  onOpenConfirmDialog: () => void;
 }
 
-const ClauseCard = ({ clause, isStricken, onToggleStrike }: ClauseCardProps) => {
+const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike, onOpenConfirmDialog }: ClauseCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const config = STATUS_CONFIG[clause.status] || STATUS_CONFIG.SICHER;
   const Icon = config.icon;
-  const isAiDetectedStrike = clause.visuallyStricken && !isStricken;
 
   return (
     <motion.div
@@ -48,14 +59,14 @@ const ClauseCard = ({ clause, isStricken, onToggleStrike }: ClauseCardProps) => 
       className={`rounded-xl border transition-all ${
         isStricken
           ? 'bg-muted/40 border-border opacity-60'
-          : isAiDetectedStrike
+          : isPendingConfirmation
             ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-400 dark:border-amber-600 ring-1 ring-amber-300 dark:ring-amber-700'
             : config.bg
       }`}
     >
-      <button onClick={() => setExpanded(!expanded)} className="w-full text-left p-3 flex items-start gap-2.5">
-        <div className={`shrink-0 mt-0.5 ${isStricken ? 'text-muted-foreground' : isAiDetectedStrike ? 'text-amber-600 dark:text-amber-400' : config.color}`}>
-          {isAiDetectedStrike ? <Strikethrough className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+      <button onClick={() => isPendingConfirmation ? onOpenConfirmDialog() : setExpanded(!expanded)} className="w-full text-left p-3 flex items-start gap-2.5">
+        <div className={`shrink-0 mt-0.5 ${isStricken ? 'text-muted-foreground' : isPendingConfirmation ? 'text-amber-600 dark:text-amber-400' : config.color}`}>
+          {isPendingConfirmation ? <AlertTriangle className="w-4 h-4" /> : isStricken ? <Strikethrough className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-0.5">
@@ -72,25 +83,25 @@ const ClauseCard = ({ clause, isStricken, onToggleStrike }: ClauseCardProps) => 
               <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${
                 isStricken
                   ? 'bg-muted text-muted-foreground'
-                  : isAiDetectedStrike
-                    ? 'bg-amber-200 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200'
+                  : isPendingConfirmation
+                    ? 'bg-amber-200 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200 animate-pulse'
                     : config.badge
               }`}>
-                {isStricken ? 'Gestrichen' : isAiDetectedStrike ? 'Streichung erkannt' : clause.status}
+                {isStricken ? 'Gestrichen' : isPendingConfirmation ? '⚠ Bestätigung nötig' : clause.status}
               </span>
-              {expanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+              {!isPendingConfirmation && (expanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />)}
             </div>
           </div>
           {isStricken && (
-            <p className="text-[10px] text-muted-foreground italic">Vom Vertragspartner gestrichen – kein Einfluss auf Gesamtbewertung</p>
+            <p className="text-[10px] text-muted-foreground italic">Vom Nutzer als gestrichen verifiziert – kein Einfluss auf Gesamtbewertung</p>
           )}
-          {!isStricken && isAiDetectedStrike && (
+          {isPendingConfirmation && (
             <p className="text-[10px] text-amber-700 dark:text-amber-300 italic flex items-center gap-1">
               <Sparkles className="w-2.5 h-2.5" />
-              KI hat eine Streichung im Dokument erkannt. Ist diese Klausel offiziell gestrichen?
+              Streichung erkannt – Bitte bestätigen
             </p>
           )}
-          {!isStricken && !isAiDetectedStrike && (
+          {!isStricken && !isPendingConfirmation && (
             <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
               „{clause.originalText}"
             </p>
@@ -98,21 +109,15 @@ const ClauseCard = ({ clause, isStricken, onToggleStrike }: ClauseCardProps) => 
         </div>
       </button>
 
-      {/* AI strike confirmation banner */}
-      {isAiDetectedStrike && !expanded && (
+      {/* Pending confirmation quick-action banner */}
+      {isPendingConfirmation && !expanded && (
         <div className="px-3 pb-2 flex gap-2" onClick={e => e.stopPropagation()}>
           <button
-            onClick={onToggleStrike}
+            onClick={onOpenConfirmDialog}
             className="flex-1 flex items-center justify-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
           >
-            <Strikethrough className="w-3 h-3" />
-            Ja, Klausel gestrichen
-          </button>
-          <button
-            onClick={() => setExpanded(true)}
-            className="flex items-center justify-center gap-1 text-[10px] font-medium px-2.5 py-1.5 rounded-lg bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-          >
-            Details
+            <AlertTriangle className="w-3 h-3" />
+            Streichung prüfen
           </button>
         </div>
       )}
@@ -248,6 +253,7 @@ const DeltaCard = ({ item }: { item: DeltaComparison }) => {
 // ── Filter Tabs ─────────────────────────────────────────────────────
 const FILTER_OPTIONS = [
   { key: 'all', label: 'Alle' },
+  { key: 'pending', label: '⚠ Offen' },
   { key: 'UNWIRKSAM', label: 'Unwirksam' },
   { key: 'KRITISCH', label: 'Kritisch' },
   { key: 'SICHER', label: 'Sicher' },
@@ -264,12 +270,49 @@ export const DeepParagraphCheck = () => {
   const [deltaLoading, setDeltaLoading] = useState(false);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [activeTab, setActiveTab] = useState<'clauses' | 'delta'>('clauses');
+  const [confirmDialogClause, setConfirmDialogClause] = useState<DeepClause | null>(null);
   const stricken = data.strickenClauses || [];
 
   const hasDocs = data.capturedDocuments?.some(d => d.type === 'main-contract' && d.pages.length > 0);
   const hasProtocol = data.capturedDocuments?.some(d => d.type === 'handover-protocol' && d.pages.length > 0);
   const clauses = data.deepLegalClauses || [];
   const deltaResult = data.deltaCheckResult;
+
+  // Track which AI-detected strikes the user has explicitly confirmed or denied
+  // Confirmed = in strickenClauses; Denied = we mark them as "reviewed" 
+  // We store reviewed (denied) clause refs to avoid re-prompting
+  const isClauseStricken = (c: DeepClause) => stricken.includes(`deep-${c.paragraphRef}`);
+  
+  // A clause needs confirmation if AI detected a strike AND user hasn't confirmed/denied it yet
+  const isPendingConfirmation = (c: DeepClause) => {
+    if (!c.visuallyStricken) return false;
+    const key = `deep-${c.paragraphRef}`;
+    // If already stricken (confirmed) or explicitly denied (stored with deny- prefix), no longer pending
+    if (stricken.includes(key)) return false;
+    if (stricken.includes(`deny-${c.paragraphRef}`)) return false;
+    return true;
+  };
+
+  const pendingCount = clauses.filter(isPendingConfirmation).length;
+
+  const handleConfirmStrike = (clause: DeepClause) => {
+    const key = `deep-${clause.paragraphRef}`;
+    const denyKey = `deny-${clause.paragraphRef}`;
+    // Remove deny marker if present, add stricken
+    const updated = stricken.filter(c => c !== denyKey);
+    updateData({ strickenClauses: [...updated, key] });
+    toast.success(`${clause.paragraphRef} als gestrichen bestätigt.`);
+    setConfirmDialogClause(null);
+  };
+
+  const handleDenyStrike = (clause: DeepClause) => {
+    const denyKey = `deny-${clause.paragraphRef}`;
+    if (!stricken.includes(denyKey)) {
+      updateData({ strickenClauses: [...stricken, denyKey] });
+    }
+    toast.info(`${clause.paragraphRef} bleibt aktiv – Rechtsanalyse wird fortgesetzt.`);
+    setConfirmDialogClause(null);
+  };
 
   const triggerDeepAnalysis = async () => {
     const mainContract = data.capturedDocuments?.find(d => d.type === 'main-contract');
@@ -295,13 +338,20 @@ export const DeepParagraphCheck = () => {
 
       updateData({ deepLegalClauses: result.clauses, deepAnalysisComplete: true });
 
+      // Count AI-detected strikes
+      const aiStrikes = (result.clauses as DeepClause[]).filter(c => c.visuallyStricken).length;
+
       const stats = result.stats;
       const parts: string[] = [];
       if (stats.invalid > 0) parts.push(`${stats.invalid}× unwirksam`);
       if (stats.critical > 0) parts.push(`${stats.critical}× kritisch`);
       if (stats.handwritten > 0) parts.push(`${stats.handwritten}× Handschrift`);
+      if (aiStrikes > 0) parts.push(`${aiStrikes}× Streichung erkannt`);
 
-      if (stats.invalid > 0) {
+      if (aiStrikes > 0) {
+        toast.warning(`${aiStrikes} Streichung(en) erkannt – Bitte bestätigen`, { duration: 6000 });
+        setFilter('pending');
+      } else if (stats.invalid > 0) {
         toast.warning(`Analyse: ${parts.join(', ')}`);
       } else if (stats.critical > 0) {
         toast.info(`Analyse: ${parts.join(', ')}`);
@@ -323,15 +373,11 @@ export const DeepParagraphCheck = () => {
       return;
     }
 
-    // For the move-out side, use the current findings as text or another protocol
-    // For now we use the same protocol images as both sides for demo; 
-    // in production, this should be two separate protocols
     setDeltaLoading(true);
     try {
       const formData = new FormData();
       formData.append('mode', 'delta-check');
 
-      // Move-in protocol pages
       for (let i = 0; i < moveInProtocol.pages.length; i++) {
         const page = moveInProtocol.pages[i];
         const resp = await fetch(page.dataUrl);
@@ -339,8 +385,6 @@ export const DeepParagraphCheck = () => {
         formData.append(`movein_${i}`, blob, `movein_${i}.jpg`);
       }
 
-      // Move-out: use main contract's handover protocol or same for comparison
-      // In a real scenario, the user would upload a second protocol
       const moveOutProtocol = data.capturedDocuments?.find(d => d.type === 'handover-protocol');
       if (moveOutProtocol) {
         for (let i = 0; i < moveOutProtocol.pages.length; i++) {
@@ -387,10 +431,9 @@ export const DeepParagraphCheck = () => {
     );
   };
 
-  const isClauseStricken = (c: DeepClause) => stricken.includes(`deep-${c.paragraphRef}`);
-
   const filteredClauses = clauses.filter(c => {
     if (filter === 'stricken') return isClauseStricken(c);
+    if (filter === 'pending') return isPendingConfirmation(c);
     if (filter === 'all') return true;
     if (filter === 'handwritten') return c.isHandwritten;
     return c.status === filter;
@@ -398,7 +441,7 @@ export const DeepParagraphCheck = () => {
 
   // Exclude stricken clauses from legal stats
   const activeClauses = clauses.filter(c => !isClauseStricken(c));
-  const strickenCount = clauses.length - activeClauses.length;
+  const strickenCount = clauses.filter(c => isClauseStricken(c)).length;
   const stats = {
     safe: activeClauses.filter(c => c.status === 'SICHER').length,
     critical: activeClauses.filter(c => c.status === 'KRITISCH').length,
@@ -435,7 +478,67 @@ export const DeepParagraphCheck = () => {
   // ── Results ───────────────────────────────────────────────────────
   return (
     <div className="w-full max-w-md">
+      {/* ── Confirmation Dialog (obligatory interaction stop) ────── */}
+      <AlertDialog open={!!confirmDialogClause} onOpenChange={(open) => { if (!open) setConfirmDialogClause(null); }}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+              <Strikethrough className="w-5 h-5" />
+              Streichung erkannt
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p className="text-sm">
+                In <strong>{confirmDialogClause?.paragraphRef}</strong> ({confirmDialogClause?.title}) wurden Streichungen erkannt.
+              </p>
+              {confirmDialogClause?.strikeNote && (
+                <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                  <p className="text-[11px] text-amber-800 dark:text-amber-200 italic">
+                    „{confirmDialogClause.strikeNote}"
+                  </p>
+                </div>
+              )}
+              <p className="text-sm font-medium text-foreground">
+                Ist dieser Abschnitt im Originaldokument offiziell gestrichen oder ungültig markiert?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel onClick={() => confirmDialogClause && handleDenyStrike(confirmDialogClause)}>
+              Nein, aktiv
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => confirmDialogClause && handleConfirmStrike(confirmDialogClause)}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              <Strikethrough className="w-4 h-4 mr-1" />
+              Ja, gestrichen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+        {/* Pending confirmation banner */}
+        {pendingCount > 0 && activeTab === 'clauses' && (
+          <div className="mb-3 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div className="flex-1">
+              <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-200">
+                {pendingCount} Streichung(en) erkannt – Bestätigung erforderlich
+              </p>
+              <p className="text-[10px] text-amber-700 dark:text-amber-300">
+                Die Rechtsanalyse kann erst abgeschlossen werden, wenn alle erkannten Streichungen bestätigt oder abgelehnt wurden.
+              </p>
+            </div>
+            <button
+              onClick={() => setFilter('pending')}
+              className="shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+            >
+              Anzeigen
+            </button>
+          </div>
+        )}
+
         {/* Tab switcher: Clauses vs Delta */}
         <div className="flex gap-1 mb-3 p-0.5 bg-secondary/40 rounded-xl">
           <button
@@ -446,6 +549,11 @@ export const DeepParagraphCheck = () => {
           >
             <Scale className="w-3 h-3" />
             Vertragsanalyse ({clauses.length})
+            {pendingCount > 0 && (
+              <span className="ml-0.5 w-4 h-4 rounded-full bg-amber-500 text-white text-[8px] font-bold flex items-center justify-center">
+                {pendingCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('delta')}
@@ -488,6 +596,11 @@ export const DeepParagraphCheck = () => {
                 )}
               </div>
               <div className="flex gap-1 flex-wrap">
+                {pendingCount > 0 && (
+                  <span className="text-[9px] font-bold bg-amber-200 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 rounded-md animate-pulse">
+                    {pendingCount}× Bestätigung nötig
+                  </span>
+                )}
                 {stats.invalid > 0 && (
                   <span className="text-[9px] font-bold bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded-md">
                     {stats.invalid}× Unwirksam
@@ -521,10 +634,13 @@ export const DeepParagraphCheck = () => {
                   className={`text-[10px] font-medium px-2.5 py-1 rounded-lg transition-colors ${
                     filter === opt.key
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary/60 text-muted-foreground hover:text-foreground'
+                      : opt.key === 'pending' && pendingCount > 0
+                        ? 'bg-amber-200 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200 animate-pulse'
+                        : 'bg-secondary/60 text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {opt.label}
+                  {opt.key === 'pending' && pendingCount > 0 ? ` (${pendingCount})` : ''}
                 </button>
               ))}
             </div>
@@ -535,8 +651,10 @@ export const DeepParagraphCheck = () => {
                 <ClauseCard
                   key={`${clause.paragraphRef}-${idx}`}
                   clause={clause}
-                  isStricken={stricken.includes(`deep-${clause.paragraphRef}`)}
+                  isStricken={isClauseStricken(clause)}
+                  isPendingConfirmation={isPendingConfirmation(clause)}
                   onToggleStrike={() => toggleClause(`deep-${clause.paragraphRef}`)}
+                  onOpenConfirmDialog={() => setConfirmDialogClause(clause)}
                 />
               ))}
               {filteredClauses.length === 0 && (
