@@ -223,22 +223,41 @@ WICHTIG:
 
       parsedData = JSON.parse(jsonStr);
     } catch {
-      console.error('Failed to parse AI response as JSON:', textContent);
-
-      // Check for truncation
-      const openBraces = (textContent.match(/{/g) || []).length;
-      const closeBraces = (textContent.match(/}/g) || []).length;
-      const isTruncated = openBraces !== closeBraces;
-
-      return new Response(
-        JSON.stringify({
-          error: isTruncated
-            ? 'KI-Antwort wurde abgeschnitten. Bitte erneut versuchen.'
-            : 'KI-Antwort konnte nicht verarbeitet werden',
-          raw: textContent.substring(0, 500),
-        }),
-        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Attempt to recover truncated JSON by closing open braces/brackets
+      try {
+        let recoverable = textContent;
+        const codeMatch = recoverable.match(/```(?:json)?\s*([\s\S]*)/);
+        if (codeMatch) recoverable = codeMatch[1];
+        
+        const startIdx = recoverable.search(/[\{\[]/);
+        if (startIdx !== -1) {
+          recoverable = recoverable.substring(startIdx);
+        }
+        // Remove trailing incomplete key-value pairs (e.g. `"key": "incompl`)
+        recoverable = recoverable.replace(/,\s*"[^"]*":\s*"[^"]*$/, '');
+        recoverable = recoverable.replace(/,\s*"[^"]*":\s*$/, '');
+        recoverable = recoverable.replace(/,\s*$/, '');
+        // Close any unclosed braces
+        const openB = (recoverable.match(/{/g) || []).length;
+        const closeB = (recoverable.match(/}/g) || []).length;
+        for (let b = 0; b < openB - closeB; b++) recoverable += '}';
+        const openA = (recoverable.match(/\[/g) || []).length;
+        const closeA = (recoverable.match(/]/g) || []).length;
+        for (let a = 0; a < openA - closeA; a++) recoverable += ']';
+        
+        recoverable = recoverable.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']').replace(/[\x00-\x1F\x7F]/g, ' ');
+        parsedData = JSON.parse(recoverable);
+        console.log('Recovered truncated JSON successfully');
+      } catch {
+        console.error('Failed to parse AI response as JSON:', textContent);
+        return new Response(
+          JSON.stringify({
+            error: 'KI-Antwort konnte nicht verarbeitet werden. Bitte erneut versuchen.',
+            raw: textContent.substring(0, 500),
+          }),
+          { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Compute totalRent if we have the component parts
