@@ -197,67 +197,71 @@ WICHTIG:
     const result = await response.json();
     const textContent = result.choices?.[0]?.message?.content || '';
 
-    // Robust JSON extraction
+    // Check for truncation via finish_reason
+    const finishReason = result.choices?.[0]?.finish_reason;
+    const wasTruncated = finishReason === 'length';
+    if (wasTruncated) {
+      console.warn('AI response was truncated (finish_reason=length). Attempting recovery...');
+    }
+
+    // Robust JSON extraction with truncation recovery
     let parsedData;
+    const tryParseJSON = (str: string) => {
+      // Strip markdown code fences
+      const codeMatch = str.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/);
+      if (codeMatch) str = codeMatch[1];
+
+      // Find JSON start
+      const startIdx = str.search(/[\{\[]/);
+      if (startIdx === -1) throw new Error('No JSON found');
+      str = str.substring(startIdx);
+
+      // Try to find proper JSON end
+      const lastBrace = str.lastIndexOf('}');
+      const lastBracket = str.lastIndexOf(']');
+      const endIdx = Math.max(lastBrace, lastBracket);
+
+      // First try: extract between balanced delimiters
+      if (endIdx > 0) {
+        const candidate = str.substring(0, endIdx + 1)
+          .replace(/,\s*}/g, '}').replace(/,\s*]/g, ']').replace(/[\x00-\x1F\x7F]/g, ' ');
+        try { return JSON.parse(candidate); } catch {}
+      }
+
+      // Recovery: strip trailing incomplete tokens and close braces
+      // Remove incomplete string value: ,"key": "incompl
+      str = str.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/s, '');
+      // Remove incomplete key name: ,"incompl
+      str = str.replace(/,\s*"[^"]*$/s, '');
+      // Remove incomplete key-value with no value yet: ,"key":
+      str = str.replace(/,\s*"[^"]*"\s*:\s*$/s, '');
+      // Remove dangling comma
+      str = str.replace(/,\s*$/s, '');
+
+      // Close unclosed braces/brackets
+      const openB = (str.match(/{/g) || []).length;
+      const closeB = (str.match(/}/g) || []).length;
+      for (let b = 0; b < openB - closeB; b++) str += '}';
+      const openA = (str.match(/\[/g) || []).length;
+      const closeA = (str.match(/]/g) || []).length;
+      for (let a = 0; a < openA - closeA; a++) str += ']';
+
+      str = str.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']').replace(/[\x00-\x1F\x7F]/g, ' ');
+      return JSON.parse(str);
+    };
+
     try {
-      let jsonStr = textContent;
-
-      // Try markdown code block extraction
-      const jsonMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch && jsonMatch[1].trim().length > 2) {
-        jsonStr = jsonMatch[1].trim();
-      }
-
-      // Try finding raw JSON boundaries
-      const jsonStart = jsonStr.search(/[\{\[]/);
-      const jsonEnd = Math.max(jsonStr.lastIndexOf('}'), jsonStr.lastIndexOf(']'));
-      if (jsonStart !== -1 && jsonEnd > jsonStart) {
-        jsonStr = jsonStr.substring(jsonStart, jsonEnd + 1);
-      }
-
-      // Clean common issues
-      jsonStr = jsonStr
-        .replace(/,\s*}/g, '}')
-        .replace(/,\s*]/g, ']')
-        .replace(/[\x00-\x1F\x7F]/g, ' ');
-
-      parsedData = JSON.parse(jsonStr);
+      parsedData = tryParseJSON(textContent);
+      if (wasTruncated) console.log('Recovered truncated JSON successfully');
     } catch {
-      // Attempt to recover truncated JSON by closing open braces/brackets
-      try {
-        let recoverable = textContent;
-        const codeMatch = recoverable.match(/```(?:json)?\s*([\s\S]*)/);
-        if (codeMatch) recoverable = codeMatch[1];
-        
-        const startIdx = recoverable.search(/[\{\[]/);
-        if (startIdx !== -1) {
-          recoverable = recoverable.substring(startIdx);
-        }
-        // Remove trailing incomplete key-value pairs (e.g. `"key": "incompl`)
-        recoverable = recoverable.replace(/,\s*"[^"]*":\s*"[^"]*$/, '');
-        recoverable = recoverable.replace(/,\s*"[^"]*":\s*$/, '');
-        recoverable = recoverable.replace(/,\s*$/, '');
-        // Close any unclosed braces
-        const openB = (recoverable.match(/{/g) || []).length;
-        const closeB = (recoverable.match(/}/g) || []).length;
-        for (let b = 0; b < openB - closeB; b++) recoverable += '}';
-        const openA = (recoverable.match(/\[/g) || []).length;
-        const closeA = (recoverable.match(/]/g) || []).length;
-        for (let a = 0; a < openA - closeA; a++) recoverable += ']';
-        
-        recoverable = recoverable.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']').replace(/[\x00-\x1F\x7F]/g, ' ');
-        parsedData = JSON.parse(recoverable);
-        console.log('Recovered truncated JSON successfully');
-      } catch {
-        console.error('Failed to parse AI response as JSON:', textContent);
-        return new Response(
-          JSON.stringify({
-            error: 'KI-Antwort konnte nicht verarbeitet werden. Bitte erneut versuchen.',
-            raw: textContent.substring(0, 500),
-          }),
-          { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      console.error('Failed to parse AI response as JSON:', textContent.substring(0, 500));
+      return new Response(
+        JSON.stringify({
+          error: 'KI-Antwort konnte nicht verarbeitet werden. Bitte erneut versuchen.',
+          raw: textContent.substring(0, 500),
+        }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Compute totalRent if we have the component parts
