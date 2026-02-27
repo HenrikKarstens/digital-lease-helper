@@ -212,7 +212,7 @@ WICHTIG:
 - Sei bei der Erkennung SEHR GENAU. Unterstreichungen sind KEINE Streichungen.
 - Achte besonders auf handschriftliche Linien über gedrucktem Text.
 - Auch TEILWEISE Streichungen innerhalb eines Paragraphen sind relevant!
-- Antworte NUR mit validem JSON-Array.`;
+- Antworte NUR mit einem reinen JSON-Array. KEIN Markdown, KEINE Backticks, KEIN erklärenden Text.`;
 
     // Run strike detection for each page individually for better accuracy
     const allStrikeResults: Array<{ paragraphRef: string; isStricken: boolean; strikeDescription: string; confidence: string }> = [];
