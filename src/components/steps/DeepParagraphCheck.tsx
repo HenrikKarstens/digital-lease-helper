@@ -40,15 +40,22 @@ const ClauseCard = ({ clause, isStricken, onToggleStrike }: ClauseCardProps) => 
   const [expanded, setExpanded] = useState(false);
   const config = STATUS_CONFIG[clause.status] || STATUS_CONFIG.SICHER;
   const Icon = config.icon;
+  const isAiDetectedStrike = clause.visuallyStricken && !isStricken;
 
   return (
     <motion.div
       layout
-      className={`rounded-xl border transition-all ${isStricken ? 'bg-muted/40 border-border opacity-60' : config.bg}`}
+      className={`rounded-xl border transition-all ${
+        isStricken
+          ? 'bg-muted/40 border-border opacity-60'
+          : isAiDetectedStrike
+            ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-400 dark:border-amber-600 ring-1 ring-amber-300 dark:ring-amber-700'
+            : config.bg
+      }`}
     >
       <button onClick={() => setExpanded(!expanded)} className="w-full text-left p-3 flex items-start gap-2.5">
-        <div className={`shrink-0 mt-0.5 ${isStricken ? 'text-muted-foreground' : config.color}`}>
-          <Icon className="w-4 h-4" />
+        <div className={`shrink-0 mt-0.5 ${isStricken ? 'text-muted-foreground' : isAiDetectedStrike ? 'text-amber-600 dark:text-amber-400' : config.color}`}>
+          {isAiDetectedStrike ? <Strikethrough className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-0.5">
@@ -62,27 +69,68 @@ const ClauseCard = ({ clause, isStricken, onToggleStrike }: ClauseCardProps) => 
                   Handschrift
                 </span>
               )}
-              <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${isStricken ? 'bg-muted text-muted-foreground' : config.badge}`}>
-                {isStricken ? 'Gestrichen' : clause.status}
+              <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${
+                isStricken
+                  ? 'bg-muted text-muted-foreground'
+                  : isAiDetectedStrike
+                    ? 'bg-amber-200 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200'
+                    : config.badge
+              }`}>
+                {isStricken ? 'Gestrichen' : isAiDetectedStrike ? 'Streichung erkannt' : clause.status}
               </span>
               {expanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
             </div>
           </div>
-          {!isStricken && (
+          {isStricken && (
+            <p className="text-[10px] text-muted-foreground italic">Vom Vertragspartner gestrichen – kein Einfluss auf Gesamtbewertung</p>
+          )}
+          {!isStricken && isAiDetectedStrike && (
+            <p className="text-[10px] text-amber-700 dark:text-amber-300 italic flex items-center gap-1">
+              <Sparkles className="w-2.5 h-2.5" />
+              KI hat eine Streichung im Dokument erkannt. Ist diese Klausel offiziell gestrichen?
+            </p>
+          )}
+          {!isStricken && !isAiDetectedStrike && (
             <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
               „{clause.originalText}"
             </p>
           )}
-          {isStricken && (
-            <p className="text-[10px] text-muted-foreground italic">Vom Nutzer als gestrichen markiert</p>
-          )}
         </div>
       </button>
+
+      {/* AI strike confirmation banner */}
+      {isAiDetectedStrike && !expanded && (
+        <div className="px-3 pb-2 flex gap-2" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={onToggleStrike}
+            className="flex-1 flex items-center justify-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+          >
+            <Strikethrough className="w-3 h-3" />
+            Ja, Klausel gestrichen
+          </button>
+          <button
+            onClick={() => setExpanded(true)}
+            className="flex items-center justify-center gap-1 text-[10px] font-medium px-2.5 py-1.5 rounded-lg bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            Details
+          </button>
+        </div>
+      )}
 
       <AnimatePresence>
         {expanded && !isStricken && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
             <div className="px-3 pb-3 pt-0 space-y-2 border-t border-border/30">
+              {/* AI strike note */}
+              {clause.visuallyStricken && clause.strikeNote && (
+                <div className="pt-2 flex items-start gap-1.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                  <Strikethrough className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[9px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">KI-Streichungserkennung</span>
+                    <p className="text-[10px] text-amber-800 dark:text-amber-200 leading-relaxed mt-0.5">{clause.strikeNote}</p>
+                  </div>
+                </div>
+              )}
               {/* Handwriting note */}
               {clause.isHandwritten && clause.handwrittenNote && (
                 <div className="pt-2 flex items-start gap-1.5 p-2 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800">
