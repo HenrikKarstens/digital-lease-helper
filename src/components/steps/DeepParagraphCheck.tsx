@@ -189,21 +189,6 @@ const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike,
         )}
       </AnimatePresence>
 
-      {expanded && (
-        <div className="px-3 pb-2 flex justify-end" onClick={e => e.stopPropagation()}>
-          <button
-            onClick={onToggleStrike}
-            className={`flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-lg transition-colors ${
-              isStricken
-                ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                : 'bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary'
-            }`}
-          >
-            <Strikethrough className="w-3 h-3" />
-            {isStricken ? 'Wiederherstellen' : 'Klausel streichen'}
-          </button>
-        </div>
-      )}
     </motion.div>
   );
 };
