@@ -25,6 +25,7 @@ export const Step9Keys = () => {
   const keyPhoto = data.keyBundlePhotoUrl ?? null;
 
   const [newType, setNewType] = useState('');
+  const [newCustomName, setNewCustomName] = useState('');
   const [newCount, setNewCount] = useState('1');
   const [newNote, setNewNote] = useState('');
 
