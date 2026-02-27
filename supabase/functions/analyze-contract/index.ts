@@ -196,17 +196,46 @@ WICHTIG:
     const result = await response.json();
     const textContent = result.choices?.[0]?.message?.content || '';
 
-    let jsonStr = textContent;
-    const jsonMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) jsonStr = jsonMatch[1].trim();
-
+    // Robust JSON extraction
     let parsedData;
     try {
+      let jsonStr = textContent;
+
+      // Try markdown code block extraction
+      const jsonMatch = textContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch && jsonMatch[1].trim().length > 2) {
+        jsonStr = jsonMatch[1].trim();
+      }
+
+      // Try finding raw JSON boundaries
+      const jsonStart = jsonStr.search(/[\{\[]/);
+      const jsonEnd = Math.max(jsonStr.lastIndexOf('}'), jsonStr.lastIndexOf(']'));
+      if (jsonStart !== -1 && jsonEnd > jsonStart) {
+        jsonStr = jsonStr.substring(jsonStart, jsonEnd + 1);
+      }
+
+      // Clean common issues
+      jsonStr = jsonStr
+        .replace(/,\s*}/g, '}')
+        .replace(/,\s*]/g, ']')
+        .replace(/[\x00-\x1F\x7F]/g, ' ');
+
       parsedData = JSON.parse(jsonStr);
     } catch {
       console.error('Failed to parse AI response as JSON:', textContent);
+
+      // Check for truncation
+      const openBraces = (textContent.match(/{/g) || []).length;
+      const closeBraces = (textContent.match(/}/g) || []).length;
+      const isTruncated = openBraces !== closeBraces;
+
       return new Response(
-        JSON.stringify({ error: 'KI-Antwort konnte nicht verarbeitet werden', raw: textContent }),
+        JSON.stringify({
+          error: isTruncated
+            ? 'KI-Antwort wurde abgeschnitten. Bitte erneut versuchen.'
+            : 'KI-Antwort konnte nicht verarbeitet werden',
+          raw: textContent.substring(0, 500),
+        }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
