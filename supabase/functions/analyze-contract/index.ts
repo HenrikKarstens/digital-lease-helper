@@ -135,18 +135,19 @@ serve(async (req) => {
 - "confidence": Ein JSON-Objekt mit Feldnamen als Keys und Werten "high", "medium" oder "low"`;
     }
 
-    const prompt = `Du bist ein deutscher Immobilienrechtsexperte und Gutachter.
+    const prompt = `Du bist ein deutscher Immobilienrechtsexperte.
 Analysiere alle bereitgestellten Seiten (${maxPages} Seite${maxPages > 1 ? 'n' : ''}) dieses Dokuments: ${docTypeLabel}.
 
 Extrahiere die folgenden Informationen als JSON:
 ${extraFields}
 
 WICHTIG: 
-- Antworte NUR mit validem JSON, keine Erklärungen davor oder danach.
+- Antworte NUR mit validem JSON, keine Erklärungen davor oder danach. KEIN Markdown-Codeblock.
 - Felder, die nicht gefunden werden, mit leerem String "" befüllen, nicht weglassen.
 - Zahlen ohne Währungssymbol, nur die Zahl (z.B. "1250" nicht "1.250 €").
 - Datumsformat immer TT.MM.JJJJ (z.B. "01.01.2024").
-- Das "confidence"-Objekt MUSS für jedes extrahierte Feld einen Eintrag haben.`;
+- Halte die Antwort KOMPAKT. Bewertungen in max 1 Satz. Kein confidence-Objekt nötig.
+- Beginne direkt mit { und ende mit }.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
