@@ -243,15 +243,22 @@ WICHTIG:
           const strikeResult = await strikeResponse.json();
           const strikeText = strikeResult.choices?.[0]?.message?.content || '';
           let strikeJson = strikeText;
-          const strikeMatch = strikeText.match(/```(?:json)?\s*([\s\S]*?)```/);
-          if (strikeMatch) strikeJson = strikeMatch[1].trim();
           
-          // Find JSON array boundaries
+          // Robust JSON extraction: strip markdown fences first
+          const strikeMatch = strikeText.match(/```(?:json)?\s*([\s\S]*?)```/);
+          if (strikeMatch) {
+            strikeJson = strikeMatch[1].trim();
+          }
+          
+          // Always extract array boundaries as fallback
           const arrStart = strikeJson.indexOf('[');
           const arrEnd = strikeJson.lastIndexOf(']');
           if (arrStart !== -1 && arrEnd > arrStart) {
             strikeJson = strikeJson.substring(arrStart, arrEnd + 1);
           }
+          
+          // Clean control characters
+          strikeJson = strikeJson.replace(/[\x00-\x1F\x7F]/g, ' ').replace(/,\s*]/g, ']');
           
           try {
             const pageStrikes = JSON.parse(strikeJson);
@@ -353,7 +360,7 @@ REGELN:
           ],
         }],
         temperature: 0.1,
-        max_tokens: 16384,
+        max_tokens: 32768,
       }),
     });
 
