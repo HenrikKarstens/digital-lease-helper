@@ -100,19 +100,6 @@ export const Step4Validation = () => {
 
   const isMoveIn = data.handoverDirection === 'move-in';
 
-  const toggleClause = (clauseId: string) => {
-    const current = data.strickenClauses || [];
-    const updated = current.includes(clauseId)
-      ? current.filter(c => c !== clauseId)
-      : [...current, clauseId];
-    updateData({ strickenClauses: updated });
-
-    if (updated.includes(clauseId)) {
-      toast.success('Klausel als gestrichen markiert.');
-    } else {
-      toast.info('Klausel wiederhergestellt.');
-    }
-  };
 
   const rows: { key: keyof typeof data; label: string }[] = [
     { key: 'propertyAddress', label: 'Objektadresse' },
@@ -138,9 +125,7 @@ export const Step4Validation = () => {
     { key: 'contractSigningDate', label: 'Datum Vertragsunterzeichnung' },
   ];
 
-  const hasLegalAnalysis = !!(data.deepLegalClauses?.length);
   const filledCount = rows.filter(r => !!data[r.key]).length;
-  const stricken = data.strickenClauses || [];
 
   const handleConfirm = () => {
     updateData({
