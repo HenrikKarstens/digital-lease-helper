@@ -274,6 +274,7 @@ export const DeepParagraphCheck = () => {
   const [activeTab, setActiveTab] = useState<'clauses' | 'delta'>('clauses');
   const [confirmDialogClause, setConfirmDialogClause] = useState<DeepClause | null>(null);
   const [manualStrikeClause, setManualStrikeClause] = useState<DeepClause | null>(null);
+  const autoScanStartedRef = useRef(false);
   const stricken = data.strickenClauses || [];
 
   const hasDocs = data.capturedDocuments?.some(d => d.type === 'main-contract' && d.pages.length > 0);
@@ -368,6 +369,20 @@ export const DeepParagraphCheck = () => {
       setLoading(false);
     }
   };
+
+  // Auto-start deep scan once a main contract is available (no extra click required)
+  useEffect(() => {
+    if (!hasDocs) {
+      autoScanStartedRef.current = false;
+      return;
+    }
+
+    const shouldAutoStart = !autoScanStartedRef.current && !loading && clauses.length === 0 && !data.deepAnalysisComplete;
+    if (!shouldAutoStart) return;
+
+    autoScanStartedRef.current = true;
+    void triggerDeepAnalysis();
+  }, [hasDocs, loading, clauses.length, data.deepAnalysisComplete]);
 
   const triggerDeltaCheck = async () => {
     const moveInProtocol = data.capturedDocuments?.find(d => d.type === 'handover-protocol');
