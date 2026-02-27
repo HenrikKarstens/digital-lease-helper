@@ -46,9 +46,10 @@ interface ClauseCardProps {
   isPendingConfirmation: boolean;
   onToggleStrike: () => void;
   onOpenConfirmDialog: () => void;
+  onOpenManualStrikeDialog: () => void;
 }
 
-const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike, onOpenConfirmDialog }: ClauseCardProps) => {
+const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike, onOpenConfirmDialog, onOpenManualStrikeDialog }: ClauseCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const config = STATUS_CONFIG[clause.status] || STATUS_CONFIG.SICHER;
   const Icon = config.icon;
@@ -107,6 +108,22 @@ const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike,
             </p>
           )}
         </div>
+        {/* Always-visible manual strike button */}
+        {!isPendingConfirmation && (
+          <div className="shrink-0 ml-1" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={isStricken ? onToggleStrike : onOpenManualStrikeDialog}
+              className={`p-1 rounded-md transition-colors ${
+                isStricken
+                  ? 'text-primary hover:bg-primary/10'
+                  : 'text-muted-foreground/50 hover:text-foreground hover:bg-secondary'
+              }`}
+              title={isStricken ? 'Wiederherstellen' : 'Klausel manuell streichen'}
+            >
+              <Strikethrough className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </button>
 
       {/* Pending confirmation quick-action banner */}
@@ -172,21 +189,6 @@ const ClauseCard = ({ clause, isStricken, isPendingConfirmation, onToggleStrike,
         )}
       </AnimatePresence>
 
-      {expanded && (
-        <div className="px-3 pb-2 flex justify-end" onClick={e => e.stopPropagation()}>
-          <button
-            onClick={onToggleStrike}
-            className={`flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-lg transition-colors ${
-              isStricken
-                ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                : 'bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary'
-            }`}
-          >
-            <Strikethrough className="w-3 h-3" />
-            {isStricken ? 'Wiederherstellen' : 'Klausel streichen'}
-          </button>
-        </div>
-      )}
     </motion.div>
   );
 };
@@ -271,6 +273,7 @@ export const DeepParagraphCheck = () => {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [activeTab, setActiveTab] = useState<'clauses' | 'delta'>('clauses');
   const [confirmDialogClause, setConfirmDialogClause] = useState<DeepClause | null>(null);
+  const [manualStrikeClause, setManualStrikeClause] = useState<DeepClause | null>(null);
   const stricken = data.strickenClauses || [];
 
   const hasDocs = data.capturedDocuments?.some(d => d.type === 'main-contract' && d.pages.length > 0);
@@ -517,6 +520,41 @@ export const DeepParagraphCheck = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* ── Manual Strike Confirmation Dialog ────── */}
+      <AlertDialog open={!!manualStrikeClause} onOpenChange={(open) => { if (!open) setManualStrikeClause(null); }}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Strikethrough className="w-5 h-5" />
+              Klausel manuell streichen
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p className="text-sm">
+                Möchten Sie <strong>{manualStrikeClause?.paragraphRef}</strong> ({manualStrikeClause?.title}) manuell als gestrichen markieren?
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Die Klausel wird aus der rechtlichen Bewertung ausgeschlossen und im Zertifikat als „Vom Nutzer manuell verifizierte Streichung" dokumentiert.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (manualStrikeClause) {
+                  toggleClause(`deep-${manualStrikeClause.paragraphRef}`);
+                  setManualStrikeClause(null);
+                }
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              <Strikethrough className="w-4 h-4 mr-1" />
+              Ja, streichen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         {/* Pending confirmation banner */}
         {pendingCount > 0 && activeTab === 'clauses' && (
@@ -655,6 +693,7 @@ export const DeepParagraphCheck = () => {
                   isPendingConfirmation={isPendingConfirmation(clause)}
                   onToggleStrike={() => toggleClause(`deep-${clause.paragraphRef}`)}
                   onOpenConfirmDialog={() => setConfirmDialogClause(clause)}
+                  onOpenManualStrikeDialog={() => setManualStrikeClause(clause)}
                 />
               ))}
               {filteredClauses.length === 0 && (
