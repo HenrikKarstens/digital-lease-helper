@@ -198,6 +198,8 @@ Antworte NUR mit einem JSON-Array. Jedes Element hat:
 - "category": Eine von "miete", "kaution", "nebenkosten", "reparaturen", "renovierung", "kuendigung", "nutzung", "sonstiges"
 - "isHandwritten": true/false – ob die Klausel handschriftliche Ergänzungen oder Streichungen enthält
 - "handwrittenNote": Falls isHandwritten=true: Beschreibung der handschriftlichen Änderung und deren rechtliche Bedeutung als Individualvereinbarung (1-2 Sätze). Sonst "".
+- "visuallyStricken": true/false – ob du im Bild eine horizontale Durchstreichung (Streichlinie) über dem gesamten Textblock dieser Klausel erkennst. Dies bedeutet, dass die Vertragsparteien diese Klausel manuell gestrichen haben.
+- "strikeNote": Falls visuallyStricken=true: Beschreibung der erkannten Streichung (z.B. "Gesamter Absatz 3b mit durchgehender Linie gestrichen"). Sonst "".
 
 KRITISCHE KLAUSELN – PFLICHTPRÜFUNG:
 1. §§ 15, 27 (Schönheitsreparaturen): Prüfe auf "starre Fristen" (z.B. "Küche alle 3 Jahre", "Bad alle 5 Jahre"). Solche Klauseln sind UNWIRKSAM nach BGH VIII ZR 308/02. Prüfe auch auf unzulässige Endrenovierungsklauseln, insbesondere handschriftliche Ergänzungen wie "weiß gestrichen".
@@ -206,6 +208,12 @@ KRITISCHE KLAUSELN – PFLICHTPRÜFUNG:
 4. Kaution: Über 3 Nettokaltmieten ist UNWIRKSAM nach § 551 Abs. 1 BGB. Kautionszahlung VOR Schlüsselübergabe ist UNWIRKSAM.
 5. Tierhaltung: Generelles Tierhaltungsverbot (außer Kleintiere) ist KRITISCH nach BGH VIII ZR 168/12.
 6. Schriftformheilungsklauseln sind nach BGH KRITISCH.
+
+VISUELLE STREICHUNGSERKENNUNG:
+- Prüfe JEDES Bild genau auf horizontale Linien, die über Textblöcke gezogen wurden.
+- Eine solche Durchstreichung bedeutet, dass die Vertragsparteien diese Klausel bewusst gestrichen haben.
+- Setze visuallyStricken=true für JEDE Klausel, deren Text visuell durchgestrichen ist.
+- Typische Muster: Durchgehende horizontale Linie über einen Absatz, Kreuzungen, oder mehrere parallele Linien.
 
 HANDSCHRIFT-PRIORITÄT:
 - Handschriftliche Ergänzungen, Streichungen und Randbemerkungen haben HÖCHSTE PRIORITÄT.
