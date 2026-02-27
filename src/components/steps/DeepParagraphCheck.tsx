@@ -453,6 +453,7 @@ export const DeepParagraphCheck = () => {
   const filteredClauses = clauses.filter(c => {
     if (filter === 'stricken') return isClauseStricken(c);
     if (filter === 'pending') return isPendingConfirmation(c);
+    if (filter === 'actionable') return c.status === 'KRITISCH' || c.status === 'UNWIRKSAM' || isPendingConfirmation(c) || c.visuallyStricken;
     if (filter === 'all') return true;
     if (filter === 'handwritten') return c.isHandwritten;
     return c.status === filter;
