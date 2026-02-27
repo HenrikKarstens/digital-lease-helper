@@ -273,6 +273,7 @@ export const DeepParagraphCheck = () => {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [activeTab, setActiveTab] = useState<'clauses' | 'delta'>('clauses');
   const [confirmDialogClause, setConfirmDialogClause] = useState<DeepClause | null>(null);
+  const [manualStrikeClause, setManualStrikeClause] = useState<DeepClause | null>(null);
   const stricken = data.strickenClauses || [];
 
   const hasDocs = data.capturedDocuments?.some(d => d.type === 'main-contract' && d.pages.length > 0);
