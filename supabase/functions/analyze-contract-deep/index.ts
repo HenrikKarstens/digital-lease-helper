@@ -190,25 +190,28 @@ REGELN:
 
 AUFGABE: Scanne JEDE Zeile und JEDEN Paragraphen auf diesem Bild nach visuellen Streichungsmerkmalen:
 - Horizontale Linien, die über Textblöcke gezogen wurden (handschriftlich oder gedruckt)
-- Diagonale Durchstreichungen über Absätze
+- Diagonale Durchstreichungen über Absätze oder einzelne Wörter/Sätze
 - X-förmige Markierungen über Textblöcken
 - Mehrere parallele Linien über Text
-- Einzelne durchgehende Linien durch einen gesamten Absatz
+- Einzelne durchgehende Linien durch einen gesamten Absatz oder Teilabschnitt
+- Teilweise Streichungen: Auch wenn nur ein TEIL eines Paragraphen durchgestrichen ist (z.B. nur Absatz 2 von § 8, oder nur Option a) in § 9), melde das als Streichung mit genauer Beschreibung welcher Teil betroffen ist
 
-Für JEDEN Paragraphen auf der Seite: Prüfe ob der Text visuell durchgestrichen ist.
+Für JEDEN Paragraphen auf der Seite: Prüfe ob der Text (ganz oder teilweise) visuell durchgestrichen ist.
 
 Antworte NUR mit einem JSON-Array. Jedes Element:
 {
-  "paragraphRef": "§ X" (der betroffene Paragraph),
+  "paragraphRef": "§ X Abs. Y" (der betroffene Paragraph, so genau wie möglich),
   "isStricken": true/false,
-  "strikeDescription": "Beschreibung der Streichung" (z.B. "Horizontale Linie durch gesamten Absatz", "Absatz 3 mit Kugelschreiber durchgestrichen"). Leer wenn isStricken=false.
+  "strikeDescription": "Beschreibung der Streichung" (z.B. "Horizontale Linie durch Absatz 2", "Option a) durchgestrichen, Option b) aktiv", "Gesamter Paragraph mit Kugelschreiber durchgestrichen"). Leer wenn isStricken=false.
   "confidence": "high" | "medium" | "low"
 }
 
 WICHTIG:
 - Liste JEDEN sichtbaren Paragraphen auf, auch wenn er NICHT durchgestrichen ist (dann isStricken=false).
-- Sei bei der Erkennung SEHR GENAU. Unterstrreichungen sind KEINE Streichungen.
+- Prüfe BESONDERS §§ 7-12 sehr genau – dort kommen häufig Teilstreichungen vor (z.B. bei Wahloptionen a/b).
+- Sei bei der Erkennung SEHR GENAU. Unterstreichungen sind KEINE Streichungen.
 - Achte besonders auf handschriftliche Linien über gedrucktem Text.
+- Auch TEILWEISE Streichungen innerhalb eines Paragraphen sind relevant!
 - Antworte NUR mit validem JSON-Array.`;
 
     // Run strike detection for each page individually for better accuracy
