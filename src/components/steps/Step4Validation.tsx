@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, Scale, Pencil, Check, X, Shield, AlertTriangle, CheckCircle2, XCircle, Strikethrough, FileText, BookOpen } from 'lucide-react';
+import { ArrowRight, Pencil, Check, X, FileText, BookOpen } from 'lucide-react';
 import { DeepParagraphCheck } from './DeepParagraphCheck';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -280,62 +280,7 @@ export const Step4Validation = () => {
         </div>
       </motion.div>
 
-      {/* Sticky Legal Analysis Cards */}
-      {hasLegalAnalysis && (
-        <div className="w-full max-w-md pb-3">
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-background/95 backdrop-blur-md rounded-2xl border border-border/50 p-3 shadow-sm space-y-2"
-          >
-            <h3 className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 mb-1">
-              <Scale className="w-3.5 h-3.5" />
-              KI-Rechtsanalyse
-            </h3>
-
-            {(data.depositLegalCheck || dynamicDeposit) && (
-              <LegalCheckCard
-                id="deposit"
-                title="Kaution (§ 551 BGB)"
-                description={dynamicDeposit?.text || data.depositLegalCheck}
-                sourceRef={data.depositSourceRef || '§ 6 Abs. 1 – Kaution'}
-                status={dynamicDeposit?.status || data.depositLegalStatus || ''}
-                isStricken={stricken.includes('deposit')}
-                onToggleStrike={() => toggleClause('deposit')}
-                scrollToField="depositAmount"
-              />
-            )}
-
-            {data.smallRepairAnalysis && (
-              <LegalCheckCard
-                id="small-repair"
-                title="Kleinreparaturklausel"
-                description={data.smallRepairAnalysis}
-                sourceRef={data.smallRepairSourceRef || '§ 16 Abs. 6 – Kleinreparaturen'}
-                status={data.smallRepairStatus || ''}
-                isStricken={stricken.includes('small-repair')}
-                onToggleStrike={() => toggleClause('small-repair')}
-                scrollToField="coldRent"
-              />
-            )}
-
-            {data.endRenovationAnalysis && (
-              <LegalCheckCard
-                id="end-renovation"
-                title="Endrenovierung / Schönheitsreparaturen"
-                description={data.endRenovationAnalysis}
-                sourceRef={data.endRenovationSourceRef || '§ 27 – Handschriftliche Ergänzung'}
-                status={data.endRenovationStatus || ''}
-                isStricken={stricken.includes('end-renovation')}
-                onToggleStrike={() => toggleClause('end-renovation')}
-              />
-            )}
-          </motion.div>
-        </div>
-      )}
-
-      {/* Deep Paragraph Check */}
+      {/* Unified Legal Analysis (Deep Paragraph Check) */}
       <div className="w-full max-w-md pb-3">
         <DeepParagraphCheck />
       </div>
