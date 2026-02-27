@@ -8,13 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useHandover } from '@/context/HandoverContext';
 
 const KEY_TYPES = [
-  'Haustür',
-  'Wohnung',
-  'Keller',
+  'Haus- / Wohnungstür',
   'Briefkasten',
-  'Garage',
+  'Garage / Carport',
+  'Keller / Boden',
   'Transponder/Chip',
-  'Sonstiges',
+  'Sonstiger...',
 ];
 
 export const Step9Keys = () => {
