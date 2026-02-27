@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState } from 'react';
-import { toast } from 'sonner';
+
 import { Step3SmartEntry } from './Step3SmartEntry';
 
 // ── Editable Row ──────────────────────────────────────────────────────
