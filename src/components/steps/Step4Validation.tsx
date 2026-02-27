@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, Scale, Pencil, Check, X, Shield, AlertTriangle, CheckCircle2, XCircle, Strikethrough, FileText, BookOpen } from 'lucide-react';
+import { ArrowRight, Pencil, Check, X, FileText, BookOpen } from 'lucide-react';
 import { DeepParagraphCheck } from './DeepParagraphCheck';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState } from 'react';
-import { toast } from 'sonner';
+
 import { Step3SmartEntry } from './Step3SmartEntry';
 
 // ── Editable Row ──────────────────────────────────────────────────────
@@ -79,99 +79,6 @@ const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId }: Editabl
   );
 };
 
-// ── Legal Check Card with Source Reference & Click-to-Scroll ────────
-interface LegalCheckCardProps {
-  id: string;
-  title: string;
-  description: string;
-  sourceRef?: string;
-  status: 'safe' | 'warning' | 'invalid' | '';
-  isStricken: boolean;
-  onToggleStrike: () => void;
-  scrollToField?: string;
-}
-
-const LegalCheckCard = ({ id, title, description, sourceRef, status, isStricken, onToggleStrike, scrollToField }: LegalCheckCardProps) => {
-  const statusConfig = {
-    safe: { icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800', label: 'Sicher' },
-    warning: { icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800', label: 'Prüfen' },
-    invalid: { icon: XCircle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800', label: 'Unwirksam' },
-    '': { icon: Shield, color: 'text-muted-foreground', bg: 'bg-secondary/30 border-border', label: 'Nicht geprüft' },
-  };
-
-  const config = statusConfig[status || ''];
-  const Icon = config.icon;
-
-  const handleClick = () => {
-    if (scrollToField) {
-      document.getElementById(`row-${scrollToField}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  };
-
-  return (
-    <div
-      onClick={handleClick}
-      className={`rounded-xl p-3 border transition-all ${scrollToField ? 'cursor-pointer hover:shadow-md' : ''} ${isStricken ? 'bg-muted/40 border-border opacity-60' : config.bg}`}
-    >
-      <div className="flex items-start gap-2.5">
-        <div className={`shrink-0 mt-0.5 ${isStricken ? 'text-muted-foreground' : config.color}`}>
-          <Icon className="w-4 h-4" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-0.5">
-            <h4 className={`text-xs font-semibold ${isStricken ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-              {title}
-            </h4>
-            <span className={`text-[9px] font-bold uppercase tracking-wider ${isStricken ? 'text-muted-foreground' : config.color}`}>
-              {isStricken ? 'Gestrichen' : config.label}
-            </span>
-          </div>
-          {isStricken ? (
-            <p className="text-[10px] text-muted-foreground italic">Vom Nutzer als gestrichen markiert</p>
-          ) : (
-            <>
-              <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
-                {description || 'Keine Analyse verfügbar.'}
-              </p>
-              {sourceRef && (
-                <p className="text-[9px] text-muted-foreground/70 mt-1 flex items-center gap-1">
-                  <BookOpen className="w-2.5 h-2.5" />
-                  Quelle: {sourceRef}
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-      <div className="mt-2 flex justify-end" onClick={e => e.stopPropagation()}>
-        <button
-          onClick={onToggleStrike}
-          className={`flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-lg transition-colors ${
-            isStricken
-              ? 'bg-primary/10 text-primary hover:bg-primary/20'
-              : 'bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary'
-          }`}
-        >
-          <Strikethrough className="w-3 h-3" />
-          {isStricken ? 'Wiederherstellen' : 'Gestrichen'}
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// ── Dynamic legal check helpers ─────────────────────────────────────
-const computeDepositCheck = (coldRent: string, depositAmount: string) => {
-  const rent = parseFloat(coldRent) || 0;
-  const deposit = parseFloat(depositAmount) || 0;
-  if (!rent || !deposit) return null;
-  const limit = rent * 3;
-  if (deposit <= limit) {
-    return { status: 'safe' as const, text: `Gesetzliche Grenze (${limit.toLocaleString('de-DE')} €) eingehalten. Kaution beträgt ${deposit.toLocaleString('de-DE')} €.` };
-  }
-  return { status: 'invalid' as const, text: `Kaution (${deposit.toLocaleString('de-DE')} €) übersteigt die gesetzliche Grenze von 3 Nettokaltmieten (${limit.toLocaleString('de-DE')} €).` };
-};
-
 // ── Source reference mapping for Borchardt contract ─────────────────
 const FIELD_SOURCE_REFS: Record<string, string> = {
   contractStart: '§ 2 Abs. 1',
@@ -192,21 +99,7 @@ export const Step4Validation = () => {
   const [showScanner, setShowScanner] = useState(!hasAnalysisData);
 
   const isMoveIn = data.handoverDirection === 'move-in';
-  const dynamicDeposit = computeDepositCheck(data.coldRent, data.depositAmount);
 
-  const toggleClause = (clauseId: string) => {
-    const current = data.strickenClauses || [];
-    const updated = current.includes(clauseId)
-      ? current.filter(c => c !== clauseId)
-      : [...current, clauseId];
-    updateData({ strickenClauses: updated });
-
-    if (updated.includes(clauseId)) {
-      toast.success('Klausel als gestrichen markiert.');
-    } else {
-      toast.info('Klausel wiederhergestellt.');
-    }
-  };
 
   const rows: { key: keyof typeof data; label: string }[] = [
     { key: 'propertyAddress', label: 'Objektadresse' },
@@ -232,9 +125,7 @@ export const Step4Validation = () => {
     { key: 'contractSigningDate', label: 'Datum Vertragsunterzeichnung' },
   ];
 
-  const hasLegalAnalysis = data.depositLegalCheck || data.smallRepairAnalysis || data.endRenovationAnalysis || dynamicDeposit;
   const filledCount = rows.filter(r => !!data[r.key]).length;
-  const stricken = data.strickenClauses || [];
 
   const handleConfirm = () => {
     updateData({
@@ -280,62 +171,7 @@ export const Step4Validation = () => {
         </div>
       </motion.div>
 
-      {/* Sticky Legal Analysis Cards */}
-      {hasLegalAnalysis && (
-        <div className="w-full max-w-md pb-3">
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-background/95 backdrop-blur-md rounded-2xl border border-border/50 p-3 shadow-sm space-y-2"
-          >
-            <h3 className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 mb-1">
-              <Scale className="w-3.5 h-3.5" />
-              KI-Rechtsanalyse
-            </h3>
-
-            {(data.depositLegalCheck || dynamicDeposit) && (
-              <LegalCheckCard
-                id="deposit"
-                title="Kaution (§ 551 BGB)"
-                description={dynamicDeposit?.text || data.depositLegalCheck}
-                sourceRef={data.depositSourceRef || '§ 6 Abs. 1 – Kaution'}
-                status={dynamicDeposit?.status || data.depositLegalStatus || ''}
-                isStricken={stricken.includes('deposit')}
-                onToggleStrike={() => toggleClause('deposit')}
-                scrollToField="depositAmount"
-              />
-            )}
-
-            {data.smallRepairAnalysis && (
-              <LegalCheckCard
-                id="small-repair"
-                title="Kleinreparaturklausel"
-                description={data.smallRepairAnalysis}
-                sourceRef={data.smallRepairSourceRef || '§ 16 Abs. 6 – Kleinreparaturen'}
-                status={data.smallRepairStatus || ''}
-                isStricken={stricken.includes('small-repair')}
-                onToggleStrike={() => toggleClause('small-repair')}
-                scrollToField="coldRent"
-              />
-            )}
-
-            {data.endRenovationAnalysis && (
-              <LegalCheckCard
-                id="end-renovation"
-                title="Endrenovierung / Schönheitsreparaturen"
-                description={data.endRenovationAnalysis}
-                sourceRef={data.endRenovationSourceRef || '§ 27 – Handschriftliche Ergänzung'}
-                status={data.endRenovationStatus || ''}
-                isStricken={stricken.includes('end-renovation')}
-                onToggleStrike={() => toggleClause('end-renovation')}
-              />
-            )}
-          </motion.div>
-        </div>
-      )}
-
-      {/* Deep Paragraph Check */}
+      {/* Unified Legal Analysis (Deep Paragraph Check) */}
       <div className="w-full max-w-md pb-3">
         <DeepParagraphCheck />
       </div>

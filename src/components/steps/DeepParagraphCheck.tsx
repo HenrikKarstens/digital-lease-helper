@@ -254,8 +254,9 @@ const DeltaCard = ({ item }: { item: DeltaComparison }) => {
 
 // ── Filter Tabs ─────────────────────────────────────────────────────
 const FILTER_OPTIONS = [
-  { key: 'all', label: 'Alle' },
+  { key: 'actionable', label: '⚡ Prüfbedarf' },
   { key: 'pending', label: '⚠ Offen' },
+  { key: 'all', label: 'Alle' },
   { key: 'UNWIRKSAM', label: 'Unwirksam' },
   { key: 'KRITISCH', label: 'Kritisch' },
   { key: 'SICHER', label: 'Sicher' },
@@ -270,7 +271,7 @@ export const DeepParagraphCheck = () => {
   const { data, updateData } = useHandover();
   const [loading, setLoading] = useState(false);
   const [deltaLoading, setDeltaLoading] = useState(false);
-  const [filter, setFilter] = useState<FilterKey>('all');
+  const [filter, setFilter] = useState<FilterKey>('actionable');
   const [activeTab, setActiveTab] = useState<'clauses' | 'delta'>('clauses');
   const [confirmDialogClause, setConfirmDialogClause] = useState<DeepClause | null>(null);
   const [manualStrikeClause, setManualStrikeClause] = useState<DeepClause | null>(null);
@@ -452,6 +453,7 @@ export const DeepParagraphCheck = () => {
   const filteredClauses = clauses.filter(c => {
     if (filter === 'stricken') return isClauseStricken(c);
     if (filter === 'pending') return isPendingConfirmation(c);
+    if (filter === 'actionable') return c.status === 'KRITISCH' || c.status === 'UNWIRKSAM' || isPendingConfirmation(c) || c.visuallyStricken;
     if (filter === 'all') return true;
     if (filter === 'handwritten') return c.isHandwritten;
     return c.status === filter;
