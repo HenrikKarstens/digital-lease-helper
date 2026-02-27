@@ -99,7 +99,6 @@ export const Step4Validation = () => {
   const [showScanner, setShowScanner] = useState(!hasAnalysisData);
 
   const isMoveIn = data.handoverDirection === 'move-in';
-  const dynamicDeposit = computeDepositCheck(data.coldRent, data.depositAmount);
 
   const toggleClause = (clauseId: string) => {
     const current = data.strickenClauses || [];
@@ -139,7 +138,7 @@ export const Step4Validation = () => {
     { key: 'contractSigningDate', label: 'Datum Vertragsunterzeichnung' },
   ];
 
-  const hasLegalAnalysis = data.depositLegalCheck || data.smallRepairAnalysis || data.endRenovationAnalysis || dynamicDeposit;
+  const hasLegalAnalysis = !!(data.deepLegalClauses?.length);
   const filledCount = rows.filter(r => !!data[r.key]).length;
   const stricken = data.strickenClauses || [];
 
