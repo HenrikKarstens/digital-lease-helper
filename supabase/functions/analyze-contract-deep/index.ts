@@ -311,6 +311,13 @@ Antworte NUR mit einem JSON-Array. Jedes Element hat:
 - "strikeNote": Beschreibung der Streichung (falls vorhanden, sonst "")
 ${strikeContext}
 
+STATUS-REGELN (STRIKT EINHALTEN):
+- "SICHER" = Die Klausel ist rechtlich unbedenklich und wirksam. Auch wenn eine Klausel theoretisch ein Risiko birgt, aber im konkreten Fall INNERHALB der gesetzlichen Grenzen liegt, ist sie SICHER.
+  Beispiel: Ein Kündigungsverzicht von 2 Jahren ist SICHER (Grenze ist 4 Jahre).
+- "KRITISCH" = Die Klausel ist GRENZWERTIG und könnte je nach Auslegung problematisch sein. Nur verwenden wenn echte Zweifel bestehen.
+- "UNWIRKSAM" = Die Klausel verstößt eindeutig gegen Gesetz oder BGH-Rechtsprechung.
+WICHTIG: Wenn deine Begründung ergibt, dass die Klausel rechtlich in Ordnung ist, MUSS der Status "SICHER" sein – NICHT "KRITISCH"!
+
 KRITISCHE KLAUSELN – PFLICHTPRÜFUNG:
 1. §§ 15, 27 (Schönheitsreparaturen): Starre Fristen = UNWIRKSAM (BGH VIII ZR 308/02)
 2. § 16 (Kleinreparaturen): >110-120€/Einzelfall oder >8% Jahresmiete = UNWIRKSAM
@@ -318,7 +325,12 @@ KRITISCHE KLAUSELN – PFLICHTPRÜFUNG:
 4. Kaution >3 Nettokaltmieten = UNWIRKSAM (§ 551 Abs. 1 BGB)
 5. Generelles Tierhaltungsverbot = KRITISCH (BGH VIII ZR 168/12)
 
-HANDSCHRIFT: Individualvereinbarungen (§ 305b BGB) haben höchste Priorität.
+HANDSCHRIFTLICHE ERGÄNZUNGEN (§ 305b BGB – Individualvereinbarung):
+- Individualvereinbarungen haben HÖCHSTE PRIORITÄT und gehen AGB-Klauseln VOR.
+- Bei § 27 oder anderen Paragraphen mit handschriftlichen Notizen: Analysiere den INHALT der handschriftlichen Ergänzung detailliert.
+- Beschreibe in "handwrittenNote" WAS genau handschriftlich ergänzt wurde und welche rechtliche BEDEUTUNG das hat.
+- Beispiel: Wenn bei § 27 handschriftlich "Wohnung muss weiß gestrichen zurückgegeben werden" steht, analysiere ob diese Individualvereinbarung wirksam ist (Farbwahlklausel: BGH VIII ZR 198/10).
+- Leere handschriftliche Felder (nur Lücken zum Ausfüllen) sind KEINE relevanten Individualvereinbarungen.
 
 REGELN:
 - Analysiere JEDEN Paragrafen, auch rechtlich unbedenkliche.
