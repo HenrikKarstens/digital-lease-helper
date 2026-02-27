@@ -520,6 +520,41 @@ export const DeepParagraphCheck = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* ── Manual Strike Confirmation Dialog ────── */}
+      <AlertDialog open={!!manualStrikeClause} onOpenChange={(open) => { if (!open) setManualStrikeClause(null); }}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Strikethrough className="w-5 h-5" />
+              Klausel manuell streichen
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p className="text-sm">
+                Möchten Sie <strong>{manualStrikeClause?.paragraphRef}</strong> ({manualStrikeClause?.title}) manuell als gestrichen markieren?
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Die Klausel wird aus der rechtlichen Bewertung ausgeschlossen und im Zertifikat als „Vom Nutzer manuell verifizierte Streichung" dokumentiert.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (manualStrikeClause) {
+                  toggleClause(`deep-${manualStrikeClause.paragraphRef}`);
+                  setManualStrikeClause(null);
+                }
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              <Strikethrough className="w-4 h-4 mr-1" />
+              Ja, streichen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         {/* Pending confirmation banner */}
         {pendingCount > 0 && activeTab === 'clauses' && (
