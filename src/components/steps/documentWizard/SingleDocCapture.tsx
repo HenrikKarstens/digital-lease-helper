@@ -195,6 +195,27 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
 
   // Called by DocumentScanner when the user finishes scanning/uploading
   const handleScannerComplete = (scannedPages: PagePhoto[]) => {
+    // Store the scanned pages in capturedDocuments so DeepParagraphCheck can access them
+    const existingDocs = data.capturedDocuments || [];
+    const existingIdx = existingDocs.findIndex(d => d.type === docStep.id);
+    const newDoc = {
+      id: `${docStep.id}-${Date.now()}`,
+      type: docStep.id as 'main-contract' | 'amendment' | 'handover-protocol' | 'utility-bill',
+      pages: scannedPages.map(p => ({
+        id: p.id,
+        dataUrl: p.dataUrl,
+        mimeType: p.mimeType,
+      })),
+      analyzed: false,
+    };
+
+    const updatedDocs = existingIdx >= 0
+      ? existingDocs.map((d, i) => i === existingIdx ? newDoc : d)
+      : [...existingDocs, newDoc];
+
+    updateData({ capturedDocuments: updatedDocs });
+    console.log('[EstateTurn] capturedDocuments aktualisiert:', docStep.id, scannedPages.length, 'Seite(n)');
+
     runAnalysis(scannedPages);
   };
 
