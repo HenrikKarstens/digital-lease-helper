@@ -128,6 +128,25 @@ export const Step9Keys = () => {
           </Select>
         </div>
 
+        <AnimatePresence>
+          {newType === 'Sonstiger...' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-1.5 overflow-hidden"
+            >
+              <Label className="text-xs text-muted-foreground">Individuelle Bezeichnung *</Label>
+              <Input
+                placeholder="z. B. Fahrradkeller, Dachboden..."
+                value={newCustomName}
+                onChange={(e) => setNewCustomName(e.target.value)}
+                className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Anzahl *</Label>
@@ -150,7 +169,7 @@ export const Step9Keys = () => {
           </div>
         </div>
 
-        <Button onClick={addKey} disabled={!newType} className="w-full h-11 rounded-2xl font-semibold gap-2">
+        <Button onClick={addKey} disabled={!newType || (newType === 'Sonstiger...' && !newCustomName.trim())} className="w-full h-11 rounded-2xl font-semibold gap-2">
           <Plus className="w-4 h-4" />
           Hinzufügen
         </Button>
