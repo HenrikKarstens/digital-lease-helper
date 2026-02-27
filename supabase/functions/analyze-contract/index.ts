@@ -104,7 +104,7 @@ serve(async (req) => {
 - "depositSourceRef": Quellennachweis für die Kautionsklausel im Vertrag, z.B. "§ 6 Abs. 1 – Kaution". Nenne den genauen Paragrafen und Absatz aus dem Dokument. Falls nicht zuordbar: ""
 - "smallRepairSourceRef": Quellennachweis für die Kleinreparaturklausel, z.B. "§ 16 Abs. 6 – Kleinreparaturen". Nenne den genauen Paragrafen und Absatz. Falls nicht zuordbar: ""
 - "endRenovationSourceRef": Quellennachweis für die Renovierungs-/Schönheitsreparaturklausel, z.B. "§ 27 – Schönheitsreparaturen". Nenne den genauen Paragrafen und Absatz. Falls nicht zuordbar: ""
-- "confidence": Ein JSON-Objekt mit Feldnamen als Keys und Werten "high", "medium" oder "low" je nachdem, wie sicher die Extraktion war. Z.B. {"coldRent": "high", "roomCount": "low"}`;
+- "confidence": Ein JSON-Objekt mit den wichtigsten unsicheren Feldern und Werten "high", "medium" oder "low". Nur Felder mit "medium" oder "low" auflisten.`;
     } else if (documentType === 'amendment') {
       docTypeLabel = 'Miet-Nachtrag / Änderungsvereinbarung';
       extraFields = `
