@@ -190,25 +190,28 @@ REGELN:
 
 AUFGABE: Scanne JEDE Zeile und JEDEN Paragraphen auf diesem Bild nach visuellen Streichungsmerkmalen:
 - Horizontale Linien, die über Textblöcke gezogen wurden (handschriftlich oder gedruckt)
-- Diagonale Durchstreichungen über Absätze
+- Diagonale Durchstreichungen über Absätze oder einzelne Wörter/Sätze
 - X-förmige Markierungen über Textblöcken
 - Mehrere parallele Linien über Text
-- Einzelne durchgehende Linien durch einen gesamten Absatz
+- Einzelne durchgehende Linien durch einen gesamten Absatz oder Teilabschnitt
+- Teilweise Streichungen: Auch wenn nur ein TEIL eines Paragraphen durchgestrichen ist (z.B. nur Absatz 2 von § 8, oder nur Option a) in § 9), melde das als Streichung mit genauer Beschreibung welcher Teil betroffen ist
 
-Für JEDEN Paragraphen auf der Seite: Prüfe ob der Text visuell durchgestrichen ist.
+Für JEDEN Paragraphen auf der Seite: Prüfe ob der Text (ganz oder teilweise) visuell durchgestrichen ist.
 
 Antworte NUR mit einem JSON-Array. Jedes Element:
 {
-  "paragraphRef": "§ X" (der betroffene Paragraph),
+  "paragraphRef": "§ X Abs. Y" (der betroffene Paragraph, so genau wie möglich),
   "isStricken": true/false,
-  "strikeDescription": "Beschreibung der Streichung" (z.B. "Horizontale Linie durch gesamten Absatz", "Absatz 3 mit Kugelschreiber durchgestrichen"). Leer wenn isStricken=false.
+  "strikeDescription": "Beschreibung der Streichung" (z.B. "Horizontale Linie durch Absatz 2", "Option a) durchgestrichen, Option b) aktiv", "Gesamter Paragraph mit Kugelschreiber durchgestrichen"). Leer wenn isStricken=false.
   "confidence": "high" | "medium" | "low"
 }
 
 WICHTIG:
 - Liste JEDEN sichtbaren Paragraphen auf, auch wenn er NICHT durchgestrichen ist (dann isStricken=false).
-- Sei bei der Erkennung SEHR GENAU. Unterstrreichungen sind KEINE Streichungen.
+- Prüfe BESONDERS §§ 7-12 sehr genau – dort kommen häufig Teilstreichungen vor (z.B. bei Wahloptionen a/b).
+- Sei bei der Erkennung SEHR GENAU. Unterstreichungen sind KEINE Streichungen.
 - Achte besonders auf handschriftliche Linien über gedrucktem Text.
+- Auch TEILWEISE Streichungen innerhalb eines Paragraphen sind relevant!
 - Antworte NUR mit validem JSON-Array.`;
 
     // Run strike detection for each page individually for better accuracy
@@ -223,7 +226,7 @@ WICHTIG:
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'google/gemini-2.5-pro',
             messages: [{
               role: 'user',
               content: [
@@ -308,6 +311,13 @@ Antworte NUR mit einem JSON-Array. Jedes Element hat:
 - "strikeNote": Beschreibung der Streichung (falls vorhanden, sonst "")
 ${strikeContext}
 
+STATUS-REGELN (STRIKT EINHALTEN):
+- "SICHER" = Die Klausel ist rechtlich unbedenklich und wirksam. Auch wenn eine Klausel theoretisch ein Risiko birgt, aber im konkreten Fall INNERHALB der gesetzlichen Grenzen liegt, ist sie SICHER.
+  Beispiel: Ein Kündigungsverzicht von 2 Jahren ist SICHER (Grenze ist 4 Jahre).
+- "KRITISCH" = Die Klausel ist GRENZWERTIG und könnte je nach Auslegung problematisch sein. Nur verwenden wenn echte Zweifel bestehen.
+- "UNWIRKSAM" = Die Klausel verstößt eindeutig gegen Gesetz oder BGH-Rechtsprechung.
+WICHTIG: Wenn deine Begründung ergibt, dass die Klausel rechtlich in Ordnung ist, MUSS der Status "SICHER" sein – NICHT "KRITISCH"!
+
 KRITISCHE KLAUSELN – PFLICHTPRÜFUNG:
 1. §§ 15, 27 (Schönheitsreparaturen): Starre Fristen = UNWIRKSAM (BGH VIII ZR 308/02)
 2. § 16 (Kleinreparaturen): >110-120€/Einzelfall oder >8% Jahresmiete = UNWIRKSAM
@@ -315,7 +325,12 @@ KRITISCHE KLAUSELN – PFLICHTPRÜFUNG:
 4. Kaution >3 Nettokaltmieten = UNWIRKSAM (§ 551 Abs. 1 BGB)
 5. Generelles Tierhaltungsverbot = KRITISCH (BGH VIII ZR 168/12)
 
-HANDSCHRIFT: Individualvereinbarungen (§ 305b BGB) haben höchste Priorität.
+HANDSCHRIFTLICHE ERGÄNZUNGEN (§ 305b BGB – Individualvereinbarung):
+- Individualvereinbarungen haben HÖCHSTE PRIORITÄT und gehen AGB-Klauseln VOR.
+- Bei § 27 oder anderen Paragraphen mit handschriftlichen Notizen: Analysiere den INHALT der handschriftlichen Ergänzung detailliert.
+- Beschreibe in "handwrittenNote" WAS genau handschriftlich ergänzt wurde und welche rechtliche BEDEUTUNG das hat.
+- Beispiel: Wenn bei § 27 handschriftlich "Wohnung muss weiß gestrichen zurückgegeben werden" steht, analysiere ob diese Individualvereinbarung wirksam ist (Farbwahlklausel: BGH VIII ZR 198/10).
+- Leere handschriftliche Felder (nur Lücken zum Ausfüllen) sind KEINE relevanten Individualvereinbarungen.
 
 REGELN:
 - Analysiere JEDEN Paragrafen, auch rechtlich unbedenkliche.
