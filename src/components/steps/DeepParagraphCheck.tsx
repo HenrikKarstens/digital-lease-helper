@@ -204,6 +204,7 @@ const FILTER_OPTIONS = [
   { key: 'KRITISCH', label: 'Kritisch' },
   { key: 'SICHER', label: 'Sicher' },
   { key: 'handwritten', label: '✍ Handschrift' },
+  { key: 'stricken', label: '✕ Gestrichen' },
 ] as const;
 
 type FilterKey = typeof FILTER_OPTIONS[number]['key'];
@@ -338,17 +339,23 @@ export const DeepParagraphCheck = () => {
     );
   };
 
+  const isClauseStricken = (c: DeepClause) => stricken.includes(`deep-${c.paragraphRef}`);
+
   const filteredClauses = clauses.filter(c => {
+    if (filter === 'stricken') return isClauseStricken(c);
     if (filter === 'all') return true;
     if (filter === 'handwritten') return c.isHandwritten;
     return c.status === filter;
   });
 
+  // Exclude stricken clauses from legal stats
+  const activeClauses = clauses.filter(c => !isClauseStricken(c));
+  const strickenCount = clauses.length - activeClauses.length;
   const stats = {
-    safe: clauses.filter(c => c.status === 'SICHER').length,
-    critical: clauses.filter(c => c.status === 'KRITISCH').length,
-    invalid: clauses.filter(c => c.status === 'UNWIRKSAM').length,
-    handwritten: clauses.filter(c => c.isHandwritten).length,
+    safe: activeClauses.filter(c => c.status === 'SICHER').length,
+    critical: activeClauses.filter(c => c.status === 'KRITISCH').length,
+    invalid: activeClauses.filter(c => c.status === 'UNWIRKSAM').length,
+    handwritten: activeClauses.filter(c => c.isHandwritten).length,
   };
 
   if (!hasDocs && clauses.length === 0) return null;
@@ -406,13 +413,33 @@ export const DeepParagraphCheck = () => {
         {/* ── Clauses Tab ──────────────────────────────────────────── */}
         {activeTab === 'clauses' && (
           <>
-            {/* Stats */}
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                <Scale className="w-3.5 h-3.5" />
-                Sequenzieller Paragrafenscan
-              </h3>
-              <div className="flex gap-1 flex-wrap justify-end">
+            {/* Progress & Stats */}
+            <div className="mb-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <Scale className="w-3.5 h-3.5" />
+                  Paragrafenscan
+                </h3>
+                <span className="text-[10px] font-medium text-muted-foreground">
+                  {activeClauses.length}/{clauses.length} aktiv geprüft
+                </span>
+              </div>
+              {/* Progress bar */}
+              <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden flex">
+                {stats.safe > 0 && (
+                  <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(stats.safe / clauses.length) * 100}%` }} />
+                )}
+                {stats.critical > 0 && (
+                  <div className="h-full bg-amber-500 transition-all" style={{ width: `${(stats.critical / clauses.length) * 100}%` }} />
+                )}
+                {stats.invalid > 0 && (
+                  <div className="h-full bg-red-500 transition-all" style={{ width: `${(stats.invalid / clauses.length) * 100}%` }} />
+                )}
+                {strickenCount > 0 && (
+                  <div className="h-full bg-muted-foreground/30 transition-all" style={{ width: `${(strickenCount / clauses.length) * 100}%` }} />
+                )}
+              </div>
+              <div className="flex gap-1 flex-wrap">
                 {stats.invalid > 0 && (
                   <span className="text-[9px] font-bold bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded-md">
                     {stats.invalid}× Unwirksam
@@ -427,6 +454,11 @@ export const DeepParagraphCheck = () => {
                   <span className="text-[9px] font-bold bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
                     <PenTool className="w-2 h-2" />
                     {stats.handwritten}× Handschrift
+                  </span>
+                )}
+                {strickenCount > 0 && (
+                  <span className="text-[9px] font-bold bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
+                    {strickenCount}× Gestrichen
                   </span>
                 )}
               </div>
