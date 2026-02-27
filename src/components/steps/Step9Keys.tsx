@@ -31,14 +31,17 @@ export const Step9Keys = () => {
 
   const addKey = () => {
     if (!newType) return;
+    const isCustom = newType === 'Sonstiger...';
+    if (isCustom && !newCustomName.trim()) return;
     const entry = {
       id: crypto.randomUUID(),
-      type: newType,
+      type: isCustom ? newCustomName.trim() : newType,
       count: parseInt(newCount) || 1,
       note: newNote,
     };
     updateData({ keyEntries: [...keys, entry] });
     setNewType('');
+    setNewCustomName('');
     setNewCount('1');
     setNewNote('');
   };
