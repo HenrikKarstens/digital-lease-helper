@@ -118,11 +118,23 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     }
   };
 
+  /** isDateValid: true only when all cash-date constraints pass */
+  const isDateValid = (() => {
+    if (!isCash) return true; // non-cash types don't need date validation
+    if (missingPhase3Dates) return false;
+    if (!isInstallments) {
+      if (!data.depositPaymentDate) return false;
+      return validateDate(data.depositPaymentDate, '') === null;
+    }
+    // installments: all 3 dates must be present and valid
+    return installmentDates.every(d => d && validateDate(d, '') === null);
+  })();
+
   /** Compute whether the Weiter button should be disabled */
   const hasBlockingErrors = (() => {
     if (Object.keys(errors).length > 0) return true;
-    if (isCash && missingPhase3Dates) return true;
-    if (isCash && !isInstallments && !data.depositPaymentDate) return false; // allow click to show "required" error
+    if (isCash && !isDateValid) return true;
+    if (isGuarantee && !data.guaranteeNumber?.trim()) return false; // allow click to show error
     return false;
   })();
 
@@ -246,31 +258,11 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
             <h3 className="font-semibold text-sm">Zinsen (§ 551 Abs. 3 BGB)</h3>
           </div>
 
-          {/* Phase 3 cross-reference */}
-          {missingPhase3Dates ? (
+          {/* Phase 3 missing dates warning */}
+          {missingPhase3Dates && (
             <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-xs leading-relaxed text-destructive">
               <AlertCircle className="w-3.5 h-3.5 inline mr-1" />
               <strong>Daten aus Phase 3 fehlen:</strong> Bitte tragen Sie zuerst den Einzugstermin oder das Datum der Vertragsunterzeichnung im Daten-Check ein, bevor Sie hier fortfahren.
-            </div>
-          ) : (
-            <div className="bg-secondary/40 rounded-xl p-3 text-xs leading-relaxed space-y-1">
-              <div className="flex items-center gap-1.5 text-foreground/70">
-                <Info className="w-3.5 h-3.5 text-primary shrink-0" />
-                <span className="font-semibold">Abgleich mit Phase 3 (Daten-Check):</span>
-              </div>
-              {signingDate && (
-                <div className="ml-5 text-foreground/60">📝 Vertragsunterzeichnung: <span className="font-medium text-foreground/80">{formatDE(signingDate)}</span></div>
-              )}
-              {moveInDate && (
-                <div className="ml-5 text-foreground/60">🏠 Einzugstermin: <span className="font-medium text-foreground/80">{formatDE(moveInDate)}</span></div>
-              )}
-              {moveOutDate && (
-                <div className="ml-5 text-foreground/60">📦 Auszugstermin: <span className="font-medium text-foreground/80">{formatDE(moveOutDate)}</span></div>
-              )}
-              <div className="mt-1.5 ml-5 bg-primary/5 border border-primary/15 rounded-lg px-2.5 py-1.5 text-foreground/60">
-                <strong className="text-foreground/70">Gültigkeitsregel:</strong> Kautionszahlung muss
-                {lowerBound ? ` nach dem ${formatDE(lowerBound)}` : ''} und vor dem {formatDE(today)} (heute) liegen.
-              </div>
             </div>
           )}
           {errorMsg('_phase3')}
