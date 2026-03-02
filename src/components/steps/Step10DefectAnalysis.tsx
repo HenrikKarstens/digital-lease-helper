@@ -107,8 +107,14 @@ export const Step10DefectAnalysis = () => {
     setExpandedId(prev => prev === id ? null : id);
   };
 
-  // ── 14-Tage-Regel für Anschlussvermietung (§ 281 BGB) ──
+  // ── 7-Tage-Regel für sofortige Anschlussvermietung (§ 281 Abs. 2 BGB) ──
   const REFERENCE_TODAY = '2026-03-02';
+  const MAX_IMMEDIATE_RELETTING_DAYS = 7;
+  const MAX_RELETTING_DATE = (() => {
+    const d = new Date(REFERENCE_TODAY);
+    d.setDate(d.getDate() + MAX_IMMEDIATE_RELETTING_DAYS);
+    return d.toISOString().split('T')[0];
+  })();
 
   // daysUntilNewTenant: Differenz zwischen Neueinzugsdatum und heute
   const daysUntilNewTenant: number | null = (() => {
@@ -116,21 +122,18 @@ export const Step10DefectAnalysis = () => {
     const todayMs = new Date(REFERENCE_TODAY).getTime();
     const targetMs = new Date(data.relettingDate).getTime();
     if (isNaN(targetMs)) return null;
-    return Math.round((targetMs - todayMs) / (86400000));
+    return Math.round((targetMs - todayMs) / 86400000);
   })();
 
   const hasRelettingDate = Boolean(data.relettingDate) && daysUntilNewTenant !== null;
-  const isDateInRange = hasRelettingDate && daysUntilNewTenant! >= 0 && daysUntilNewTenant! <= 14;
-  const isDateTooFar = hasRelettingDate && daysUntilNewTenant! > 14;
+  const isDateInRange = hasRelettingDate && daysUntilNewTenant! >= 0 && daysUntilNewTenant! <= MAX_IMMEDIATE_RELETTING_DAYS;
+  const isDateTooFar = hasRelettingDate && daysUntilNewTenant! > MAX_IMMEDIATE_RELETTING_DAYS;
   const isDateBeforeToday = hasRelettingDate && daysUntilNewTenant! < 0;
 
-  // HARTE REGEL: Toggle MUSS disabled sein wenn > 14 Tage oder kein Datum
+  // Harte Regel: Toggle nur aktivierbar, wenn Datum im 7-Tage-Fenster liegt
   const toggleDisabled = !isDateInRange;
-  // Effektiver Wert: nur true wenn Toggle aktiv UND Datum ≤ 14 Tage
   const effectiveReletting = data.immediateReletting && isDateInRange;
 
-  // AUTO-KORREKTUR: Wenn Toggle true aber Datum > 14 Tage → sofort auf false setzen
-  // useEffect vermeidet Render-Loop
   React.useEffect(() => {
     if (data.immediateReletting && hasRelettingDate && !isDateInRange) {
       updateData({ immediateReletting: false });
@@ -323,6 +326,7 @@ export const Step10DefectAnalysis = () => {
                 type="date"
                 value={data.relettingDate}
                 min={REFERENCE_TODAY}
+                max={MAX_RELETTING_DATE}
                 onChange={e => {
                   const val = e.target.value;
                   if (!val) {
@@ -330,7 +334,7 @@ export const Step10DefectAnalysis = () => {
                     return;
                   }
                   const diff = Math.round((new Date(val).getTime() - new Date(REFERENCE_TODAY).getTime()) / (1000 * 60 * 60 * 24));
-                  const inRange = diff >= 0 && diff <= 14;
+                  const inRange = diff >= 0 && diff <= MAX_IMMEDIATE_RELETTING_DAYS;
                   updateData({ relettingDate: val, immediateReletting: inRange ? data.immediateReletting : false });
                 }}
                 className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm max-w-[220px] ${(isDateBeforeToday || isDateTooFar) ? 'ring-2 ring-destructive/50 border-destructive' : ''}`}
@@ -342,7 +346,7 @@ export const Step10DefectAnalysis = () => {
               )}
             </div>
 
-            {/* Step 2: Toggle – only enabled if ≤ 14 days */}
+            {/* Step 2: Toggle – only enabled if ≤ 7 days */}
             <div className={`flex items-start gap-3 rounded-xl p-3 border transition-all ${
               !toggleDisabled
                 ? 'border-border/30 bg-secondary/20' 
@@ -365,7 +369,7 @@ export const Step10DefectAnalysis = () => {
                   Sofortige Anschlussvermietung (§ 281 Abs. 2 BGB)
                 </label>
                 <p className="text-[10px] text-muted-foreground mt-0.5">
-                  Nur aktivierbar bei Neueinzug innerhalb von 14 Tagen
+                  Nur aktivierbar bei Neueinzug innerhalb von 7 Tagen (02.03.2026–09.03.2026)
                 </p>
               </div>
             </div>
@@ -378,9 +382,11 @@ export const Step10DefectAnalysis = () => {
                 <div className="text-xs leading-relaxed">
                   <p className="font-semibold text-primary">Nachbesserungsfrist erforderlich (§ 281 Abs. 1 BGB)</p>
                   <p className="text-muted-foreground mt-1">
-                    Hinweis: Da der Einzug erst in <strong>{daysUntilNewTenant} Tagen</strong> erfolgt, hat der Mieter 
-                    gesetzlichen Anspruch auf eine Nachbesserungsfrist. Sofortiger Abzug unzulässig.
+                    Hinweis: Da der Einzug erst in über 7 Tagen erfolgt, hat der Mieter gesetzlichen Anspruch auf eine Nachbesserungsfrist. Sofortiger Abzug unzulässig.
                   </p>
+                </div>
+              </motion.div>
+            )}
                 </div>
               </motion.div>
             )}
