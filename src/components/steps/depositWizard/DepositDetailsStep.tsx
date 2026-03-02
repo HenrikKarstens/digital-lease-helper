@@ -38,10 +38,18 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     return getWeightedAverageRate(start, new Date());
   })();
 
-  const today = new Date().toISOString().split('T')[0];
+  // Use local date to avoid UTC issues
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const earliestDate = data.contractStart || data.contractSigningDate || '';
   const earliestLabel = data.contractStart ? 'Einzugstermin' : 'Vertragsunterzeichnung';
   const missingPhase3Dates = !data.contractStart && !data.contractSigningDate;
+
+  const formatDE = (dateStr: string) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}.${m}.${y}`;
+  };
 
   const handleNext = () => {
     const newErrors: Record<string, string> = {};
@@ -55,11 +63,11 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     if (isCash) {
       const validateDate = (d: string, key: string, label: string) => {
         if (earliestDate && d < earliestDate) {
-          newErrors[key] = `${label} kann nicht vor dem ${earliestLabel} (${earliestDate}) liegen.`;
+          newErrors[key] = `${label} kann nicht vor dem ${earliestLabel} (${formatDE(earliestDate)}) liegen.`;
         } else if (d > today) {
-          newErrors[key] = `${label} kann nicht in der Zukunft liegen.`;
+          newErrors[key] = `${label} kann nicht in der Zukunft liegen (heute: ${formatDE(today)}).`;
         } else if (data.contractEnd && d >= data.contractEnd) {
-          newErrors[key] = `${label} muss vor dem Auszugstermin liegen.`;
+          newErrors[key] = `${label} muss vor dem Auszugstermin (${formatDE(data.contractEnd)}) liegen.`;
         }
       };
 
@@ -184,15 +192,15 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                 <span className="font-semibold">Referenzdaten aus Phase 3 (Daten-Check):</span>
               </div>
               {data.contractStart && (
-                <div className="ml-5 text-foreground/60">Einzugstermin: <span className="font-medium text-foreground/80">{data.contractStart}</span></div>
+                <div className="ml-5 text-foreground/60">Einzugstermin: <span className="font-medium text-foreground/80">{formatDE(data.contractStart)}</span></div>
               )}
               {data.contractSigningDate && (
-                <div className="ml-5 text-foreground/60">Vertragsunterzeichnung: <span className="font-medium text-foreground/80">{data.contractSigningDate}</span></div>
+                <div className="ml-5 text-foreground/60">Vertragsunterzeichnung: <span className="font-medium text-foreground/80">{formatDE(data.contractSigningDate)}</span></div>
               )}
               {data.contractEnd && (
-                <div className="ml-5 text-foreground/60">Auszugstermin: <span className="font-medium text-foreground/80">{data.contractEnd}</span></div>
+                <div className="ml-5 text-foreground/60">Auszugstermin: <span className="font-medium text-foreground/80">{formatDE(data.contractEnd)}</span></div>
               )}
-              <div className="ml-5 text-foreground/50 italic">Kautionszahlung muss zwischen {earliestLabel} und heute liegen.</div>
+              <div className="ml-5 text-foreground/50 italic">Kautionszahlung muss zwischen {earliestLabel} ({formatDE(earliestDate)}) und heute ({formatDE(today)}) liegen.</div>
             </div>
           )}
           {errorMsg('_phase3')}
