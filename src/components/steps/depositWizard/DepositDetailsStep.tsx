@@ -6,10 +6,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
-import {
-  calcCompoundInterest, calcInstallmentInterest, getWeightedAverageRate,
-  getBundesbankRate,
-} from './utils';
+import { BoundedDatePicker } from './BoundedDatePicker';
 
 interface Props {
   onNext: () => void;
@@ -342,13 +339,13 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                 Kautionszahlung am <span className="text-destructive">*</span>
                 {lowerBound && <span className="ml-1 text-foreground/40">(frühestens {formatDE(lowerBound)})</span>}
               </label>
-              <Input
-                type="date"
+              <BoundedDatePicker
                 value={data.depositPaymentDate}
-                min={lowerBound || undefined}
-                max={today}
-                onChange={e => handleDateChange(e.target.value)}
-                className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm ${errors.depositPaymentDate ? 'ring-2 ring-destructive/50 border-destructive' : ''}`}
+                minDate={lowerBound}
+                maxDate={today}
+                onChange={handleDateChange}
+                placeholder="Kautionsdatum wählen"
+                hasError={!!errors.depositPaymentDate}
               />
               {errorMsg('depositPaymentDate')}
               {singleResult && singleResult.interest > 0 && !errors.depositPaymentDate && isDateValid && (
@@ -383,13 +380,13 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                         <span className="text-xs font-medium text-accent">+ {rateData.interest.toFixed(2)} € Zinsen</span>
                       )}
                     </div>
-                    <Input
-                      type="date"
+                    <BoundedDatePicker
                       value={installmentDates[i]}
-                      min={lowerBound || undefined}
-                      max={today}
-                      onChange={e => handleInstallmentDateChange(i, e.target.value)}
-                      className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm ${errors[errKey] ? 'ring-2 ring-destructive/50' : ''}`}
+                      minDate={lowerBound}
+                      maxDate={today}
+                      onChange={(value) => handleInstallmentDateChange(i, value)}
+                      placeholder={`Datum für ${i + 1}. Rate wählen`}
+                      hasError={!!errors[errKey]}
                     />
                     {errorMsg(errKey)}
                     {rateData && rateData.days > 0 && rateData.breakdown && !errors[errKey] && isDateValid && (
