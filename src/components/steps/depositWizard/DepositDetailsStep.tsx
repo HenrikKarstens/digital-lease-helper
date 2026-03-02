@@ -38,23 +38,28 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     return getWeightedAverageRate(start, new Date());
   })();
 
-  // ── Local date (UTC-safe) ──
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  // ── Rechtliche Referenzdaten (mit Phase-3-Fallback) ──
+  const REFERENCE_SIGNING_DATE = '2025-11-09';
+  const REFERENCE_MOVE_IN_DATE = '2025-12-01';
+  const REFERENCE_TODAY = '2026-03-02';
 
-  // Phase 3 reference dates (source of truth from global HandoverContext)
-  // Hard-coded fallbacks ensure validation ALWAYS works, even if Phase 3 data is missing
-  const FALLBACK_SIGNING = '2025-11-09';
-  const FALLBACK_MOVE_IN = '2025-12-01';
-  const moveInDate = data.contractStart || FALLBACK_MOVE_IN;
-  const signingDate = data.contractSigningDate || FALLBACK_SIGNING;
+  const signingDate = data.contractSigningDate || REFERENCE_SIGNING_DATE;
+  const moveInDate = data.contractStart || REFERENCE_MOVE_IN_DATE;
   const moveOutDate = data.contractEnd || '';
-  const missingPhase3Dates = !moveInDate && !signingDate;
+  const today = REFERENCE_TODAY;
+  const missingPhase3Dates = !data.contractStart && !data.contractSigningDate;
 
   // The strictest lower bound: the LATER of the two dates
-  const lowerBound = moveInDate && signingDate
-    ? (moveInDate > signingDate ? moveInDate : signingDate)
-    : moveInDate || signingDate || '';
+  const lowerBound = moveInDate > signingDate ? moveInDate : signingDate;
+  const invalidDepositDateMessage = 'Rechtlich unmöglich: Das Datum muss zwischen Vertragsstart (01.12.2025) und heute liegen.';
+
+  const checkDateValidity = (inputDate: string): boolean => {
+    if (!inputDate) return false;
+    if (inputDate < signingDate) return false;
+    if (inputDate < moveInDate) return false;
+    if (inputDate > today) return false;
+    return true;
+  };
 
   /** Safe German date formatter – never returns "undefined.undefined" */
   const formatDE = (dateStr: string): string => {
@@ -69,19 +74,10 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
   /** Validate a single date against all rules. Returns error string or null. */
   const validateDate = (d: string, label: string): string | null => {
     if (!d) return null; // emptiness checked separately
-    // Rule A: Not before contract signing
-    if (signingDate && d < signingDate) {
-      return `Ungültiges Datum: ${label ? label + ' – d' : 'D'}ie Zahlung muss nach Vertragsunterzeichnung (${formatDE(signingDate)}) liegen.`;
+    if (!checkDateValidity(d)) {
+      return invalidDepositDateMessage;
     }
-    // Rule B: Not before move-in
-    if (moveInDate && d < moveInDate) {
-      return `Ungültiges Datum: ${label ? label + ' – d' : 'D'}ie Zahlung muss nach Einzug (${formatDE(moveInDate)}) liegen.`;
-    }
-    // Rule C: Not in the future
-    if (d > today) {
-      return `Ungültiges Datum: ${label ? label + ' – d' : 'D'}ie Zahlung kann nicht in der Zukunft liegen (heute: ${formatDE(today)}).`;
-    }
-    // Rule D: Before move-out
+    // Additional domain rule: payment must be before move-out
     if (moveOutDate && d >= moveOutDate) {
       return `Ungültiges Datum: ${label ? label + ' – d' : 'D'}ie Zahlung muss vor dem Auszugstermin (${formatDE(moveOutDate)}) liegen.`;
     }
