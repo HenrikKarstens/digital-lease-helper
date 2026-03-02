@@ -42,7 +42,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     const newErrors: Record<string, string> = {};
 
     const today = new Date().toISOString().split('T')[0];
-    const earliestDate = data.contractStart || data.contractSignDate || '';
+    const earliestDate = data.contractStart || data.contractSigningDate || '';
 
     if (isCash) {
       const validateDate = (d: string, key: string, label: string) => {
