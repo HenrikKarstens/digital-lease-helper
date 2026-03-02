@@ -63,11 +63,11 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     if (isCash) {
       const validateDate = (d: string, key: string, label: string) => {
         if (earliestDate && d < earliestDate) {
-          newErrors[key] = `${label} kann nicht vor dem ${earliestLabel} (${earliestDate}) liegen.`;
+          newErrors[key] = `${label} kann nicht vor dem ${earliestLabel} (${formatDE(earliestDate)}) liegen.`;
         } else if (d > today) {
-          newErrors[key] = `${label} kann nicht in der Zukunft liegen.`;
+          newErrors[key] = `${label} kann nicht in der Zukunft liegen (heute: ${formatDE(today)}).`;
         } else if (data.contractEnd && d >= data.contractEnd) {
-          newErrors[key] = `${label} muss vor dem Auszugstermin liegen.`;
+          newErrors[key] = `${label} muss vor dem Auszugstermin (${formatDE(data.contractEnd)}) liegen.`;
         }
       };
 
