@@ -135,7 +135,7 @@ export const Step10DefectAnalysis = () => {
   const handleContinue = () => {
     if (isRelettingBlocked) return;
     const deadline = addWeeksToDate(2);
-    const isReletting = data.immediateReletting;
+    const isReletting = effectiveReletting;
     const updatedFindings = data.findings.map(f => ({
       ...f,
       legalClassification: f.recommendedWithholding > 0
