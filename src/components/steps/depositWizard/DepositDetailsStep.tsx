@@ -42,7 +42,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-  // Phase 3 reference dates
+  // Phase 3 reference dates (source of truth from global HandoverContext)
   const moveInDate = data.contractStart || '';
   const signingDate = data.contractSigningDate || '';
   const moveOutDate = data.contractEnd || '';
@@ -53,6 +53,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     ? (moveInDate > signingDate ? moveInDate : signingDate)
     : moveInDate || signingDate || '';
 
+  /** Safe German date formatter – never returns "undefined.undefined" */
   const formatDE = (dateStr: string): string => {
     if (!dateStr || typeof dateStr !== 'string') return '–';
     const parts = dateStr.split('-');
@@ -62,22 +63,68 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     return `${d}.${m}.${y}`;
   };
 
-  // Validate against ALL three rules independently
-  const buildConstraintError = (label: string, d: string): string | null => {
+  /** Validate a single date against all rules. Returns error string or null. */
+  const validateDate = (d: string, label: string): string | null => {
+    if (!d) return null; // emptiness checked separately
+    // Rule A: Not before contract signing
     if (signingDate && d < signingDate) {
-      return `Ungültiges Datum: ${label} kann logischerweise erst nach Vertragsunterzeichnung (${formatDE(signingDate)}) erfolgt sein.`;
+      return `Ungültiges Datum: ${label} kann rechtlich erst nach Vertragsunterzeichnung (${formatDE(signingDate)}) erfolgt sein.`;
     }
+    // Rule B: Not before move-in
     if (moveInDate && d < moveInDate) {
-      return `Ungültiges Datum: ${label} kann logischerweise erst nach Einzug (${formatDE(moveInDate)}) erfolgt sein.`;
+      return `Ungültiges Datum: ${label} kann rechtlich erst nach Einzug (${formatDE(moveInDate)}) erfolgt sein.`;
     }
+    // Rule C: Not in the future
     if (d > today) {
       return `Ungültiges Datum: ${label} kann nicht in der Zukunft liegen (heute: ${formatDE(today)}).`;
     }
+    // Rule D: Before move-out
     if (moveOutDate && d >= moveOutDate) {
       return `Ungültiges Datum: ${label} muss vor dem Auszugstermin (${formatDE(moveOutDate)}) liegen.`;
     }
     return null;
   };
+
+  /** Live onChange handler for single payment date */
+  const handleDateChange = (value: string) => {
+    updateData({ depositPaymentDate: value });
+    if (!value) {
+      setErrors(prev => { const { depositPaymentDate, ...rest } = prev; return rest; });
+      return;
+    }
+    const err = validateDate(value, 'Die Kautionszahlung');
+    if (err) {
+      setErrors(prev => ({ ...prev, depositPaymentDate: err }));
+    } else {
+      setErrors(prev => { const { depositPaymentDate, ...rest } = prev; return rest; });
+    }
+  };
+
+  /** Live onChange handler for installment dates */
+  const handleInstallmentDateChange = (index: number, value: string) => {
+    const newDates = [...installmentDates] as [string, string, string];
+    newDates[index] = value;
+    updateData({ depositInstallmentDates: newDates });
+    const key = `installment_${index}`;
+    if (!value) {
+      setErrors(prev => { const copy = { ...prev }; delete copy[key]; return copy; });
+      return;
+    }
+    const err = validateDate(value, `${index + 1}. Rate`);
+    if (err) {
+      setErrors(prev => ({ ...prev, [key]: err }));
+    } else {
+      setErrors(prev => { const copy = { ...prev }; delete copy[key]; return copy; });
+    }
+  };
+
+  /** Compute whether the Weiter button should be disabled */
+  const hasBlockingErrors = (() => {
+    if (Object.keys(errors).length > 0) return true;
+    if (isCash && missingPhase3Dates) return true;
+    if (isCash && !isInstallments && !data.depositPaymentDate) return false; // allow click to show "required" error
+    return false;
+  })();
 
   const handleNext = () => {
     const newErrors: Record<string, string> = {};
@@ -93,7 +140,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
         if (!data.depositPaymentDate) {
           newErrors.depositPaymentDate = 'Bitte geben Sie das Datum der Kautionszahlung an.';
         } else {
-          const err = buildConstraintError('Die Kautionszahlung', data.depositPaymentDate);
+          const err = validateDate(data.depositPaymentDate, 'Die Kautionszahlung');
           if (err) newErrors.depositPaymentDate = err;
         }
       } else {
@@ -101,7 +148,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
           if (!d) {
             newErrors[`installment_${i}`] = `Datum für ${i + 1}. Rate fehlt.`;
           } else {
-            const err = buildConstraintError(`${i + 1}. Rate`, d);
+            const err = validateDate(d, `${i + 1}. Rate`);
             if (err) newErrors[`installment_${i}`] = err;
           }
         });
@@ -209,18 +256,21 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
             <div className="bg-secondary/40 rounded-xl p-3 text-xs leading-relaxed space-y-1">
               <div className="flex items-center gap-1.5 text-foreground/70">
                 <Info className="w-3.5 h-3.5 text-primary shrink-0" />
-                <span className="font-semibold">Referenzdaten aus Phase 3 (Daten-Check):</span>
+                <span className="font-semibold">Abgleich mit Phase 3 (Daten-Check):</span>
               </div>
-              {data.contractStart && (
-                <div className="ml-5 text-foreground/60">Einzugstermin: <span className="font-medium text-foreground/80">{formatDE(data.contractStart)}</span></div>
+              {signingDate && (
+                <div className="ml-5 text-foreground/60">📝 Vertragsunterzeichnung: <span className="font-medium text-foreground/80">{formatDE(signingDate)}</span></div>
               )}
-              {data.contractSigningDate && (
-                <div className="ml-5 text-foreground/60">Vertragsunterzeichnung: <span className="font-medium text-foreground/80">{formatDE(data.contractSigningDate)}</span></div>
+              {moveInDate && (
+                <div className="ml-5 text-foreground/60">🏠 Einzugstermin: <span className="font-medium text-foreground/80">{formatDE(moveInDate)}</span></div>
               )}
-              {data.contractEnd && (
-                <div className="ml-5 text-foreground/60">Auszugstermin: <span className="font-medium text-foreground/80">{formatDE(data.contractEnd)}</span></div>
+              {moveOutDate && (
+                <div className="ml-5 text-foreground/60">📦 Auszugstermin: <span className="font-medium text-foreground/80">{formatDE(moveOutDate)}</span></div>
               )}
-              <div className="ml-5 text-foreground/50 italic">Kautionszahlung muss nach {signingDate ? `Vertragsunterzeichnung (${formatDE(signingDate)})` : ''}{signingDate && moveInDate ? ' und ' : ''}{moveInDate ? `Einzug (${formatDE(moveInDate)})` : ''} liegen, aber nicht nach heute ({formatDE(today)}).</div>
+              <div className="mt-1.5 ml-5 bg-primary/5 border border-primary/15 rounded-lg px-2.5 py-1.5 text-foreground/60">
+                <strong className="text-foreground/70">Gültigkeitsregel:</strong> Kautionszahlung muss
+                {lowerBound ? ` nach dem ${formatDE(lowerBound)}` : ''} und vor dem {formatDE(today)} (heute) liegen.
+              </div>
             </div>
           )}
           {errorMsg('_phase3')}
@@ -247,8 +297,8 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                   const d0 = new Date(start);
                   const d1 = new Date(start); d1.setMonth(d1.getMonth() + 1);
                   const d2 = new Date(start); d2.setMonth(d2.getMonth() + 2);
-                  const fmt = (d: Date) => d.toISOString().split('T')[0];
-                  dates = [fmt(d0), fmt(d1), fmt(d2)];
+                  const fmtLocal = (dt: Date) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+                  dates = [fmtLocal(d0), fmtLocal(d1), fmtLocal(d2)];
                   updateData({ depositPaymentMode: 'installments', depositInstallmentDates: dates });
                 } else {
                   updateData({ depositPaymentMode: 'installments' });
@@ -277,18 +327,20 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
           {/* Einmalzahlung */}
           {!isInstallments && (
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Kautionszahlung am <span className="text-destructive">*</span></label>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Kautionszahlung am <span className="text-destructive">*</span>
+                {lowerBound && <span className="ml-1 text-foreground/40">(frühestens {formatDE(lowerBound)})</span>}
+              </label>
               <Input
                 type="date"
                 value={data.depositPaymentDate}
-                onChange={e => {
-                  updateData({ depositPaymentDate: e.target.value });
-                  if (errors.depositPaymentDate) setErrors(prev => { const { depositPaymentDate, ...rest } = prev; return rest; });
-                }}
-                className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm ${errors.depositPaymentDate ? 'ring-2 ring-destructive/50' : ''}`}
+                min={lowerBound || undefined}
+                max={today}
+                onChange={e => handleDateChange(e.target.value)}
+                className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm ${errors.depositPaymentDate ? 'ring-2 ring-destructive/50 border-destructive' : ''}`}
               />
               {errorMsg('depositPaymentDate')}
-              {singleResult && singleResult.interest > 0 && (
+              {singleResult && singleResult.interest > 0 && !errors.depositPaymentDate && (
                 <div className="mt-2 space-y-1">
                   {singleResult.breakdown.map((b, i) => (
                     <div key={i} className="flex items-center gap-2 bg-accent/10 rounded-xl px-3 py-1.5 text-xs text-accent">
@@ -311,27 +363,25 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
               {[0, 1, 2].map(i => {
                 const rateAmount = deposit / 3;
                 const rateData = installmentResult?.perRate[i];
+                const errKey = `installment_${i}`;
                 return (
-                  <div key={i} className={`border rounded-xl p-3 space-y-1.5 ${errors[`installment_${i}`] ? 'border-destructive/50' : 'border-border/30'}`}>
+                  <div key={i} className={`border rounded-xl p-3 space-y-1.5 ${errors[errKey] ? 'border-destructive/50' : 'border-border/30'}`}>
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-semibold">{i + 1}. Rate: {rateAmount.toFixed(2)} € <span className="text-destructive">*</span></span>
-                      {rateData && rateData.interest > 0 && (
+                      {rateData && rateData.interest > 0 && !errors[errKey] && (
                         <span className="text-xs font-medium text-accent">+ {rateData.interest.toFixed(2)} € Zinsen</span>
                       )}
                     </div>
                     <Input
                       type="date"
                       value={installmentDates[i]}
-                      onChange={e => {
-                        const newDates = [...installmentDates] as [string, string, string];
-                        newDates[i] = e.target.value;
-                        updateData({ depositInstallmentDates: newDates });
-                        if (errors[`installment_${i}`]) setErrors(prev => { const copy = { ...prev }; delete copy[`installment_${i}`]; return copy; });
-                      }}
-                      className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
+                      min={lowerBound || undefined}
+                      max={today}
+                      onChange={e => handleInstallmentDateChange(i, e.target.value)}
+                      className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm ${errors[errKey] ? 'ring-2 ring-destructive/50' : ''}`}
                     />
-                    {errorMsg(`installment_${i}`)}
-                    {rateData && rateData.days > 0 && rateData.breakdown && (
+                    {errorMsg(errKey)}
+                    {rateData && rateData.days > 0 && rateData.breakdown && !errors[errKey] && (
                       <div className="space-y-0.5">
                         {rateData.breakdown.map((b, j) => (
                           <p key={j} className="text-[10px] text-muted-foreground">
@@ -343,7 +393,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                   </div>
                 );
               })}
-              {interest > 0 && (
+              {interest > 0 && !Object.keys(errors).some(k => k.startsWith('installment_')) && (
                 <div className="flex items-center gap-2 bg-accent/10 rounded-xl px-3 py-2 text-sm text-accent">
                   <ArrowUp className="w-3.5 h-3.5 shrink-0" />
                   <span>Zinsen gesamt (alle Raten): <strong>+ {interest.toFixed(2)} €</strong></span>
@@ -353,21 +403,23 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
           )}
 
           {/* Zusammenfassung */}
-          <div className="bg-secondary/30 rounded-xl p-3 space-y-1">
-            <div className="flex justify-between text-sm">
-              <span>Eingezahlte Kaution</span>
-              <span className="font-semibold">{deposit.toFixed(2)} €</span>
+          {!Object.keys(errors).some(k => k !== '_phase3') && (
+            <div className="bg-secondary/30 rounded-xl p-3 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span>Eingezahlte Kaution</span>
+                <span className="font-semibold">{deposit.toFixed(2)} €</span>
+              </div>
+              <div className="flex justify-between text-sm text-accent">
+                <span>+ Errechnete Zinsen</span>
+                <span className="font-semibold">+ {interest.toFixed(2)} €</span>
+              </div>
+              <div className="border-t border-border/30 my-1" />
+              <div className="flex justify-between text-sm font-bold">
+                <span>Gesamt-Guthaben</span>
+                <span>{(deposit + interest).toFixed(2)} €</span>
+              </div>
             </div>
-            <div className="flex justify-between text-sm text-accent">
-              <span>+ Errechnete Zinsen</span>
-              <span className="font-semibold">+ {interest.toFixed(2)} €</span>
-            </div>
-            <div className="border-t border-border/30 my-1" />
-            <div className="flex justify-between text-sm font-bold">
-              <span>Gesamt-Guthaben</span>
-              <span>{(deposit + interest).toFixed(2)} €</span>
-            </div>
-          </div>
+          )}
 
           <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-xs leading-relaxed">
             <Info className="w-3.5 h-3.5 inline mr-1 text-primary" />
@@ -377,7 +429,12 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
         </div>
       )}
 
-      <Button onClick={handleNext} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+      <Button
+        onClick={handleNext}
+        disabled={hasBlockingErrors}
+        className="w-full h-12 rounded-2xl font-semibold gap-2"
+        size="lg"
+      >
         Weiter zum Finanz-Überblick
         <ArrowRight className="w-4 h-4" />
       </Button>
