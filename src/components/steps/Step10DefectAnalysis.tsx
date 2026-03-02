@@ -331,25 +331,25 @@ export const Step10DefectAnalysis = () => {
                   const inRange = diff >= 0 && diff <= 14;
                   updateData({ relettingDate: val, immediateReletting: inRange ? data.immediateReletting : false });
                 }}
-                className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm max-w-[220px] ${isRelettingDateInvalid ? 'ring-2 ring-destructive/50 border-destructive' : ''}`}
+                className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm max-w-[220px] ${(isDateBeforeToday || isDateTooFar) ? 'ring-2 ring-destructive/50 border-destructive' : ''}`}
               />
-              {relettingDaysDiff !== null && (
-                <p className={`text-xs mt-1 ${isRelettingDateInRange ? 'text-accent' : 'text-muted-foreground'}`}>
-                  → {relettingDaysDiff} Tage nach Auszug
+              {daysUntilNewTenant !== null && (
+                <p className={`text-xs mt-1 ${isDateInRange ? 'text-accent' : 'text-muted-foreground'}`}>
+                  → {daysUntilNewTenant} Tage nach Auszug
                 </p>
               )}
             </div>
 
             {/* Step 2: Toggle – only enabled if ≤ 14 days */}
             <div className={`flex items-start gap-3 rounded-xl p-3 border transition-all ${
-              canActivateReletting 
+              !toggleDisabled
                 ? 'border-border/30 bg-secondary/20' 
                 : 'border-destructive/20 bg-destructive/5 opacity-60'
             }`}>
               <Checkbox
                 id="immediateReletting"
                 checked={effectiveReletting}
-                disabled={!canActivateReletting || !data.relettingDate}
+                disabled={toggleDisabled}
                 onCheckedChange={(checked) => {
                   updateData({ immediateReletting: !!checked });
                 }}
@@ -358,7 +358,7 @@ export const Step10DefectAnalysis = () => {
               <div className="flex-1">
                 <label 
                   htmlFor="immediateReletting" 
-                  className={`text-sm font-medium leading-snug ${!canActivateReletting || !data.relettingDate ? 'text-muted-foreground' : 'cursor-pointer'}`}
+                  className={`text-sm font-medium leading-snug ${toggleDisabled ? 'text-muted-foreground' : 'cursor-pointer'}`}
                 >
                   Sofortige Anschlussvermietung (§ 281 Abs. 2 BGB)
                 </label>
@@ -369,40 +369,40 @@ export const Step10DefectAnalysis = () => {
             </div>
 
             {/* Info: Date too far → forced remediation period */}
-            {isRelettingDateTooFar && (
+            {isDateTooFar && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
                 className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-start gap-2">
                 <Shield className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                 <div className="text-xs leading-relaxed">
                   <p className="font-semibold text-primary">Nachbesserungsfrist erforderlich (§ 281 Abs. 1 BGB)</p>
                   <p className="text-muted-foreground mt-1">
-                    Da der Nachmieter erst in <strong>{relettingDaysDiff} Tagen</strong> einzieht, ist dem Mieter eine 
-                    14-tägige Frist zur Eigenleistung einzuräumen. Ein sofortiger Abzug der Kaution ist unzulässig.
+                    Hinweis: Da der Einzug erst in <strong>{daysUntilNewTenant} Tagen</strong> erfolgt, hat der Mieter 
+                    gesetzlichen Anspruch auf eine Nachbesserungsfrist. Sofortiger Abzug unzulässig.
                   </p>
                 </div>
               </motion.div>
             )}
 
-            {isRelettingDateBeforeToday && (
+            {isDateBeforeToday && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
                 className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                 <div className="text-xs leading-relaxed text-destructive">
                   <p className="font-semibold">Ungültiges Datum</p>
-                  <p className="mt-1">Der Neueinzug kann nicht vor dem Referenzdatum 02.03.2026 liegen.</p>
+                  <p className="mt-1">Der Neueinzug kann nicht vor heute (02.03.2026) liegen.</p>
                 </div>
               </motion.div>
             )}
 
             {/* Info: Valid reletting selected */}
-            {effectiveReletting && isRelettingDateInRange && (
+            {effectiveReletting && isDateInRange && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
                 className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                 <div className="text-xs leading-relaxed">
                   <p className="font-semibold text-amber-600">§ 281 Abs. 2 BGB – Fristsetzung entbehrlich</p>
                   <p className="text-muted-foreground mt-1">
-                    Aufgrund der Anschlussvermietung ({relettingDaysDiff} Tage) ist eine Nachbesserung durch den Mieter unzumutbar.
+                    Aufgrund der Anschlussvermietung ({daysUntilNewTenant} Tage) ist eine Nachbesserung durch den Mieter unzumutbar.
                     Alle {damageFindings.length} Mängelposten ({realtimeTotal.toFixed(2)} €) werden als <strong>sofortiger Schadensersatz</strong> vom Kautionssaldo abgezogen.
                   </p>
                 </div>
