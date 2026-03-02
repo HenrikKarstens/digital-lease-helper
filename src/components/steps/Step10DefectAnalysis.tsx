@@ -122,14 +122,20 @@ export const Step10DefectAnalysis = () => {
 
   const isRelettingDateInRange = relettingDaysDiff !== null && relettingDaysDiff >= 0 && relettingDaysDiff <= 14;
   const isRelettingDateTooFar = relettingDaysDiff !== null && relettingDaysDiff > 14;
-  const isRelettingDateInvalid = data.relettingDate && !isRelettingDateInRange && relettingDaysDiff !== null;
+  const isRelettingDateBeforeToday = relettingDaysDiff !== null && relettingDaysDiff < 0;
+  const isRelettingDateInvalid = Boolean(data.relettingDate) && (isRelettingDateBeforeToday || isRelettingDateTooFar);
 
-  // Auto-disable immediateReletting if date is > 14 days out
-  const canActivateReletting = !data.relettingDate || isRelettingDateInRange;
-  const effectiveReletting = data.immediateReletting && isRelettingDateInRange;
+  // Toggle can only be activated when a date exists and is within 14 days
+  const canActivateReletting = Boolean(data.relettingDate) && isRelettingDateInRange;
+  const effectiveReletting = data.immediateReletting && canActivateReletting;
 
-  // Block button if reletting is checked but date is missing or invalid
-  const isRelettingBlocked = data.immediateReletting && (!data.relettingDate || !isRelettingDateInRange);
+  // Button blocking logic:
+  // - Immediate reletting selected: requires valid date within 14 days
+  // - Date in the past: always block (invalid input)
+  // - Date > 14 days: allow proceed in notice mode (§ 281 Abs. 1 BGB)
+  const isRelettingBlocked = data.immediateReletting
+    ? (!data.relettingDate || !isRelettingDateInRange)
+    : isRelettingDateBeforeToday;
 
   // Auto-apply § 281 BGB logic to all findings when proceeding
   const handleContinue = () => {
@@ -311,14 +317,13 @@ export const Step10DefectAnalysis = () => {
                 min={REFERENCE_TODAY}
                 onChange={e => {
                   const val = e.target.value;
-                  updateData({ relettingDate: val });
-                  // Auto-disable reletting if date > 14 days
-                  if (val) {
-                    const diff = Math.round((new Date(val).getTime() - new Date(REFERENCE_TODAY).getTime()) / (1000 * 60 * 60 * 24));
-                    if (diff > 14) {
-                      updateData({ relettingDate: val, immediateReletting: false });
-                    }
+                  if (!val) {
+                    updateData({ relettingDate: '', immediateReletting: false });
+                    return;
                   }
+                  const diff = Math.round((new Date(val).getTime() - new Date(REFERENCE_TODAY).getTime()) / (1000 * 60 * 60 * 24));
+                  const inRange = diff >= 0 && diff <= 14;
+                  updateData({ relettingDate: val, immediateReletting: inRange ? data.immediateReletting : false });
                 }}
                 className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm max-w-[220px] ${isRelettingDateInvalid ? 'ring-2 ring-destructive/50 border-destructive' : ''}`}
               />
@@ -368,6 +373,17 @@ export const Step10DefectAnalysis = () => {
                     Da der Nachmieter erst in <strong>{relettingDaysDiff} Tagen</strong> einzieht, ist dem Mieter eine 
                     14-tägige Frist zur Eigenleistung einzuräumen. Ein sofortiger Abzug der Kaution ist unzulässig.
                   </p>
+                </div>
+              </motion.div>
+            )}
+
+            {isRelettingDateBeforeToday && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                <div className="text-xs leading-relaxed text-destructive">
+                  <p className="font-semibold">Ungültiges Datum</p>
+                  <p className="mt-1">Der Neueinzug kann nicht vor dem Referenzdatum 02.03.2026 liegen.</p>
                 </div>
               </motion.div>
             )}
