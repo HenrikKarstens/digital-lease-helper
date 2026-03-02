@@ -292,69 +292,107 @@ export const Step10DefectAnalysis = () => {
         {/* ── Anschlussvermietung Checkbox ── */}
         {damageFindings.length > 0 && !isMoveIn && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-            className="glass-card rounded-2xl p-4 space-y-3">
-            <div className="flex items-start gap-3">
+            className="glass-card rounded-2xl p-4 space-y-4">
+            
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-primary" />
+              Anschlussvermietung prüfen
+            </h3>
+
+            {/* Step 1: Date input FIRST */}
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Einzugstermin des Nachmieters
+                <span className="ml-1 text-foreground/40">(falls bekannt)</span>
+              </label>
+              <Input
+                type="date"
+                value={data.relettingDate}
+                min={REFERENCE_TODAY}
+                onChange={e => {
+                  const val = e.target.value;
+                  updateData({ relettingDate: val });
+                  // Auto-disable reletting if date > 14 days
+                  if (val) {
+                    const diff = Math.round((new Date(val).getTime() - new Date(REFERENCE_TODAY).getTime()) / (1000 * 60 * 60 * 24));
+                    if (diff > 14) {
+                      updateData({ relettingDate: val, immediateReletting: false });
+                    }
+                  }
+                }}
+                className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm max-w-[220px] ${isRelettingDateInvalid ? 'ring-2 ring-destructive/50 border-destructive' : ''}`}
+              />
+              {relettingDaysDiff !== null && (
+                <p className={`text-xs mt-1 ${isRelettingDateInRange ? 'text-accent' : 'text-muted-foreground'}`}>
+                  → {relettingDaysDiff} Tage nach Auszug
+                </p>
+              )}
+            </div>
+
+            {/* Step 2: Toggle – only enabled if ≤ 14 days */}
+            <div className={`flex items-start gap-3 rounded-xl p-3 border transition-all ${
+              canActivateReletting 
+                ? 'border-border/30 bg-secondary/20' 
+                : 'border-destructive/20 bg-destructive/5 opacity-60'
+            }`}>
               <Checkbox
                 id="immediateReletting"
-                checked={data.immediateReletting}
+                checked={effectiveReletting}
+                disabled={!canActivateReletting || !data.relettingDate}
                 onCheckedChange={(checked) => {
-                  if (checked) {
-                    updateData({ immediateReletting: true, relettingDate: '' });
-                  } else {
-                    updateData({ immediateReletting: false, relettingDate: '' });
-                  }
+                  updateData({ immediateReletting: !!checked });
                 }}
                 className="mt-0.5"
               />
-              <label htmlFor="immediateReletting" className="text-sm font-medium cursor-pointer leading-snug">
-                Sofortige Anschlussvermietung (Einzug innerhalb von 7 Tagen)
-              </label>
+              <div className="flex-1">
+                <label 
+                  htmlFor="immediateReletting" 
+                  className={`text-sm font-medium leading-snug ${!canActivateReletting || !data.relettingDate ? 'text-muted-foreground' : 'cursor-pointer'}`}
+                >
+                  Sofortige Anschlussvermietung (§ 281 Abs. 2 BGB)
+                </label>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Nur aktivierbar bei Neueinzug innerhalb von 14 Tagen
+                </p>
+              </div>
             </div>
-            {data.immediateReletting && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3 overflow-hidden">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">
-                    Einzugstermin des Nachmieters <span className="text-destructive">*</span>
-                    <span className="ml-1 text-foreground/40">(heute bis max. {maxRelettingDate.split('-').reverse().join('.')})</span>
-                  </label>
-                  <Input
-                    type="date"
-                    value={data.relettingDate}
-                    min={REFERENCE_TODAY}
-                    max={maxRelettingDate}
-                    onChange={e => updateData({ relettingDate: e.target.value })}
-                    className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm max-w-[200px] ${isRelettingBlocked && data.relettingDate ? 'ring-2 ring-destructive/50 border-destructive' : ''}`}
-                  />
-                  {isRelettingBlocked && data.relettingDate && (
-                    <div className="flex items-center gap-1 mt-1 text-destructive text-xs">
-                      <AlertTriangle className="w-3 h-3 shrink-0" />
-                      <span>Ungültiges Datum! Der Neueinzug muss zwischen heute (02.03.2026) und in 14 Tagen (16.03.2026) liegen.</span>
-                    </div>
-                  )}
-                  {!data.relettingDate && (
-                    <div className="flex items-center gap-1 mt-1 text-amber-500 text-xs">
-                      <AlertTriangle className="w-3 h-3 shrink-0" />
-                      <span>Bitte Neueinzugsdatum angeben, um fortzufahren.</span>
-                    </div>
-                  )}
-                </div>
-                {!isRelettingBlocked && data.relettingDate && (
-                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <div className="text-xs leading-relaxed">
-                      <p className="font-semibold text-amber-600">§ 281 Abs. 2 BGB – Fristsetzung entbehrlich</p>
-                      <p className="text-muted-foreground mt-1">
-                        Aufgrund der Anschlussvermietung ist eine Nachbesserung durch den Mieter unzumutbar.
-                        Schadensersatz erfolgt direkt in Geld. Alle Mängelposten werden als <strong>endgültiger Schadensersatz</strong> deklariert.
-                      </p>
-                    </div>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Info className="w-3 h-3 text-primary shrink-0" />
-                  <span>Die Option „Nachbesserung durch Mieter" wird deaktiviert.</span>
+
+            {/* Info: Date too far → forced remediation period */}
+            {isRelettingDateTooFar && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-start gap-2">
+                <Shield className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div className="text-xs leading-relaxed">
+                  <p className="font-semibold text-primary">Nachbesserungsfrist erforderlich (§ 281 Abs. 1 BGB)</p>
+                  <p className="text-muted-foreground mt-1">
+                    Da der Nachmieter erst in <strong>{relettingDaysDiff} Tagen</strong> einzieht, ist dem Mieter eine 
+                    14-tägige Frist zur Eigenleistung einzuräumen. Ein sofortiger Abzug der Kaution ist unzulässig.
+                  </p>
                 </div>
               </motion.div>
+            )}
+
+            {/* Info: Valid reletting selected */}
+            {effectiveReletting && isRelettingDateInRange && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <div className="text-xs leading-relaxed">
+                  <p className="font-semibold text-amber-600">§ 281 Abs. 2 BGB – Fristsetzung entbehrlich</p>
+                  <p className="text-muted-foreground mt-1">
+                    Aufgrund der Anschlussvermietung ({relettingDaysDiff} Tage) ist eine Nachbesserung durch den Mieter unzumutbar.
+                    Alle {damageFindings.length} Mängelposten ({realtimeTotal.toFixed(2)} €) werden als <strong>sofortiger Schadensersatz</strong> vom Kautionssaldo abgezogen.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* No date entered yet */}
+            {!data.relettingDate && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Info className="w-3 h-3 text-primary shrink-0" />
+                Geben Sie das Einzugsdatum des Nachmieters ein, um die rechtlich korrekte Abwicklung festzulegen.
+              </p>
             )}
           </motion.div>
         )}
@@ -370,13 +408,13 @@ export const Step10DefectAnalysis = () => {
             Bestandsaufnahme abschließen & zur Kautionsberechnung
             <ArrowRight className="w-4 h-4" />
           </Button>
-          {damageFindings.length > 0 && !data.immediateReletting && (
+          {damageFindings.length > 0 && !effectiveReletting && (
             <p className="text-center text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1">
               <Shield className="w-3 h-3 text-primary" />
               {damageFindings.length} Schäden werden automatisch mit 14-Tage-Frist versehen.
             </p>
           )}
-          {damageFindings.length > 0 && data.immediateReletting && (
+          {damageFindings.length > 0 && effectiveReletting && (
             <p className="text-center text-xs text-amber-500 mt-2 flex items-center justify-center gap-1">
               <CalendarClock className="w-3 h-3" />
               {damageFindings.length} Schäden werden als endgültiger Schadensersatz verrechnet.
