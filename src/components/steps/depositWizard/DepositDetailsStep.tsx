@@ -68,18 +68,8 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     : 'Bitte zuerst Vertragsunterschrift oder Mietbeginn in Phase 3 angeben.';
 
   const checkDateValidity = (inputDate: string): boolean => {
-    if (!inputDate) return false;
-    return inputDate >= REFERENCE_SIGNING_DATE && inputDate <= REFERENCE_TODAY;
-  };
-
-  /** Safe German date formatter – never returns "undefined.undefined" */
-  const formatDE = (dateStr: string): string => {
-    if (!dateStr || typeof dateStr !== 'string') return '–';
-    const parts = dateStr.split('-');
-    if (parts.length !== 3) return dateStr;
-    const [y, m, d] = parts;
-    if (!y || !m || !d) return dateStr;
-    return `${d}.${m}.${y}`;
+    if (!inputDate || !lowerBound) return false;
+    return inputDate >= lowerBound && inputDate <= REFERENCE_TODAY;
   };
 
   /** Validate a single date against all rules. Returns error string or null. */
