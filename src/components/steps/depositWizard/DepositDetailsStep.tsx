@@ -41,19 +41,32 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
   const handleNext = () => {
     const newErrors: Record<string, string> = {};
 
+    const today = new Date().toISOString().split('T')[0];
+    const earliestDate = data.contractStart || data.contractSigningDate || '';
+
     if (isCash) {
+      const validateDate = (d: string, key: string, label: string) => {
+        if (earliestDate && d < earliestDate) {
+          newErrors[key] = `${label} kann nicht vor dem ${data.contractStart ? 'Einzugstermin' : 'Vertragsunterzeichnung'} (${earliestDate}) liegen.`;
+        } else if (d > today) {
+          newErrors[key] = `${label} kann nicht in der Zukunft liegen.`;
+        } else if (data.contractEnd && d >= data.contractEnd) {
+          newErrors[key] = `${label} muss vor dem Auszugstermin liegen.`;
+        }
+      };
+
       if (!isInstallments) {
         if (!data.depositPaymentDate) {
           newErrors.depositPaymentDate = 'Bitte geben Sie das Datum der Kautionszahlung an.';
-        } else if (data.contractEnd && data.depositPaymentDate >= data.contractEnd) {
-          newErrors.depositPaymentDate = 'Das Zahlungsdatum muss vor dem Auszugstermin liegen.';
+        } else {
+          validateDate(data.depositPaymentDate, 'depositPaymentDate', 'Die Kautionszahlung');
         }
       } else {
         installmentDates.forEach((d, i) => {
           if (!d) {
             newErrors[`installment_${i}`] = `Datum für ${i + 1}. Rate fehlt.`;
-          } else if (data.contractEnd && d >= data.contractEnd) {
-            newErrors[`installment_${i}`] = `${i + 1}. Rate muss vor dem Auszugstermin liegen.`;
+          } else {
+            validateDate(d, `installment_${i}`, `${i + 1}. Rate`);
           }
         });
       }
