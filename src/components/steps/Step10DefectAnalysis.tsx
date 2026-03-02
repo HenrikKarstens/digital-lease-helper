@@ -387,9 +387,6 @@ export const Step10DefectAnalysis = () => {
                 </div>
               </motion.div>
             )}
-                </div>
-              </motion.div>
-            )}
 
             {isDateBeforeToday && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
