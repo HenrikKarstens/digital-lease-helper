@@ -62,6 +62,23 @@ export const DepositOverviewStep = ({ onNext }: Props) => {
   const payoutPercent = deposit > 0 ? Math.min(100, (payout / deposit) * 100) : 0;
   const deductPercent = deposit > 0 ? Math.min(100, (totalDeductions / deposit) * 100) : 0;
 
+  const REFERENCE_TODAY = '2026-03-02';
+  const MAX_IMMEDIATE_RELETTING_DAYS = 7;
+  const MAX_RELETTING_DATE = (() => {
+    const d = new Date(REFERENCE_TODAY);
+    d.setDate(d.getDate() + MAX_IMMEDIATE_RELETTING_DAYS);
+    return d.toISOString().split('T')[0];
+  })();
+  const daysUntilNewTenant: number | null = (() => {
+    if (!data.relettingDate) return null;
+    const todayMs = new Date(REFERENCE_TODAY).getTime();
+    const targetMs = new Date(data.relettingDate).getTime();
+    if (isNaN(targetMs)) return null;
+    return Math.round((targetMs - todayMs) / 86400000);
+  })();
+  const isDateInRange = daysUntilNewTenant !== null && daysUntilNewTenant >= 0 && daysUntilNewTenant <= MAX_IMMEDIATE_RELETTING_DAYS;
+  const isContinueDisabled = !isGuarantee && tenantDefects.length > 0 && data.immediateReletting && !isDateInRange;
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 40 }}
@@ -266,7 +283,7 @@ export const DepositOverviewStep = ({ onNext }: Props) => {
               <Label htmlFor="immediateReletting" className="text-sm font-semibold cursor-pointer leading-snug block">
                 Sofortige Anschlussvermietung
               </Label>
-              <p className="text-xs text-muted-foreground mt-0.5">Einzug des Nachmieters innerhalb von 7 Tagen?</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Einzug des Nachmieters innerhalb von 7 Tagen (02.03.2026–09.03.2026)?</p>
             </div>
             <Switch
               id="immediateReletting"
@@ -283,7 +300,21 @@ export const DepositOverviewStep = ({ onNext }: Props) => {
                   <Input
                     type="date"
                     value={data.relettingDate}
-                    onChange={e => updateData({ relettingDate: e.target.value })}
+                    min={REFERENCE_TODAY}
+                    max={MAX_RELETTING_DATE}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (!val) {
+                        updateData({ relettingDate: '' });
+                        return;
+                      }
+                      const diff = Math.round((new Date(val).getTime() - new Date(REFERENCE_TODAY).getTime()) / 86400000);
+                      if (diff < 0 || diff > MAX_IMMEDIATE_RELETTING_DAYS) {
+                        updateData({ relettingDate: '', immediateReletting: false });
+                        return;
+                      }
+                      updateData({ relettingDate: val });
+                    }}
                     className="rounded-xl bg-secondary/50 border-0 h-9 text-sm max-w-[200px]"
                   />
                 </div>
@@ -343,7 +374,12 @@ export const DepositOverviewStep = ({ onNext }: Props) => {
         </div>
       )}
 
-      <Button onClick={() => onNext(costOverrides)} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+      <Button
+        onClick={() => onNext(costOverrides)}
+        disabled={isContinueDisabled}
+        className="w-full h-12 rounded-2xl font-semibold gap-2"
+        size="lg"
+      >
         Weiter zum Abschluss
         <ArrowRight className="w-4 h-4" />
       </Button>
