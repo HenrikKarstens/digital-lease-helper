@@ -248,7 +248,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
         </div>
       )}
 
-      <Button onClick={onNext} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
+      <Button onClick={handleNext} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
         Weiter zum Finanz-Überblick
         <ArrowRight className="w-4 h-4" />
       </Button>
