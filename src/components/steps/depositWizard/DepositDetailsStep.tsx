@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { BoundedDatePicker } from './BoundedDatePicker';
-
+import {
+  calcCompoundInterest, calcInstallmentInterest, getWeightedAverageRate,
+  getBundesbankRate,
+} from './utils';
 interface Props {
   onNext: () => void;
 }
