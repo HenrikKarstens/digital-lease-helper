@@ -38,20 +38,34 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     return getWeightedAverageRate(start, new Date());
   })();
 
-  // ── Rechtliche Referenzdaten (mit Phase-3-Fallback) ──
-  const REFERENCE_SIGNING_DATE = '2025-11-09';
-  const REFERENCE_MOVE_IN_DATE = '2025-12-01';
+  // ── Rechtliche Referenzdaten (dynamisch aus Phase 3) ──
   const REFERENCE_TODAY = '2026-03-02';
-
-  const signingDate = data.contractSigningDate || REFERENCE_SIGNING_DATE;
-  const moveInDate = data.contractStart || REFERENCE_MOVE_IN_DATE;
-  const moveOutDate = data.contractEnd || '';
   const today = REFERENCE_TODAY;
-  const missingPhase3Dates = false;
 
-  // Hard bounds for payment date validation
-  const lowerBound = REFERENCE_SIGNING_DATE;
-  const invalidDepositDateMessage = 'Ungültiges Datum! Die Zahlung muss zwischen der Unterschrift (09.11.2025) und heute liegen.';
+  const signingDate = data.contractSigningDate || '';
+  const moveInDate = data.contractStart || '';
+  const moveOutDate = data.contractEnd || '';
+
+  // Frühestmögliche Kautionszahlung = frühestes Datum von Vertragsunterschrift ODER Mietbeginn
+  const missingPhase3Dates = !signingDate && !moveInDate;
+  const lowerBound: string = (() => {
+    if (signingDate && moveInDate) return signingDate < moveInDate ? signingDate : moveInDate;
+    return signingDate || moveInDate || '';
+  })();
+
+  /** Safe German date formatter – never returns "undefined.undefined" */
+  const formatDE = (dateStr: string): string => {
+    if (!dateStr || typeof dateStr !== 'string') return '–';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    const [y, m, d] = parts;
+    if (!y || !m || !d) return dateStr;
+    return `${d}.${m}.${y}`;
+  };
+
+  const invalidDepositDateMessage = lowerBound
+    ? `Ungültiges Datum! Die Zahlung muss zwischen ${formatDE(lowerBound)} und heute (${formatDE(today)}) liegen.`
+    : 'Bitte zuerst Vertragsunterschrift oder Mietbeginn in Phase 3 angeben.';
 
   const checkDateValidity = (inputDate: string): boolean => {
     if (!inputDate) return false;
