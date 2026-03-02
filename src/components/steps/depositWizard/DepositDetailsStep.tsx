@@ -38,10 +38,18 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     return getWeightedAverageRate(start, new Date());
   })();
 
-  const today = new Date().toISOString().split('T')[0];
+  // Use local date to avoid UTC issues
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const earliestDate = data.contractStart || data.contractSigningDate || '';
   const earliestLabel = data.contractStart ? 'Einzugstermin' : 'Vertragsunterzeichnung';
   const missingPhase3Dates = !data.contractStart && !data.contractSigningDate;
+
+  const formatDE = (dateStr: string) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}.${m}.${y}`;
+  };
 
   const handleNext = () => {
     const newErrors: Record<string, string> = {};
