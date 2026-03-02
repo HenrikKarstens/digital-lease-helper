@@ -101,37 +101,41 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signingDate, moveInDate, moveOutDate]);
 
-  /** Live onChange handler for single payment date */
+  /** Live onChange handler for single payment date – hard-rejects out-of-range */
   const handleDateChange = (value: string) => {
-    updateData({ depositPaymentDate: value });
     if (!value) {
+      updateData({ depositPaymentDate: '' });
       setErrors(prev => { const { depositPaymentDate, ...rest } = prev; return rest; });
       return;
     }
-    const err = validateDate(value, 'Die Kautionszahlung');
-    if (err) {
-      setErrors(prev => ({ ...prev, depositPaymentDate: err }));
-    } else {
-      setErrors(prev => { const { depositPaymentDate, ...rest } = prev; return rest; });
+    // Hard reject: before lower bound or after today
+    if ((lowerBound && value < lowerBound) || value > REFERENCE_TODAY) {
+      setErrors(prev => ({ ...prev, depositPaymentDate: invalidDepositDateMessage }));
+      return; // do NOT store invalid date
     }
+    updateData({ depositPaymentDate: value });
+    setErrors(prev => { const { depositPaymentDate, ...rest } = prev; return rest; });
   };
 
-  /** Live onChange handler for installment dates */
+  /** Live onChange handler for installment dates – hard-rejects out-of-range */
   const handleInstallmentDateChange = (index: number, value: string) => {
+    const key = `installment_${index}`;
+    if (!value) {
+      const newDates = [...installmentDates] as [string, string, string];
+      newDates[index] = '';
+      updateData({ depositInstallmentDates: newDates });
+      setErrors(prev => { const copy = { ...prev }; delete copy[key]; return copy; });
+      return;
+    }
+    // Hard reject: before lower bound or after today
+    if ((lowerBound && value < lowerBound) || value > REFERENCE_TODAY) {
+      setErrors(prev => ({ ...prev, [key]: invalidDepositDateMessage }));
+      return; // do NOT store invalid date
+    }
     const newDates = [...installmentDates] as [string, string, string];
     newDates[index] = value;
     updateData({ depositInstallmentDates: newDates });
-    const key = `installment_${index}`;
-    if (!value) {
-      setErrors(prev => { const copy = { ...prev }; delete copy[key]; return copy; });
-      return;
-    }
-    const err = validateDate(value, `${index + 1}. Rate`);
-    if (err) {
-      setErrors(prev => ({ ...prev, [key]: err }));
-    } else {
-      setErrors(prev => { const copy = { ...prev }; delete copy[key]; return copy; });
-    }
+    setErrors(prev => { const copy = { ...prev }; delete copy[key]; return copy; });
   };
 
   /** isDateValid: true only when all cash-date constraints pass */
