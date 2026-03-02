@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Calendar, Shield, ArrowUp, Info, FileText, PiggyBank, ArrowRight, AlertCircle,
@@ -68,22 +68,42 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     if (!d) return null; // emptiness checked separately
     // Rule A: Not before contract signing
     if (signingDate && d < signingDate) {
-      return `Ungültiges Datum: ${label} kann rechtlich erst nach Vertragsunterzeichnung (${formatDE(signingDate)}) erfolgt sein.`;
+      return `Ungültiges Datum: ${label ? label + ' – d' : 'D'}ie Zahlung muss nach Vertragsunterzeichnung (${formatDE(signingDate)}) liegen.`;
     }
     // Rule B: Not before move-in
     if (moveInDate && d < moveInDate) {
-      return `Ungültiges Datum: ${label} kann rechtlich erst nach Einzug (${formatDE(moveInDate)}) erfolgt sein.`;
+      return `Ungültiges Datum: ${label ? label + ' – d' : 'D'}ie Zahlung muss nach Einzug (${formatDE(moveInDate)}) liegen.`;
     }
     // Rule C: Not in the future
     if (d > today) {
-      return `Ungültiges Datum: ${label} kann nicht in der Zukunft liegen (heute: ${formatDE(today)}).`;
+      return `Ungültiges Datum: ${label ? label + ' – d' : 'D'}ie Zahlung kann nicht in der Zukunft liegen (heute: ${formatDE(today)}).`;
     }
     // Rule D: Before move-out
     if (moveOutDate && d >= moveOutDate) {
-      return `Ungültiges Datum: ${label} muss vor dem Auszugstermin (${formatDE(moveOutDate)}) liegen.`;
+      return `Ungültiges Datum: ${label ? label + ' – d' : 'D'}ie Zahlung muss vor dem Auszugstermin (${formatDE(moveOutDate)}) liegen.`;
     }
     return null;
   };
+
+  // Re-validate persisted dates on mount / when Phase 3 dates change
+  useEffect(() => {
+    if (!isCash) return;
+    const newErrors: Record<string, string> = {};
+    if (!isInstallments && data.depositPaymentDate) {
+      const err = validateDate(data.depositPaymentDate, '');
+      if (err) newErrors.depositPaymentDate = err;
+    }
+    if (isInstallments) {
+      installmentDates.forEach((d, i) => {
+        if (d) {
+          const err = validateDate(d, `${i + 1}. Rate`);
+          if (err) newErrors[`installment_${i}`] = err;
+        }
+      });
+    }
+    setErrors(newErrors);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signingDate, moveInDate, moveOutDate]);
 
   /** Live onChange handler for single payment date */
   const handleDateChange = (value: string) => {
