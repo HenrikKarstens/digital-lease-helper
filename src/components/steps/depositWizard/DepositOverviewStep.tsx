@@ -5,7 +5,8 @@ import {
   Info, Pencil, Sparkles, ChevronDown, ChevronUp, Gavel, Key, CalendarClock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
@@ -52,7 +53,8 @@ export const DepositOverviewStep = ({ onNext }: Props) => {
   const keyDeduction = missingKeys.length * 50;
   const hasNkData = data.nkVorauszahlung > 0 || data.nkPrognose > 0;
   const nkBuffer = hasNkData ? Math.max(0, (data.nkPrognose - data.nkVorauszahlung) * 3) : 180;
-  const totalDeductions = isGuarantee ? 0 : totalCosts + nkBuffer + keyDeduction;
+  const defectDeduction = data.immediateReletting ? totalCosts : 0;
+  const totalDeductions = isGuarantee ? 0 : defectDeduction + nkBuffer + keyDeduction;
   const saldo = baseAmount - totalDeductions;
   const payout = Math.max(0, saldo);
   const restforderung = saldo < 0 ? Math.abs(saldo) : 0;
@@ -139,12 +141,17 @@ export const DepositOverviewStep = ({ onNext }: Props) => {
             </div>
           )}
 
-          <div className="flex justify-between items-center py-2 border-b border-border/30 text-destructive">
+          <div className={`flex justify-between items-center py-2 border-b border-border/30 ${data.immediateReletting ? 'text-destructive' : 'text-muted-foreground'}`}>
             <div className="flex items-center gap-2">
               <ArrowDown className="w-3 h-3" />
-              <span className="text-sm">Mängelkosten ({tenantDefects.length} Posten)</span>
+              <span className="text-sm">
+                Mängelkosten ({tenantDefects.length} Posten)
+                {!data.immediateReletting && <span className="text-xs ml-1 italic">(Nachbesserungsfrist)</span>}
+              </span>
             </div>
-            <span className="font-semibold">- {totalCosts.toFixed(2)} €</span>
+            <span className={`font-semibold ${!data.immediateReletting ? 'line-through' : ''}`}>
+              - {totalCosts.toFixed(2)} €
+            </span>
           </div>
 
           {keyDeduction > 0 && (
@@ -251,25 +258,28 @@ export const DepositOverviewStep = ({ onNext }: Props) => {
         </div>
       )}
 
-      {/* ── Anschlussvermietung ── */}
+      {/* ── Nachbesserungs-Veto (§ 281 BGB) ── */}
       {!isGuarantee && tenantDefects.length > 0 && (
-        <div className="glass-card rounded-2xl p-5 space-y-3">
-          <div className="flex items-start gap-3">
-            <Checkbox
+        <div className="glass-card rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <Label htmlFor="immediateReletting" className="text-sm font-semibold cursor-pointer leading-snug block">
+                Sofortige Anschlussvermietung
+              </Label>
+              <p className="text-xs text-muted-foreground mt-0.5">Einzug des Nachmieters innerhalb von 7 Tagen?</p>
+            </div>
+            <Switch
               id="immediateReletting"
               checked={data.immediateReletting}
               onCheckedChange={(checked) => updateData({ immediateReletting: !!checked })}
-              className="mt-0.5"
             />
-            <label htmlFor="immediateReletting" className="text-sm font-medium cursor-pointer leading-snug">
-              Sofortige Anschlussvermietung (Einzug innerhalb von 7 Tagen)
-            </label>
           </div>
-          <AnimatePresence>
-            {data.immediateReletting && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
+
+          <AnimatePresence mode="wait">
+            {data.immediateReletting ? (
+              <motion.div key="reletting-yes" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Datum des Neueinzugs</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">Einzugstermin des Nachmieters</label>
                   <Input
                     type="date"
                     value={data.relettingDate}
@@ -283,23 +293,31 @@ export const DepositOverviewStep = ({ onNext }: Props) => {
                     <p className="font-semibold text-amber-600">§ 281 Abs. 2 BGB – Fristsetzung entbehrlich</p>
                     <p className="text-muted-foreground mt-1">
                       Aufgrund der Anschlussvermietung ist eine Nachbesserung durch den Mieter unzumutbar.
-                      Alle Mängelposten werden als <strong>endgültiger Schadensersatz</strong> deklariert.
+                      Alle {tenantDefects.length} Mängelposten ({totalCosts.toFixed(2)} €) werden als <strong>sofortiger Schadensersatz</strong> vom Kautionssaldo abgezogen.
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <CalendarClock className="w-3 h-3 text-primary shrink-0" />
-                  <span>{tenantDefects.length} Schäden werden als endgültiger Schadensersatz verrechnet – keine 14-Tage-Frist.</span>
+              </motion.div>
+            ) : (
+              <motion.div key="reletting-no" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
+                <div className="bg-accent/10 border border-accent/20 rounded-xl p-3 flex items-start gap-2">
+                  <Gavel className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                  <div className="text-xs leading-relaxed">
+                    <p className="font-semibold text-accent">§ 281 Abs. 1 BGB – Fristsetzung erforderlich</p>
+                    <p className="text-muted-foreground mt-1">
+                      Mängelkosten ({totalCosts.toFixed(2)} €) werden <strong>nicht</strong> sofort abgezogen.
+                      Die App generiert eine „Aufforderung zur Mängelbeseitigung" mit 14-Tage-Frist.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-secondary/30 border border-border/30 rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    <strong className="text-foreground">Hinweis an den Mieter:</strong> Sie haben das Recht, die dokumentierten Mängel innerhalb von 14 Tagen selbst fachgerecht zu beheben, um Abzüge von Ihrer Kaution zu vermeiden.
+                  </p>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
-          {!data.immediateReletting && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Info className="w-3 h-3 text-primary shrink-0" />
-              <span>Mieter erhält gesetzliche 14-Tage-Frist zur Nachbesserung gemäß § 281 Abs. 1 BGB.</span>
-            </div>
-          )}
         </div>
       )}
 
