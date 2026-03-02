@@ -38,17 +38,45 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     return getWeightedAverageRate(start, new Date());
   })();
 
-  // Use local date to avoid UTC issues
+  // ── Local date (UTC-safe) ──
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const earliestDate = data.contractStart || data.contractSigningDate || '';
-  const earliestLabel = data.contractStart ? 'Einzugstermin' : 'Vertragsunterzeichnung';
-  const missingPhase3Dates = !data.contractStart && !data.contractSigningDate;
 
-  const formatDE = (dateStr: string) => {
-    if (!dateStr) return '';
-    const [y, m, d] = dateStr.split('-');
+  // Phase 3 reference dates
+  const moveInDate = data.contractStart || '';
+  const signingDate = data.contractSigningDate || '';
+  const moveOutDate = data.contractEnd || '';
+  const missingPhase3Dates = !moveInDate && !signingDate;
+
+  // The strictest lower bound: the LATER of the two dates
+  const lowerBound = moveInDate && signingDate
+    ? (moveInDate > signingDate ? moveInDate : signingDate)
+    : moveInDate || signingDate || '';
+
+  const formatDE = (dateStr: string): string => {
+    if (!dateStr || typeof dateStr !== 'string') return '–';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    const [y, m, d] = parts;
+    if (!y || !m || !d) return dateStr;
     return `${d}.${m}.${y}`;
+  };
+
+  // Validate against ALL three rules independently
+  const buildConstraintError = (label: string, d: string): string | null => {
+    if (signingDate && d < signingDate) {
+      return `Ungültiges Datum: ${label} kann logischerweise erst nach Vertragsunterzeichnung (${formatDE(signingDate)}) erfolgt sein.`;
+    }
+    if (moveInDate && d < moveInDate) {
+      return `Ungültiges Datum: ${label} kann logischerweise erst nach Einzug (${formatDE(moveInDate)}) erfolgt sein.`;
+    }
+    if (d > today) {
+      return `Ungültiges Datum: ${label} kann nicht in der Zukunft liegen (heute: ${formatDE(today)}).`;
+    }
+    if (moveOutDate && d >= moveOutDate) {
+      return `Ungültiges Datum: ${label} muss vor dem Auszugstermin (${formatDE(moveOutDate)}) liegen.`;
+    }
+    return null;
   };
 
   const handleNext = () => {
@@ -61,28 +89,20 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     }
 
     if (isCash) {
-      const validateDate = (d: string, key: string, label: string) => {
-        if (earliestDate && d < earliestDate) {
-          newErrors[key] = `${label} kann nicht vor dem ${earliestLabel} (${formatDE(earliestDate)}) liegen.`;
-        } else if (d > today) {
-          newErrors[key] = `${label} kann nicht in der Zukunft liegen (heute: ${formatDE(today)}).`;
-        } else if (data.contractEnd && d >= data.contractEnd) {
-          newErrors[key] = `${label} muss vor dem Auszugstermin (${formatDE(data.contractEnd)}) liegen.`;
-        }
-      };
-
       if (!isInstallments) {
         if (!data.depositPaymentDate) {
           newErrors.depositPaymentDate = 'Bitte geben Sie das Datum der Kautionszahlung an.';
         } else {
-          validateDate(data.depositPaymentDate, 'depositPaymentDate', 'Die Kautionszahlung');
+          const err = buildConstraintError('Die Kautionszahlung', data.depositPaymentDate);
+          if (err) newErrors.depositPaymentDate = err;
         }
       } else {
         installmentDates.forEach((d, i) => {
           if (!d) {
             newErrors[`installment_${i}`] = `Datum für ${i + 1}. Rate fehlt.`;
           } else {
-            validateDate(d, `installment_${i}`, `${i + 1}. Rate`);
+            const err = buildConstraintError(`${i + 1}. Rate`, d);
+            if (err) newErrors[`installment_${i}`] = err;
           }
         });
       }
@@ -200,7 +220,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
               {data.contractEnd && (
                 <div className="ml-5 text-foreground/60">Auszugstermin: <span className="font-medium text-foreground/80">{formatDE(data.contractEnd)}</span></div>
               )}
-              <div className="ml-5 text-foreground/50 italic">Kautionszahlung muss zwischen {earliestLabel} ({formatDE(earliestDate)}) und heute ({formatDE(today)}) liegen.</div>
+              <div className="ml-5 text-foreground/50 italic">Kautionszahlung muss nach {signingDate ? `Vertragsunterzeichnung (${formatDE(signingDate)})` : ''}{signingDate && moveInDate ? ' und ' : ''}{moveInDate ? `Einzug (${formatDE(moveInDate)})` : ''} liegen, aber nicht nach heute ({formatDE(today)}).</div>
             </div>
           )}
           {errorMsg('_phase3')}
