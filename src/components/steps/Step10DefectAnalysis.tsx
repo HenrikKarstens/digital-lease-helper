@@ -107,14 +107,29 @@ export const Step10DefectAnalysis = () => {
     setExpandedId(prev => prev === id ? null : id);
   };
 
-  // Reletting validation: date must be between today and today+14
+  // ── 14-Tage-Regel für Anschlussvermietung (§ 281 BGB) ──
   const REFERENCE_TODAY = '2026-03-02';
-  const maxRelettingDate = '2026-03-16';
-  const isRelettingDateValid = data.immediateReletting
-    ? (data.relettingDate && data.relettingDate >= REFERENCE_TODAY && data.relettingDate <= maxRelettingDate)
-    : true; // not relevant when unchecked
+  const maxRelettingDate = '2026-03-16'; // today + 14 days
 
-  const isRelettingBlocked = data.immediateReletting && !isRelettingDateValid;
+  // Calculate days between move-out (today) and reletting date
+  const relettingDaysDiff = (() => {
+    if (!data.relettingDate) return null;
+    const today = new Date(REFERENCE_TODAY);
+    const target = new Date(data.relettingDate);
+    if (isNaN(target.getTime())) return null;
+    return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  })();
+
+  const isRelettingDateInRange = relettingDaysDiff !== null && relettingDaysDiff >= 0 && relettingDaysDiff <= 14;
+  const isRelettingDateTooFar = relettingDaysDiff !== null && relettingDaysDiff > 14;
+  const isRelettingDateInvalid = data.relettingDate && !isRelettingDateInRange && relettingDaysDiff !== null;
+
+  // Auto-disable immediateReletting if date is > 14 days out
+  const canActivateReletting = !data.relettingDate || isRelettingDateInRange;
+  const effectiveReletting = data.immediateReletting && isRelettingDateInRange;
+
+  // Block button if reletting is checked but date is missing or invalid
+  const isRelettingBlocked = data.immediateReletting && (!data.relettingDate || !isRelettingDateInRange);
 
   // Auto-apply § 281 BGB logic to all findings when proceeding
   const handleContinue = () => {
