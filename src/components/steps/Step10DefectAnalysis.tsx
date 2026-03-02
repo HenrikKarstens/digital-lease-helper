@@ -275,18 +275,7 @@ export const Step10DefectAnalysis = () => {
         )}
 
         {/* ── Anschlussvermietung Checkbox ── */}
-        {damageFindings.length > 0 && !isMoveIn && (() => {
-          // Hard reference: today = 02.03.2026, max reletting = today + 14 days = 16.03.2026
-          const REFERENCE_TODAY = '2026-03-02';
-          const maxRelettingDate = '2026-03-16'; // today + 14 days
-          const relettingDateValid = data.relettingDate
-            ? (data.relettingDate >= REFERENCE_TODAY && data.relettingDate <= maxRelettingDate)
-            : false;
-          const relettingError = data.immediateReletting && data.relettingDate && !relettingDateValid
-            ? `Ungültiges Datum! Der Neueinzug muss zwischen heute (02.03.2026) und in 14 Tagen (16.03.2026) liegen.`
-            : null;
-
-          return (
+        {damageFindings.length > 0 && !isMoveIn && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
             className="glass-card rounded-2xl p-4 space-y-3">
             <div className="flex items-start gap-3">
@@ -295,7 +284,6 @@ export const Step10DefectAnalysis = () => {
                 checked={data.immediateReletting}
                 onCheckedChange={(checked) => {
                   if (checked) {
-                    // Pre-fill with empty to force user to pick a valid date
                     updateData({ immediateReletting: true, relettingDate: '' });
                   } else {
                     updateData({ immediateReletting: false, relettingDate: '' });
@@ -311,8 +299,8 @@ export const Step10DefectAnalysis = () => {
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3 overflow-hidden">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">
-                    Datum des Neueinzugs <span className="text-destructive">*</span>
-                    <span className="ml-1 text-foreground/40">(heute bis max. 16.03.2026)</span>
+                    Einzugstermin des Nachmieters <span className="text-destructive">*</span>
+                    <span className="ml-1 text-foreground/40">(heute bis max. {maxRelettingDate.split('-').reverse().join('.')})</span>
                   </label>
                   <Input
                     type="date"
@@ -320,12 +308,12 @@ export const Step10DefectAnalysis = () => {
                     min={REFERENCE_TODAY}
                     max={maxRelettingDate}
                     onChange={e => updateData({ relettingDate: e.target.value })}
-                    className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm max-w-[200px] ${relettingError ? 'ring-2 ring-destructive/50 border-destructive' : ''}`}
+                    className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm max-w-[200px] ${isRelettingBlocked && data.relettingDate ? 'ring-2 ring-destructive/50 border-destructive' : ''}`}
                   />
-                  {relettingError && (
+                  {isRelettingBlocked && data.relettingDate && (
                     <div className="flex items-center gap-1 mt-1 text-destructive text-xs">
                       <AlertTriangle className="w-3 h-3 shrink-0" />
-                      <span>{relettingError}</span>
+                      <span>Ungültiges Datum! Der Neueinzug muss zwischen heute (02.03.2026) und in 14 Tagen (16.03.2026) liegen.</span>
                     </div>
                   )}
                   {!data.relettingDate && (
@@ -335,16 +323,18 @@ export const Step10DefectAnalysis = () => {
                     </div>
                   )}
                 </div>
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                  <div className="text-xs leading-relaxed">
-                    <p className="font-semibold text-amber-600">§ 281 Abs. 2 BGB – Fristsetzung entbehrlich</p>
-                    <p className="text-muted-foreground mt-1">
-                      Aufgrund der Anschlussvermietung ist eine Nachbesserung durch den Mieter unzumutbar.
-                      Schadensersatz erfolgt direkt in Geld. Alle Mängelposten werden als <strong>endgültiger Schadensersatz</strong> deklariert.
-                    </p>
+                {!isRelettingBlocked && data.relettingDate && (
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="text-xs leading-relaxed">
+                      <p className="font-semibold text-amber-600">§ 281 Abs. 2 BGB – Fristsetzung entbehrlich</p>
+                      <p className="text-muted-foreground mt-1">
+                        Aufgrund der Anschlussvermietung ist eine Nachbesserung durch den Mieter unzumutbar.
+                        Schadensersatz erfolgt direkt in Geld. Alle Mängelposten werden als <strong>endgültiger Schadensersatz</strong> deklariert.
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Info className="w-3 h-3 text-primary shrink-0" />
                   <span>Die Option „Nachbesserung durch Mieter" wird deaktiviert.</span>
@@ -352,8 +342,7 @@ export const Step10DefectAnalysis = () => {
               </motion.div>
             )}
           </motion.div>
-          );
-        })()}
+        )}
 
         {/* CTA */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
