@@ -130,10 +130,12 @@ export const Step10DefectAnalysis = () => {
   const effectiveReletting = data.immediateReletting && isDateInRange;
 
   // AUTO-KORREKTUR: Wenn Toggle true aber Datum > 14 Tage → sofort auf false setzen
-  if (data.immediateReletting && hasRelettingDate && !isDateInRange) {
-    // Schedule update to avoid render-loop
-    setTimeout(() => updateData({ immediateReletting: false }), 0);
-  }
+  // useEffect vermeidet Render-Loop
+  React.useEffect(() => {
+    if (data.immediateReletting && hasRelettingDate && !isDateInRange) {
+      updateData({ immediateReletting: false });
+    }
+  }, [data.relettingDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Button-Sperre:
   // 1. Datum in der Vergangenheit → IMMER blockiert
