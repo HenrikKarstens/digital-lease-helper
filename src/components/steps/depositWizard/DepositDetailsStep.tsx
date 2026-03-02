@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Calendar, Shield, ArrowUp, Info, FileText, PiggyBank, ArrowRight,
+  Calendar, Shield, ArrowUp, Info, FileText, PiggyBank, ArrowRight, AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ interface Props {
 
 export const DepositDetailsStep = ({ onNext }: Props) => {
   const { data, updateData } = useHandover();
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const deposit = parseFloat(data.depositAmount) || 0;
   const isCash = data.depositType === 'cash';
@@ -36,6 +38,47 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     return getWeightedAverageRate(start, new Date());
   })();
 
+  const handleNext = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (isCash) {
+      if (!isInstallments) {
+        if (!data.depositPaymentDate) {
+          newErrors.depositPaymentDate = 'Bitte geben Sie das Datum der Kautionszahlung an.';
+        } else if (data.contractEnd && data.depositPaymentDate >= data.contractEnd) {
+          newErrors.depositPaymentDate = 'Das Zahlungsdatum muss vor dem Auszugstermin liegen.';
+        }
+      } else {
+        installmentDates.forEach((d, i) => {
+          if (!d) {
+            newErrors[`installment_${i}`] = `Datum für ${i + 1}. Rate fehlt.`;
+          } else if (data.contractEnd && d >= data.contractEnd) {
+            newErrors[`installment_${i}`] = `${i + 1}. Rate muss vor dem Auszugstermin liegen.`;
+          }
+        });
+      }
+    }
+
+    if (isGuarantee) {
+      if (!data.guaranteeNumber?.trim()) {
+        newErrors.guaranteeNumber = 'Bitte geben Sie die Bürgschaftsurkunden-Nr. an.';
+      }
+    }
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length === 0) {
+      onNext();
+    }
+  };
+
+  const errorMsg = (key: string) =>
+    errors[key] ? (
+      <div className="flex items-center gap-1 mt-1 text-destructive text-xs">
+        <AlertCircle className="w-3 h-3 shrink-0" />
+        <span>{errors[key]}</span>
+      </div>
+    ) : null;
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 40 }}
@@ -49,16 +92,20 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
         <div className="glass-card rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold text-sm">Bürgschafts-Details</h3>
+            <h3 className="font-semibold text-sm">Bürgschafts-Details <span className="text-destructive">*</span></h3>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Bürgschaftsurkunde Nr.</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Bürgschaftsurkunde Nr. <span className="text-destructive">*</span></label>
             <Input
               value={data.guaranteeNumber}
-              onChange={e => updateData({ guaranteeNumber: e.target.value })}
+              onChange={e => {
+                updateData({ guaranteeNumber: e.target.value });
+                if (errors.guaranteeNumber) setErrors(prev => { const { guaranteeNumber, ...rest } = prev; return rest; });
+              }}
               placeholder="z. B. BU-2024-123456"
-              className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
+              className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm ${errors.guaranteeNumber ? 'ring-2 ring-destructive/50' : ''}`}
             />
+            {errorMsg('guaranteeNumber')}
           </div>
           <div className="bg-secondary/40 rounded-xl p-3 text-xs text-foreground/80 leading-relaxed">
             <Info className="w-3.5 h-3.5 inline mr-1 text-primary" />
@@ -154,13 +201,17 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
           {/* Einmalzahlung */}
           {!isInstallments && (
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Kautionszahlung am</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Kautionszahlung am <span className="text-destructive">*</span></label>
               <Input
                 type="date"
                 value={data.depositPaymentDate}
-                onChange={e => updateData({ depositPaymentDate: e.target.value })}
-                className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
+                onChange={e => {
+                  updateData({ depositPaymentDate: e.target.value });
+                  if (errors.depositPaymentDate) setErrors(prev => { const { depositPaymentDate, ...rest } = prev; return rest; });
+                }}
+                className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm ${errors.depositPaymentDate ? 'ring-2 ring-destructive/50' : ''}`}
               />
+              {errorMsg('depositPaymentDate')}
               {singleResult && singleResult.interest > 0 && (
                 <div className="mt-2 space-y-1">
                   {singleResult.breakdown.map((b, i) => (
@@ -185,9 +236,9 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                 const rateAmount = deposit / 3;
                 const rateData = installmentResult?.perRate[i];
                 return (
-                  <div key={i} className="border border-border/30 rounded-xl p-3 space-y-1.5">
+                  <div key={i} className={`border rounded-xl p-3 space-y-1.5 ${errors[`installment_${i}`] ? 'border-destructive/50' : 'border-border/30'}`}>
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-semibold">{i + 1}. Rate: {rateAmount.toFixed(2)} €</span>
+                      <span className="text-xs font-semibold">{i + 1}. Rate: {rateAmount.toFixed(2)} € <span className="text-destructive">*</span></span>
                       {rateData && rateData.interest > 0 && (
                         <span className="text-xs font-medium text-accent">+ {rateData.interest.toFixed(2)} € Zinsen</span>
                       )}
@@ -199,9 +250,11 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                         const newDates = [...installmentDates] as [string, string, string];
                         newDates[i] = e.target.value;
                         updateData({ depositInstallmentDates: newDates });
+                        if (errors[`installment_${i}`]) setErrors(prev => { const copy = { ...prev }; delete copy[`installment_${i}`]; return copy; });
                       }}
                       className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
                     />
+                    {errorMsg(`installment_${i}`)}
                     {rateData && rateData.days > 0 && rateData.breakdown && (
                       <div className="space-y-0.5">
                         {rateData.breakdown.map((b, j) => (
