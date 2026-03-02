@@ -359,6 +359,7 @@ export const Step10DefectAnalysis = () => {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
           <Button
             onClick={handleContinue}
+            disabled={isRelettingBlocked}
             className="w-full h-12 rounded-2xl font-semibold gap-2"
             size="lg"
           >
