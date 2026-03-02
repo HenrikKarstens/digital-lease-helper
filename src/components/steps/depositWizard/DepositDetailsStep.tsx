@@ -38,16 +38,24 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     return getWeightedAverageRate(start, new Date());
   })();
 
+  const today = new Date().toISOString().split('T')[0];
+  const earliestDate = data.contractStart || data.contractSigningDate || '';
+  const earliestLabel = data.contractStart ? 'Einzugstermin' : 'Vertragsunterzeichnung';
+  const missingPhase3Dates = !data.contractStart && !data.contractSigningDate;
+
   const handleNext = () => {
     const newErrors: Record<string, string> = {};
 
-    const today = new Date().toISOString().split('T')[0];
-    const earliestDate = data.contractStart || data.contractSigningDate || '';
+    if (isCash && missingPhase3Dates) {
+      newErrors._phase3 = 'Einzugstermin oder Datum der Vertragsunterzeichnung fehlt. Bitte zuerst in Phase 3 (Daten-Check) ergänzen.';
+      setErrors(newErrors);
+      return;
+    }
 
     if (isCash) {
       const validateDate = (d: string, key: string, label: string) => {
         if (earliestDate && d < earliestDate) {
-          newErrors[key] = `${label} kann nicht vor dem ${data.contractStart ? 'Einzugstermin' : 'Vertragsunterzeichnung'} (${earliestDate}) liegen.`;
+          newErrors[key] = `${label} kann nicht vor dem ${earliestLabel} (${earliestDate}) liegen.`;
         } else if (d > today) {
           newErrors[key] = `${label} kann nicht in der Zukunft liegen.`;
         } else if (data.contractEnd && d >= data.contractEnd) {
@@ -162,6 +170,33 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
             <Calendar className="w-4 h-4 text-primary" />
             <h3 className="font-semibold text-sm">Zinsen (§ 551 Abs. 3 BGB)</h3>
           </div>
+
+          {/* Phase 3 cross-reference */}
+          {missingPhase3Dates ? (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-xs leading-relaxed text-destructive">
+              <AlertCircle className="w-3.5 h-3.5 inline mr-1" />
+              <strong>Daten aus Phase 3 fehlen:</strong> Bitte tragen Sie zuerst den Einzugstermin oder das Datum der Vertragsunterzeichnung im Daten-Check ein, bevor Sie hier fortfahren.
+            </div>
+          ) : (
+            <div className="bg-secondary/40 rounded-xl p-3 text-xs leading-relaxed space-y-1">
+              <div className="flex items-center gap-1.5 text-foreground/70">
+                <Info className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="font-semibold">Referenzdaten aus Phase 3 (Daten-Check):</span>
+              </div>
+              {data.contractStart && (
+                <div className="ml-5 text-foreground/60">Einzugstermin: <span className="font-medium text-foreground/80">{data.contractStart}</span></div>
+              )}
+              {data.contractSigningDate && (
+                <div className="ml-5 text-foreground/60">Vertragsunterzeichnung: <span className="font-medium text-foreground/80">{data.contractSigningDate}</span></div>
+              )}
+              {data.contractEnd && (
+                <div className="ml-5 text-foreground/60">Auszugstermin: <span className="font-medium text-foreground/80">{data.contractEnd}</span></div>
+              )}
+              <div className="ml-5 text-foreground/50 italic">Kautionszahlung muss zwischen {earliestLabel} und heute liegen.</div>
+            </div>
+          )}
+          {errorMsg('_phase3')}
+
           <p className="text-xs text-muted-foreground">
             Formel: Guthaben = Kapital × Zinssatz / 100 × Tage / 365. Zinsen stehen dem Mieter zu.
           </p>
