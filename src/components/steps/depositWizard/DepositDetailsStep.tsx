@@ -192,15 +192,15 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                 <span className="font-semibold">Referenzdaten aus Phase 3 (Daten-Check):</span>
               </div>
               {data.contractStart && (
-                <div className="ml-5 text-foreground/60">Einzugstermin: <span className="font-medium text-foreground/80">{data.contractStart}</span></div>
+                <div className="ml-5 text-foreground/60">Einzugstermin: <span className="font-medium text-foreground/80">{formatDE(data.contractStart)}</span></div>
               )}
               {data.contractSigningDate && (
-                <div className="ml-5 text-foreground/60">Vertragsunterzeichnung: <span className="font-medium text-foreground/80">{data.contractSigningDate}</span></div>
+                <div className="ml-5 text-foreground/60">Vertragsunterzeichnung: <span className="font-medium text-foreground/80">{formatDE(data.contractSigningDate)}</span></div>
               )}
               {data.contractEnd && (
-                <div className="ml-5 text-foreground/60">Auszugstermin: <span className="font-medium text-foreground/80">{data.contractEnd}</span></div>
+                <div className="ml-5 text-foreground/60">Auszugstermin: <span className="font-medium text-foreground/80">{formatDE(data.contractEnd)}</span></div>
               )}
-              <div className="ml-5 text-foreground/50 italic">Kautionszahlung muss zwischen {earliestLabel} und heute liegen.</div>
+              <div className="ml-5 text-foreground/50 italic">Kautionszahlung muss zwischen {earliestLabel} ({formatDE(earliestDate)}) und heute ({formatDE(today)}) liegen.</div>
             </div>
           )}
           {errorMsg('_phase3')}
