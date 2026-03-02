@@ -38,16 +38,24 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     return getWeightedAverageRate(start, new Date());
   })();
 
+  const today = new Date().toISOString().split('T')[0];
+  const earliestDate = data.contractStart || data.contractSigningDate || '';
+  const earliestLabel = data.contractStart ? 'Einzugstermin' : 'Vertragsunterzeichnung';
+  const missingPhase3Dates = !data.contractStart && !data.contractSigningDate;
+
   const handleNext = () => {
     const newErrors: Record<string, string> = {};
 
-    const today = new Date().toISOString().split('T')[0];
-    const earliestDate = data.contractStart || data.contractSigningDate || '';
+    if (isCash && missingPhase3Dates) {
+      newErrors._phase3 = 'Einzugstermin oder Datum der Vertragsunterzeichnung fehlt. Bitte zuerst in Phase 3 (Daten-Check) ergänzen.';
+      setErrors(newErrors);
+      return;
+    }
 
     if (isCash) {
       const validateDate = (d: string, key: string, label: string) => {
         if (earliestDate && d < earliestDate) {
-          newErrors[key] = `${label} kann nicht vor dem ${data.contractStart ? 'Einzugstermin' : 'Vertragsunterzeichnung'} (${earliestDate}) liegen.`;
+          newErrors[key] = `${label} kann nicht vor dem ${earliestLabel} (${earliestDate}) liegen.`;
         } else if (d > today) {
           newErrors[key] = `${label} kann nicht in der Zukunft liegen.`;
         } else if (data.contractEnd && d >= data.contractEnd) {
