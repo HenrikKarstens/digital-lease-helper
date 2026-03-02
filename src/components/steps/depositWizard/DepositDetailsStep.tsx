@@ -47,18 +47,15 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
   const moveInDate = data.contractStart || REFERENCE_MOVE_IN_DATE;
   const moveOutDate = data.contractEnd || '';
   const today = REFERENCE_TODAY;
-  const missingPhase3Dates = !data.contractStart && !data.contractSigningDate;
+  const missingPhase3Dates = false;
 
-  // The strictest lower bound: the LATER of the two dates
-  const lowerBound = moveInDate > signingDate ? moveInDate : signingDate;
-  const invalidDepositDateMessage = 'Rechtlich unmöglich: Das Datum muss zwischen Vertragsstart (01.12.2025) und heute liegen.';
+  // Hard bounds for payment date validation
+  const lowerBound = REFERENCE_SIGNING_DATE;
+  const invalidDepositDateMessage = 'Ungültiges Datum! Die Zahlung muss zwischen der Unterschrift (09.11.2025) und heute liegen.';
 
   const checkDateValidity = (inputDate: string): boolean => {
     if (!inputDate) return false;
-    if (inputDate < signingDate) return false;
-    if (inputDate < moveInDate) return false;
-    if (inputDate > today) return false;
-    return true;
+    return inputDate >= REFERENCE_SIGNING_DATE && inputDate <= REFERENCE_TODAY;
   };
 
   /** Safe German date formatter – never returns "undefined.undefined" */
@@ -72,14 +69,10 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
   };
 
   /** Validate a single date against all rules. Returns error string or null. */
-  const validateDate = (d: string, label: string): string | null => {
+  const validateDate = (d: string, _label: string): string | null => {
     if (!d) return null; // emptiness checked separately
     if (!checkDateValidity(d)) {
       return invalidDepositDateMessage;
-    }
-    // Additional domain rule: payment must be before move-out
-    if (moveOutDate && d >= moveOutDate) {
-      return `Ungültiges Datum: ${label ? label + ' – d' : 'D'}ie Zahlung muss vor dem Auszugstermin (${formatDE(moveOutDate)}) liegen.`;
     }
     return null;
   };
@@ -153,6 +146,8 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
     if (isGuarantee && !data.guaranteeNumber?.trim()) return false; // allow click to show error
     return false;
   })();
+
+  const effectiveInterest = isCash && isDateValid ? interest : 0;
 
   const handleNext = () => {
     const newErrors: Record<string, string> = {};
@@ -348,7 +343,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                 className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm ${errors.depositPaymentDate ? 'ring-2 ring-destructive/50 border-destructive' : ''}`}
               />
               {errorMsg('depositPaymentDate')}
-              {singleResult && singleResult.interest > 0 && !errors.depositPaymentDate && (
+              {singleResult && singleResult.interest > 0 && !errors.depositPaymentDate && isDateValid && (
                 <div className="mt-2 space-y-1">
                   {singleResult.breakdown.map((b, i) => (
                     <div key={i} className="flex items-center gap-2 bg-accent/10 rounded-xl px-3 py-1.5 text-xs text-accent">
@@ -358,7 +353,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                   ))}
                   <div className="flex items-center gap-2 bg-accent/10 rounded-xl px-3 py-2 text-sm text-accent font-semibold">
                     <ArrowUp className="w-3.5 h-3.5 shrink-0" />
-                    <span>Zinsen gesamt: <strong>+ {interest.toFixed(2)} €</strong></span>
+                    <span>Zinsen gesamt: <strong>+ {effectiveInterest.toFixed(2)} €</strong></span>
                   </div>
                 </div>
               )}
@@ -376,7 +371,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                   <div key={i} className={`border rounded-xl p-3 space-y-1.5 ${errors[errKey] ? 'border-destructive/50' : 'border-border/30'}`}>
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-semibold">{i + 1}. Rate: {rateAmount.toFixed(2)} € <span className="text-destructive">*</span></span>
-                      {rateData && rateData.interest > 0 && !errors[errKey] && (
+                      {rateData && rateData.interest > 0 && !errors[errKey] && isDateValid && (
                         <span className="text-xs font-medium text-accent">+ {rateData.interest.toFixed(2)} € Zinsen</span>
                       )}
                     </div>
@@ -389,7 +384,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                       className={`rounded-xl bg-secondary/50 border-0 h-9 text-sm ${errors[errKey] ? 'ring-2 ring-destructive/50' : ''}`}
                     />
                     {errorMsg(errKey)}
-                    {rateData && rateData.days > 0 && rateData.breakdown && !errors[errKey] && (
+                    {rateData && rateData.days > 0 && rateData.breakdown && !errors[errKey] && isDateValid && (
                       <div className="space-y-0.5">
                         {rateData.breakdown.map((b, j) => (
                           <p key={j} className="text-[10px] text-muted-foreground">
@@ -401,10 +396,10 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                   </div>
                 );
               })}
-              {interest > 0 && !Object.keys(errors).some(k => k.startsWith('installment_')) && (
+              {effectiveInterest > 0 && !Object.keys(errors).some(k => k.startsWith('installment_')) && (
                 <div className="flex items-center gap-2 bg-accent/10 rounded-xl px-3 py-2 text-sm text-accent">
                   <ArrowUp className="w-3.5 h-3.5 shrink-0" />
-                  <span>Zinsen gesamt (alle Raten): <strong>+ {interest.toFixed(2)} €</strong></span>
+                  <span>Zinsen gesamt (alle Raten): <strong>+ {effectiveInterest.toFixed(2)} €</strong></span>
                 </div>
               )}
             </div>
@@ -419,12 +414,12 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
               </div>
               <div className="flex justify-between text-sm text-accent">
                 <span>+ Errechnete Zinsen</span>
-                <span className="font-semibold">+ {interest.toFixed(2)} €</span>
+                <span className="font-semibold">+ {effectiveInterest.toFixed(2)} €</span>
               </div>
               <div className="border-t border-border/30 my-1" />
               <div className="flex justify-between text-sm font-bold">
                 <span>Gesamt-Guthaben</span>
-                <span>{(deposit + interest).toFixed(2)} €</span>
+                <span>{(deposit + effectiveInterest).toFixed(2)} €</span>
               </div>
             </div>
           )}
