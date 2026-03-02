@@ -139,14 +139,11 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
 
   /** isDateValid: true only when all cash-date constraints pass */
   const isDateValid = (() => {
-    if (!isCash) return true; // non-cash types don't need date validation
-    if (missingPhase3Dates) return false;
+    if (!isCash) return true;
     if (!isInstallments) {
-      if (!data.depositPaymentDate) return false;
-      return validateDate(data.depositPaymentDate, '') === null;
+      return checkDateValidity(data.depositPaymentDate);
     }
-    // installments: all 3 dates must be present and valid
-    return installmentDates.every(d => d && validateDate(d, '') === null);
+    return installmentDates.every(d => checkDateValidity(d));
   })();
 
   /** Compute whether the Weiter button should be disabled */
