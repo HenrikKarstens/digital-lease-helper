@@ -109,33 +109,39 @@ export const Step10DefectAnalysis = () => {
 
   // ── 14-Tage-Regel für Anschlussvermietung (§ 281 BGB) ──
   const REFERENCE_TODAY = '2026-03-02';
-  const maxRelettingDate = '2026-03-16'; // today + 14 days
 
-  // Calculate days between move-out (today) and reletting date
-  const relettingDaysDiff = (() => {
+  // daysUntilNewTenant: Differenz zwischen Neueinzugsdatum und heute
+  const daysUntilNewTenant: number | null = (() => {
     if (!data.relettingDate) return null;
-    const today = new Date(REFERENCE_TODAY);
-    const target = new Date(data.relettingDate);
-    if (isNaN(target.getTime())) return null;
-    return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const todayMs = new Date(REFERENCE_TODAY).getTime();
+    const targetMs = new Date(data.relettingDate).getTime();
+    if (isNaN(targetMs)) return null;
+    return Math.round((targetMs - todayMs) / (86400000));
   })();
 
-  const isRelettingDateInRange = relettingDaysDiff !== null && relettingDaysDiff >= 0 && relettingDaysDiff <= 14;
-  const isRelettingDateTooFar = relettingDaysDiff !== null && relettingDaysDiff > 14;
-  const isRelettingDateBeforeToday = relettingDaysDiff !== null && relettingDaysDiff < 0;
-  const isRelettingDateInvalid = Boolean(data.relettingDate) && (isRelettingDateBeforeToday || isRelettingDateTooFar);
+  const hasRelettingDate = Boolean(data.relettingDate) && daysUntilNewTenant !== null;
+  const isDateInRange = hasRelettingDate && daysUntilNewTenant! >= 0 && daysUntilNewTenant! <= 14;
+  const isDateTooFar = hasRelettingDate && daysUntilNewTenant! > 14;
+  const isDateBeforeToday = hasRelettingDate && daysUntilNewTenant! < 0;
 
-  // Toggle can only be activated when a date exists and is within 14 days
-  const canActivateReletting = Boolean(data.relettingDate) && isRelettingDateInRange;
-  const effectiveReletting = data.immediateReletting && canActivateReletting;
+  // HARTE REGEL: Toggle MUSS disabled sein wenn > 14 Tage oder kein Datum
+  const toggleDisabled = !isDateInRange;
+  // Effektiver Wert: nur true wenn Toggle aktiv UND Datum ≤ 14 Tage
+  const effectiveReletting = data.immediateReletting && isDateInRange;
 
-  // Button blocking logic:
-  // - Immediate reletting selected: requires valid date within 14 days
-  // - Date in the past: always block (invalid input)
-  // - Date > 14 days: allow proceed in notice mode (§ 281 Abs. 1 BGB)
-  const isRelettingBlocked = data.immediateReletting
-    ? (!data.relettingDate || !isRelettingDateInRange)
-    : isRelettingDateBeforeToday;
+  // AUTO-KORREKTUR: Wenn Toggle true aber Datum > 14 Tage → sofort auf false setzen
+  if (data.immediateReletting && hasRelettingDate && !isDateInRange) {
+    // Schedule update to avoid render-loop
+    setTimeout(() => updateData({ immediateReletting: false }), 0);
+  }
+
+  // Button-Sperre:
+  // 1. Datum in der Vergangenheit → IMMER blockiert
+  // 2. Toggle aktiv aber Datum ungültig → blockiert (sollte durch Auto-Korrektur nicht vorkommen)
+  // 3. Kein Datum + keine Schäden → erlaubt (Sektion nicht relevant)
+  // 4. Datum > 14 Tage + Toggle aus → erlaubt (Fristsetzungs-Modus)
+  const hasDamages = damageFindings.length > 0 && !isMoveIn;
+  const isRelettingBlocked = hasDamages && isDateBeforeToday;
 
   // Auto-apply § 281 BGB logic to all findings when proceeding
   const handleContinue = () => {
