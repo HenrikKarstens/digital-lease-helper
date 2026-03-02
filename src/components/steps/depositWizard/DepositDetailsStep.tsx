@@ -220,7 +220,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
               {data.contractEnd && (
                 <div className="ml-5 text-foreground/60">Auszugstermin: <span className="font-medium text-foreground/80">{formatDE(data.contractEnd)}</span></div>
               )}
-              <div className="ml-5 text-foreground/50 italic">Kautionszahlung muss zwischen {earliestLabel} ({formatDE(earliestDate)}) und heute ({formatDE(today)}) liegen.</div>
+              <div className="ml-5 text-foreground/50 italic">Kautionszahlung muss nach {signingDate ? `Vertragsunterzeichnung (${formatDE(signingDate)})` : ''}{signingDate && moveInDate ? ' und ' : ''}{moveInDate ? `Einzug (${formatDE(moveInDate)})` : ''} liegen, aber nicht nach heute ({formatDE(today)}).</div>
             </div>
           )}
           {errorMsg('_phase3')}
