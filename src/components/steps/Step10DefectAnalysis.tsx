@@ -107,8 +107,18 @@ export const Step10DefectAnalysis = () => {
     setExpandedId(prev => prev === id ? null : id);
   };
 
+  // Reletting validation: date must be between today and today+14
+  const REFERENCE_TODAY = '2026-03-02';
+  const maxRelettingDate = '2026-03-16';
+  const isRelettingDateValid = data.immediateReletting
+    ? (data.relettingDate && data.relettingDate >= REFERENCE_TODAY && data.relettingDate <= maxRelettingDate)
+    : true; // not relevant when unchecked
+
+  const isRelettingBlocked = data.immediateReletting && !isRelettingDateValid;
+
   // Auto-apply § 281 BGB logic to all findings when proceeding
   const handleContinue = () => {
+    if (isRelettingBlocked) return;
     const deadline = addWeeksToDate(2);
     const isReletting = data.immediateReletting;
     const updatedFindings = data.findings.map(f => ({
