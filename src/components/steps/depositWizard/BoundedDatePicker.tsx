@@ -1,6 +1,6 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -42,6 +42,7 @@ export const BoundedDatePicker = ({
   hasError = false,
   disabled = false,
 }: BoundedDatePickerProps) => {
+  const [open, setOpen] = useState(false);
   const selected = parseIsoDate(value);
   const min = parseIsoDate(minDate);
   const max = parseIsoDate(maxDate);
@@ -53,37 +54,69 @@ export const BoundedDatePicker = ({
     return false;
   };
 
+  const handleManualInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (!val) {
+      onChange('');
+      return;
+    }
+    // Native date input already restricts via min/max, but double-check
+    if ((minDate && val < minDate) || (maxDate && val > maxDate)) {
+      return; // reject silently
+    }
+    onChange(val);
+  };
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          className={cn(
-            'w-full justify-between rounded-xl bg-secondary/50 border-0 h-9 text-sm font-normal',
-            !value && 'text-muted-foreground',
-            hasError && 'ring-2 ring-destructive/50 border-destructive',
-            className,
-          )}
-        >
-          {selected ? format(selected, 'dd.MM.yyyy') : <span>{placeholder}</span>}
-          <CalendarIcon className="h-4 w-4 opacity-60" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selected}
-          onSelect={(date) => {
-            if (!date || isDisabledDate(date)) return;
-            onChange(toIsoDate(date));
-          }}
-          disabled={isDisabledDate}
-          initialFocus
-          className={cn('p-3 pointer-events-auto')}
-        />
-      </PopoverContent>
-    </Popover>
+    <div className={cn('flex items-center gap-1.5', className)}>
+      {/* Manuell editierbares Datumsfeld mit harten Grenzen */}
+      <input
+        type="date"
+        value={value}
+        min={minDate || undefined}
+        max={maxDate || undefined}
+        onChange={handleManualInput}
+        disabled={disabled}
+        placeholder={placeholder}
+        className={cn(
+          'flex-1 h-9 rounded-xl bg-secondary/50 border-0 px-3 text-sm',
+          'ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+          hasError && 'ring-2 ring-destructive/50',
+        )}
+      />
+
+      {/* Kalender-Button als Zusatz */}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            className={cn(
+              'h-9 w-9 shrink-0 rounded-xl bg-secondary/50 flex items-center justify-center',
+              'hover:bg-secondary/80 transition-colors',
+              'disabled:cursor-not-allowed disabled:opacity-50',
+            )}
+          >
+            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <Calendar
+            mode="single"
+            selected={selected}
+            defaultMonth={selected || min || new Date()}
+            onSelect={(date) => {
+              if (!date || isDisabledDate(date)) return;
+              onChange(toIsoDate(date));
+              setOpen(false);
+            }}
+            disabled={isDisabledDate}
+            initialFocus
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 };
