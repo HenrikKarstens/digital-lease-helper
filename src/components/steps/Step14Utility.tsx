@@ -163,7 +163,7 @@ export const Step14Utility = () => {
   const landlordManagedMeters = useMemo(() => {
     return data.meterReadings.filter(m => {
       const medium = m.medium.toLowerCase();
-      if ((medium.includes('heiz') || medium.includes('gas') || medium.includes('fernwärme')) && heatingViaLandlord) return true;
+      if ((medium.includes('heiz') || medium.includes('gas') || medium.includes('fernwärme') || medium.includes('wärme')) && heatingViaLandlord) return true;
       if (medium.includes('wasser') && waterViaLandlord) return true;
       return false;
     });
