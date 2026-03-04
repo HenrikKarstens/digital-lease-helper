@@ -52,10 +52,10 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
   const moveInDate = data.contractStart || '';
   const moveOutDate = data.contractEnd || '';
 
-  // Frühestmögliche Kautionszahlung = frühestes Datum von Vertragsunterschrift ODER Mietbeginn
+  // Frühestmögliche Kautionszahlung = späteres Datum von Vertragsunterschrift ODER Mietbeginn
   const missingPhase3Dates = !signingDate && !moveInDate;
   const lowerBound: string = (() => {
-    if (signingDate && moveInDate) return signingDate < moveInDate ? signingDate : moveInDate;
+    if (signingDate && moveInDate) return signingDate > moveInDate ? signingDate : moveInDate;
     return signingDate || moveInDate || '';
   })();
 
