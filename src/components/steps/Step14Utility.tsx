@@ -399,13 +399,48 @@ export const Step14Utility = () => {
               </div>
             </div>
 
-            {nextAddress && (
+            {nextAddress && !tenantRefusesAddress && (
               <div className="bg-accent/10 rounded-xl p-3 flex items-start gap-2 text-xs">
                 <CheckCircle2 className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium text-accent">Adresse übernommen</p>
                   <p className="text-muted-foreground mt-0.5">
                     Wird automatisch als Rücksendeadresse für die Kautionsrückzahlung und im PDF-Zertifikat unter „Zukünftige Erreichbarkeit" verwendet.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Option: Mieter verweigert Adressangabe */}
+            <div className="flex items-start gap-3 pt-1">
+              <Checkbox
+                id="refuse-address"
+                checked={tenantRefusesAddress}
+                onCheckedChange={(checked) => {
+                  const val = checked === true;
+                  setTenantRefusesAddress(val);
+                  updateData({ tenantRefusesNewAddress: val });
+                  if (val) {
+                    setStreetNew('');
+                    setPlzCityNew('');
+                  }
+                }}
+              />
+              <label htmlFor="refuse-address" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                <span className="font-semibold text-foreground">Mieter gibt neue Adresse nicht an</span>
+                <br />
+                Die Verweigerung wird im Protokoll dokumentiert.
+              </label>
+            </div>
+
+            {tenantRefusesAddress && (
+              <div className="bg-warning/10 rounded-xl p-3 flex items-start gap-2 text-xs border border-warning/30">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-warning">Hinweis dokumentiert</p>
+                  <p className="text-muted-foreground mt-0.5">
+                    Der Mieter wurde auf die Pflicht zur Angabe einer zustellfähigen Adresse hingewiesen (§ 259 BGB, § 242 BGB). 
+                    Die Verweigerung wird im Übergabeprotokoll vermerkt.
                   </p>
                 </div>
               </div>
