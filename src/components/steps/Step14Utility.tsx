@@ -558,6 +558,51 @@ export const Step14Utility = () => {
             <p className="text-sm font-medium">Zahlung wird verarbeitet…</p>
           </div>
         )}
+
+        {/* Address warning AlertDialog */}
+        <AlertDialog open={showAddressWarning} onOpenChange={setShowAddressWarning}>
+          <AlertDialogContent className="rounded-2xl max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-warning">
+                <AlertTriangle className="w-5 h-5" />
+                Keine Nachsendeadresse hinterlegt
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>
+                    <strong className="text-foreground">Der Mieter hat keine neue Zustelladresse angegeben.</strong> Dies hat erhebliche rechtliche Konsequenzen:
+                  </p>
+                  <ul className="list-disc pl-4 space-y-1.5 text-xs">
+                    <li>
+                      <strong>§ 259 BGB (Rechenschaftspflicht):</strong> Der Mieter ist nach Beendigung des Mietverhältnisses verpflichtet, eine zustellfähige Anschrift mitzuteilen, damit der Vermieter die Betriebskostenabrechnung und Kautionsrückzahlung ordnungsgemäß zustellen kann.
+                    </li>
+                    <li>
+                      <strong>§ 242 BGB (Treu und Glauben):</strong> Die Verweigerung einer Zustelladresse verstößt gegen den Grundsatz von Treu und Glauben und kann als treuwidrig gewertet werden.
+                    </li>
+                    <li>
+                      <strong>BGH, Urt. v. 22.11.2017 – VIII ZR 291/16:</strong> Der Vermieter ist ohne zustellfähige Adresse berechtigt, die Kaution bis zur Klärung zurückzubehalten. Die Verjährungshemmung beginnt erst mit Zugang der Abrechnung.
+                    </li>
+                    <li>
+                      <strong>Zustellungsfiktion (§ 132 BGB):</strong> Ohne bekannte Adresse kann die Betriebskostenabrechnung unter Umständen nicht wirksam zugestellt werden, was zu Fristproblemen führt.
+                    </li>
+                  </ul>
+                  <p className="text-xs font-medium text-foreground bg-warning/10 rounded-lg p-2.5 border border-warning/20">
+                    ⚠️ Bei Verweigerung wird dies im Übergabeprotokoll dokumentiert. Dem Vermieter stehen in diesem Fall erweiterte Zurückbehaltungsrechte an der Kaution zu.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl">Zurück – Adresse eingeben</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleAddressRefusalConfirm}
+                className="rounded-xl bg-warning text-warning-foreground hover:bg-warning/90"
+              >
+                Trotzdem fortfahren
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
   );
