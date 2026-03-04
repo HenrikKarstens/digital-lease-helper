@@ -45,6 +45,7 @@ export const Step12Unlock = () => {
   const participantsCount = data.participants.filter(p => p.present).length;
   const hasDeposit = !!data.depositAmount;
   const criticalClauses = data.deepLegalClauses.filter(c => c.status === 'KRITISCH' || c.status === 'UNWIRKSAM').length;
+  const defectPhotos = data.findings.filter(f => f.entryType !== 'note' && f.photoUrl).length;
 
   // PDF Preview
   const handlePreview = useCallback(() => {
