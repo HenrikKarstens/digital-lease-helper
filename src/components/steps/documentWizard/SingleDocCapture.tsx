@@ -166,12 +166,17 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
         smallRepairSourceRef: 'smallRepairSourceRef',
         endRenovationSourceRef: 'endRenovationSourceRef',
         preDamages: 'preDamages',
+        amendmentDate: 'amendmentDate',
       };
 
       const patch: Record<string, string> = {};
       Object.entries(fieldMap).forEach(([src, dst]) => {
         if (result[src]) patch[dst] = result[src];
       });
+      // For amendment docs, map contractStart → amendmentDate
+      if (docStep.id === 'amendment' && result.contractStart) {
+        patch['amendmentDate'] = result.contractStart;
+      }
       updateData(patch as any);
       console.log('[EstateTurn] Daten in globalen State geschrieben:', Object.keys(patch));
 

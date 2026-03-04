@@ -99,6 +99,7 @@ export const Step4Validation = () => {
   const [showScanner, setShowScanner] = useState(!hasAnalysisData);
 
   const isMoveIn = data.handoverDirection === 'move-in';
+  const hasAmendment = (data.capturedDocuments || []).some(d => d.type === 'amendment');
 
 
   const rows: { key: keyof typeof data; label: string }[] = [
@@ -123,6 +124,7 @@ export const Step4Validation = () => {
     { key: 'contractEnd', label: contractEndLabel },
     { key: 'contractType', label: 'Vertragsart' },
     { key: 'contractSigningDate', label: 'Datum Vertragsunterzeichnung' },
+    ...(hasAmendment ? [{ key: 'amendmentDate' as keyof typeof data, label: 'Nachtragsdatum' }] : []),
   ];
 
   const filledCount = rows.filter(r => !!data[r.key]).length;
