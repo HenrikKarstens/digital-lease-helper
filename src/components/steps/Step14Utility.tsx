@@ -291,30 +291,9 @@ export const Step14Utility = () => {
     goToStepById('unlock');
   };
 
-  // For move-out: if already sent, show completion screen
-  if (isMoveOut && data.protocolSent && isUnlocked) {
-    return (
-      <TooltipProvider>
-        <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md glass-card-premium rounded-2xl p-6 text-center"
-          >
-            <PartyPopper className="w-14 h-14 text-primary mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">Übergabe abgeschlossen!</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Das rechtssichere Protokoll wurde an alle Beteiligten gesendet.
-            </p>
-            <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mb-6">
-              <Mail className="w-3.5 h-3.5" />
-              <span>{recipientList.map(r => r.email).join(', ') || 'Alle Beteiligten'}</span>
-            </div>
-            <Button variant="outline" onClick={resetData} className="rounded-xl gap-2">
-              Neue Übergabe starten
-            </Button>
-          </motion.div>
-        </div>
-      </TooltipProvider>
-    );
+  // For move-out: if already sent, redirect to unlock step
+  if (isMoveOut && data.protocolSent) {
+    return null;
   }
 
   return (
@@ -504,213 +483,16 @@ export const Step14Utility = () => {
             </motion.div>
           )}
 
-          {/* ── 4. Smart-Switch: Check24 Lead (shown after cancellation) ── */}
-          {allMetersHandled && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-              className="glass-card-premium rounded-2xl p-5 border-2 border-accent/30 bg-gradient-to-br from-accent/5 to-transparent"
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Strom am alten Standort {city} abgemeldet</h3>
-                  <p className="text-xs text-muted-foreground">Zählerstand dokumentiert & verifiziert</p>
-                </div>
-              </div>
-
-              <div className="bg-accent/10 rounded-xl p-3 mb-4 flex items-center gap-2 text-sm">
-                <ShieldCheck className="w-5 h-5 text-accent shrink-0" />
-                <span className="font-medium">
-                  Neues Zuhause, neuer Tarif? Vergleiche jetzt Strom & Gas für deine neue Adresse und sichere dir <span className="text-accent font-bold">20 € Cashback</span>
-                </span>
-              </div>
-
-              {/* New address preview */}
-              {nextAddress && (
-                <div className="bg-primary/5 rounded-xl p-2.5 mb-3 flex items-center gap-2 text-xs">
-                  <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <div>
-                    <span className="text-muted-foreground">Lieferadresse: </span>
-                    <span className="font-medium">{nextAddress}</span>
-                    <span className="text-muted-foreground"> · Einzug: {moveDateFormatted}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Verbrauchsschätzung */}
-              <div className="space-y-3 mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <label className="text-xs text-muted-foreground">Personenanzahl</label>
-                  </div>
-                  <span className="text-sm font-semibold">{persons}</span>
-                </div>
-                <Slider value={[persons]} onValueChange={([v]) => setPersons(v)} min={1} max={5} step={1} />
-
-                <div className="bg-primary/10 rounded-xl p-3 flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Jahresverbrauch</span>
-                  {manualKwhEdit ? (
-                    <div className="flex items-center gap-1">
-                      <Input
-                        type="number"
-                        className="w-20 h-7 text-right text-sm font-bold"
-                        value={manualKwh ?? heuristicKwh}
-                        onChange={(e) => setManualKwh(Number(e.target.value) || null)}
-                        onBlur={() => setManualKwhEdit(false)}
-                        autoFocus
-                      />
-                      <span className="text-sm font-bold text-primary">kWh</span>
-                    </div>
-                  ) : (
-                    <button onClick={() => setManualKwhEdit(true)} className="flex items-center gap-1 group cursor-pointer">
-                      <span className="text-lg font-bold text-primary">{estimatedKwh.toLocaleString('de-DE')} kWh</span>
-                      <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Tarifvergleich */}
-              {grundversorger && (
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-secondary/50 rounded-xl p-3">
-                    <p className="text-xs text-muted-foreground">Grundversorger</p>
-                    <p className="text-lg font-bold text-destructive">{grundversorgerJahr.toLocaleString('de-DE')} €<span className="text-xs font-normal text-muted-foreground">/J.</span></p>
-                    <p className="text-[10px] text-muted-foreground">{grundversorger.name}</p>
-                  </div>
-                  <div className="bg-accent/10 rounded-xl p-3">
-                    <div className="flex items-center gap-1">
-                      <TrendingDown className="w-3.5 h-3.5 text-accent" />
-                      <p className="text-xs text-muted-foreground">Check24 ab</p>
-                    </div>
-                    <p className="text-lg font-bold text-accent">{check24Jahr.toLocaleString('de-DE')} €<span className="text-xs font-normal text-muted-foreground">/J.</span></p>
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-accent/15 rounded-xl p-3 mb-4 text-center">
-                <span className="text-xs text-muted-foreground">Jährliche Ersparnis</span>
-                <p className="text-2xl font-bold text-accent">bis zu {ersparnis} €</p>
-              </div>
-
-              {/* DSGVO + CTA */}
-              <div className="flex items-start gap-2.5 mb-3">
-                <Checkbox
-                  id="dsgvo-check24"
-                  checked={dsgvoConsent}
-                  onCheckedChange={(v) => setDsgvoConsent(v === true)}
-                  className="mt-0.5"
-                />
-                <label htmlFor="dsgvo-check24" className="text-[11px] text-muted-foreground leading-tight cursor-pointer">
-                  Ich stimme zu, dass meine Daten (PLZ {newPlz || plz || '–'}, {estimatedKwh.toLocaleString('de-DE')} kWh, Zähler {stromMeter?.meterNumber || '–'}) zum Tarifvergleich an Check24 übertragen werden.
-                </label>
-              </div>
-
-              {isMoveOut ? (
-                dsgvoConsent ? (
-                  <Button
-                    onClick={handleServiceCheck}
-                    disabled={sending}
-                    className="w-full h-12 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-                    size="lg"
-                  >
-                    {sending ? (
-                      <>
-                        <div className="w-4 h-4 rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground animate-spin" />
-                        Wird verarbeitet…
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-5 h-5" />
-                        Tarifvergleich & kostenloses Protokoll
-                        <ExternalLink className="w-4 h-4" />
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <Button disabled className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
-                    <Zap className="w-5 h-5" />
-                    Tarifvergleich & kostenloses Protokoll
-                  </Button>
-                )
-              ) : (
-                dsgvoConsent ? (
-                  <Button
-                    onClick={() => {
-                      updateData({ serviceCheckStatus: 'completed' });
-                      toast({ title: '✅ Protokoll freigeschaltet', description: 'Ihr Protokoll ist jetzt ohne Wasserzeichen verfügbar.' });
-                      window.open(buildCheck24Link(), '_blank');
-                    }}
-                    className="w-full h-12 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-                    size="lg"
-                  >
-                    <Zap className="w-5 h-5" />
-                    Tarifvergleich & kostenloses Protokoll
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                ) : (
-                  <Button disabled className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
-                    <Zap className="w-5 h-5" />
-                    Tarifvergleich & kostenloses Protokoll
-                  </Button>
-                )
-              )}
-            </motion.div>
-          )}
-
-          {/* ── Move-Out: PDF Preview & Protocol Send ── */}
+          {/* ── Move-Out: Weiter zum Abschluss ── */}
           {isMoveOut && (
-            <>
-              {/* Preview Button */}
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                <Button
-                  variant={previewViewed ? 'outline' : 'default'}
-                  onClick={handlePreview}
-                  className="w-full h-12 rounded-2xl font-semibold gap-2 border-primary/30"
-                >
-                  <Eye className="w-4 h-4" />
-                  {previewViewed ? 'Vorschau erneut öffnen' : 'Protokoll-Vorschau öffnen (Pflicht)'}
-                  {previewViewed && <CheckCircle2 className="w-4 h-4 text-primary" />}
-                </Button>
-                {!previewViewed && (
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    Bitte öffnen Sie zuerst die Vorschau, um fortzufahren.
-                  </p>
-                )}
-              </motion.div>
-
-              {/* Divider */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground font-medium">oder</span>
-                <div className="flex-1 h-px bg-border" />
-              </div>
-
-              {/* Payment fallback */}
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-                className="text-center"
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="pt-2">
+              <Button
+                onClick={handleContinue}
+                className="w-full h-12 rounded-2xl font-semibold gap-2"
+                size="lg"
               >
-                <button
-                  onClick={handlePaymentSelect}
-                  disabled={processing || !previewViewed}
-                  className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  <span>Einmalzahlung <strong>9,90 €</strong> – Rechtssicher versenden</span>
-                </button>
-              </motion.div>
-            </>
-          )}
-
-          {/* ── Non-Move-Out: simple continue ── */}
-          {!isMoveOut && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="pt-2">
-              <Button onClick={handleContinue} className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg">
                 <ArrowRight className="w-4 h-4" />
-                Weiter zur Freischaltung
+                Weiter zum Abschluss des Protokolls
               </Button>
             </motion.div>
           )}
