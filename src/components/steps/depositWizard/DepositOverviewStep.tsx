@@ -62,18 +62,35 @@ export const DepositOverviewStep = ({ onNext }: Props) => {
   const payoutPercent = deposit > 0 ? Math.min(100, (payout / deposit) * 100) : 0;
   const deductPercent = deposit > 0 ? Math.min(100, (totalDeductions / deposit) * 100) : 0;
 
-  const REFERENCE_TODAY = '2026-03-02';
   const MAX_IMMEDIATE_RELETTING_DAYS = 7;
+  const toIsoLocalDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const toLocalDateMs = (isoDate: string) => {
+    const [year, month, day] = isoDate.split('-').map(Number);
+    if (!year || !month || !day) return NaN;
+    return new Date(year, month - 1, day).getTime();
+  };
+  const formatIsoToGerman = (isoDate: string) => {
+    const [year, month, day] = isoDate.split('-');
+    if (!year || !month || !day) return isoDate;
+    return `${day}.${month}.${year}`;
+  };
+
+  const REFERENCE_TODAY = toIsoLocalDate(new Date());
   const MAX_RELETTING_DATE = (() => {
-    const d = new Date(REFERENCE_TODAY);
+    const d = new Date();
     d.setDate(d.getDate() + MAX_IMMEDIATE_RELETTING_DAYS);
-    return d.toISOString().split('T')[0];
+    return toIsoLocalDate(d);
   })();
   const daysUntilNewTenant: number | null = (() => {
     if (!data.relettingDate) return null;
-    const todayMs = new Date(REFERENCE_TODAY).getTime();
-    const targetMs = new Date(data.relettingDate).getTime();
-    if (isNaN(targetMs)) return null;
+    const todayMs = toLocalDateMs(REFERENCE_TODAY);
+    const targetMs = toLocalDateMs(data.relettingDate);
+    if (isNaN(targetMs) || isNaN(todayMs)) return null;
     return Math.round((targetMs - todayMs) / 86400000);
   })();
   const isDateInRange = daysUntilNewTenant !== null && daysUntilNewTenant >= 0 && daysUntilNewTenant <= MAX_IMMEDIATE_RELETTING_DAYS;
@@ -283,7 +300,7 @@ export const DepositOverviewStep = ({ onNext }: Props) => {
               <Label htmlFor="immediateReletting" className="text-sm font-semibold cursor-pointer leading-snug block">
                 Sofortige Anschlussvermietung
               </Label>
-              <p className="text-xs text-muted-foreground mt-0.5">Einzug des Nachmieters innerhalb von 7 Tagen (02.03.2026–09.03.2026)?</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Einzug des Nachmieters innerhalb von 7 Tagen ({formatIsoToGerman(REFERENCE_TODAY)}–{formatIsoToGerman(MAX_RELETTING_DATE)})?</p>
             </div>
             <Switch
               id="immediateReletting"
@@ -308,8 +325,8 @@ export const DepositOverviewStep = ({ onNext }: Props) => {
                         updateData({ relettingDate: '' });
                         return;
                       }
-                      const diff = Math.round((new Date(val).getTime() - new Date(REFERENCE_TODAY).getTime()) / 86400000);
-                      if (diff < 0 || diff > MAX_IMMEDIATE_RELETTING_DAYS) {
+                      const diff = Math.round((toLocalDateMs(val) - toLocalDateMs(REFERENCE_TODAY)) / 86400000);
+                      if (isNaN(diff) || diff < 0 || diff > MAX_IMMEDIATE_RELETTING_DAYS) {
                         updateData({ relettingDate: '', immediateReletting: false });
                         return;
                       }
