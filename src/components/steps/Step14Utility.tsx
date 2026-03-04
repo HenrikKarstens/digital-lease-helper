@@ -14,6 +14,7 @@ import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { generateMasterProtocolBlob } from '@/lib/pdfGenerator';
+import { ContractCancellationCard } from './ContractCancellationCard';
 import {
   Tooltip,
   TooltipContent,
@@ -104,8 +105,8 @@ export const Step14Utility = () => {
   const { cancellationTarget, isSale, ownerRole, clientRole } = useTransactionLabels();
   const isMoveOut = data.handoverDirection === 'move-out';
 
-  const [cancellationStarted, setCancellationStarted] = useState(false);
-  const [cancellationDone, setCancellationDone] = useState(false);
+  const [providerInfoMap, setProviderInfoMap] = useState<Record<string, any>>({});
+  const [reminderMap, setReminderMap] = useState<Record<string, boolean>>({});
   const [dsgvoConsent, setDsgvoConsent] = useState(false);
   const [manualKwhEdit, setManualKwhEdit] = useState(false);
   const [manualKwh, setManualKwh] = useState<number | null>(null);
@@ -208,16 +209,17 @@ export const Step14Utility = () => {
     return `https://www.check24.de/strom/vergleich/?${params.toString()}`;
   };
 
-  const handleCancellation = () => {
-    setCancellationStarted(true);
-    setTimeout(() => {
-      setCancellationDone(true);
-      toast({
-        title: '📄 Kündigungsschreiben erstellt',
-        description: `Kündigung für Strom an ${city} wurde als PDF-Entwurf generiert. Zählerstand ${stromMeter?.reading || '–'} ${stromMeter?.unit || ''} übernommen.`,
-      });
-    }, 1200);
-  };
+  const handleProviderInfoSaved = useCallback((meterId: string, info: any) => {
+    setProviderInfoMap(prev => ({ ...prev, [meterId]: info }));
+  }, []);
+
+  const handleReminderSet = useCallback((meterId: string, enabled: boolean) => {
+    setReminderMap(prev => ({ ...prev, [meterId]: enabled }));
+  }, []);
+
+  const allMetersHandled = selfCancelMeters.length > 0 && selfCancelMeters.every(
+    m => providerInfoMap[m.id] || reminderMap[m.id]
+  );
 
   // PDF Preview
   const handlePreview = useCallback(() => {
@@ -463,81 +465,47 @@ export const Step14Utility = () => {
             </motion.div>
           )}
 
-          {/* ── 3. Eigene Verträge kündigen (Strom) ── */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="glass-card-premium rounded-2xl p-5 space-y-3"
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-amber-500" />
+          {/* ── 3. Eigene Verträge kündigen (per Zähler) ── */}
+          {selfCancelMeters.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              className="glass-card-premium rounded-2xl p-5 space-y-3"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Eigene Verträge kündigen</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {selfCancelMeters.map(m => m.medium).join(', ')} – Eigenkündigung erforderlich
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-sm">Eigene Verträge kündigen</h3>
-                <p className="text-xs text-muted-foreground">
-                  {selfCancelMeters.length > 0
-                    ? `${selfCancelMeters.map(m => m.medium).join(', ')} – Eigenkündigung erforderlich`
-                    : 'Nur Strom – Eigenkündigung erforderlich'
-                  }
-                </p>
-              </div>
-            </div>
 
-            {/* Self-cancel meter readings */}
-            {selfCancelMeters.length > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {selfCancelMeters.map(m => (
-                  <div key={m.id} className="flex items-center justify-between bg-secondary/30 rounded-xl px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-3.5 h-3.5 text-amber-500" />
-                      <span className="text-xs font-medium">{m.medium}</span>
-                      {m.meterNumber && <span className="text-[10px] text-muted-foreground">Nr. {m.meterNumber}</span>}
-                    </div>
-                    <span className="text-sm font-bold text-primary">{m.reading} {m.unit}</span>
-                  </div>
+                  <ContractCancellationCard
+                    key={m.id}
+                    meter={m}
+                    tenantEmail={data.tenantEmail || ''}
+                    tenantName={data.tenantName || 'Mieter'}
+                    onProviderInfoSaved={handleProviderInfoSaved}
+                    onReminderSet={handleReminderSet}
+                  />
                 ))}
               </div>
-            )}
 
-            <div className="flex gap-2 pt-1">
-              <Button
-                variant="outline"
-                className="flex-1 rounded-xl gap-1.5 text-xs h-10"
-                onClick={handleCancellation}
-                disabled={cancellationStarted}
-              >
-                {cancellationStarted ? (
-                  cancellationDone ? (
-                    <><CheckCircle2 className="w-4 h-4 text-accent" /> Erstellt ✓</>
-                  ) : (
-                    <><div className="w-3.5 h-3.5 rounded-full border-2 border-primary/30 border-t-primary animate-spin" /> Wird erstellt…</>
-                  )
-                ) : (
-                  <><FileText className="w-4 h-4" /> Kündigungs-Assistent starten</>
-                )}
-              </Button>
-              <Button variant="outline" className="flex-1 rounded-xl gap-1.5 text-xs h-10" disabled>
-                <Phone className="w-4 h-4" />
-                Online abmelden
-                <span className="text-[9px] text-muted-foreground">(bald)</span>
-              </Button>
-            </div>
-
-            {cancellationDone && (
-              <div className="bg-accent/10 rounded-xl p-3 text-xs space-y-1">
-                <div className="flex items-center gap-1.5 font-medium text-accent">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Kündigungsschreiben generiert
+              {allMetersHandled && (
+                <div className="bg-accent/10 rounded-xl p-3 flex items-center gap-2 text-xs">
+                  <CheckCircle2 className="w-4 h-4 text-accent" />
+                  <span className="font-medium text-accent">Alle Verträge bearbeitet</span>
                 </div>
-                <p className="text-muted-foreground">
-                  Zählerstand {stromMeter?.reading || '–'} {stromMeter?.unit || 'kWh'} zum {todayFormatted} übernommen.
-                  {stromMeter?.meterNumber && ` Zählernr.: ${stromMeter.meterNumber}`}
-                </p>
-              </div>
-            )}
-          </motion.div>
+              )}
+            </motion.div>
+          )}
 
           {/* ── 4. Smart-Switch: Check24 Lead (shown after cancellation) ── */}
-          {cancellationDone && (
+          {allMetersHandled && (
             <motion.div
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
               className="glass-card-premium rounded-2xl p-5 border-2 border-accent/30 bg-gradient-to-br from-accent/5 to-transparent"
