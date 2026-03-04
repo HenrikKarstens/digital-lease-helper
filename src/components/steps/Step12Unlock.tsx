@@ -274,40 +274,7 @@ export const Step12Unlock = () => {
           {/* ── Unlock Options (only after preview) ── */}
           <div className={`space-y-3 transition-opacity ${previewViewed ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
 
-            {/* Option 1: Payment 9,90€ */}
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-              onClick={handlePayment}
-              disabled={processing}
-              className="w-full rounded-2xl border-2 border-primary/20 hover:border-primary/50 p-4 text-left transition-all hover:shadow-md group disabled:opacity-50"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                  <CreditCard className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-sm">Direkt freischalten</p>
-                    <span className="text-lg font-bold text-primary">9,90 €</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Sofortige Freischaltung des vollständigen Protokolls ohne Wasserzeichen. Rechtssicher & druckfertig.
-                  </p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1 group-hover:text-primary transition-colors" />
-              </div>
-            </motion.button>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground font-medium">oder</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-
-            {/* Option 2: Handwerker Leads (kostenlos mit DSGVO) */}
+            {/* Option 1: Handwerker Leads (kostenlos mit DSGVO) */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -375,6 +342,39 @@ export const Step12Unlock = () => {
                 Handwerkerangebote anfordern & freischalten
               </Button>
             </motion.div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground font-medium">oder</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            {/* Option 2: Payment 9,90€ */}
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+              onClick={handlePayment}
+              disabled={processing}
+              className="w-full rounded-2xl border-2 border-primary/20 hover:border-primary/50 p-4 text-left transition-all hover:shadow-md group disabled:opacity-50"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                  <CreditCard className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-sm">Direkt freischalten</p>
+                    <span className="text-lg font-bold text-primary">9,90 €</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Sofortige Freischaltung des vollständigen Protokolls ohne Wasserzeichen. Rechtssicher & druckfertig.
+                  </p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1 group-hover:text-primary transition-colors" />
+              </div>
+            </motion.button>
           </div>
         </div>
 
