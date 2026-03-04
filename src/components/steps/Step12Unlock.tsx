@@ -330,6 +330,27 @@ export const Step12Unlock = () => {
                 </div>
               </div>
 
+              {/* Data that will be shared */}
+              {defectsCount > 0 && (
+                <div className="bg-secondary/30 rounded-xl p-3 mb-3 space-y-2">
+                  <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                    Folgende Daten werden übermittelt:
+                  </p>
+                  <ul className="text-[11px] text-muted-foreground space-y-1 pl-5 list-disc">
+                    <li>Kontaktdaten: <span className="font-medium text-foreground">{data.tenantName || 'Name'}</span>, <span className="font-medium text-foreground">{data.tenantEmail || 'E-Mail'}</span>{data.tenantPhone ? <>, <span className="font-medium text-foreground">{data.tenantPhone}</span></> : ''}</li>
+                    <li>Objektadresse: <span className="font-medium text-foreground">{data.propertyAddress || '–'}</span></li>
+                    <li>{defectsCount} dokumentierte Mängel inkl. Beschreibung, Raum &amp; Schadensart</li>
+                    {defectPhotos > 0 && (
+                      <li className="flex items-center gap-1">
+                        <Camera className="w-3 h-3 shrink-0" />
+                        <span>{defectPhotos} Beweisfoto{defectPhotos > 1 ? 's' : ''} aus der Mängelerfassung</span>
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
               {/* DSGVO Consent */}
               <div className="flex items-start gap-2.5 mb-3 bg-background/60 rounded-xl p-3">
                 <Checkbox
@@ -339,7 +360,7 @@ export const Step12Unlock = () => {
                   className="mt-0.5"
                 />
                 <label htmlFor="dsgvo-handwerker" className="text-[11px] text-muted-foreground leading-tight cursor-pointer">
-                  Ich stimme zu, dass meine Kontaktdaten ({data.tenantName || 'Name'}, {data.tenantEmail || 'E-Mail'}) und die Mängelliste gemäß DSGVO an ausgewählte Handwerksbetriebe zur Angebotserstellung weitergegeben werden. Die Anfrage ist unverbindlich und kostenlos.{' '}
+                  Ich stimme gemäß Art. 6 Abs. 1 lit. a DSGVO zu, dass meine Kontaktdaten ({data.tenantName || 'Name'}, {data.tenantEmail || 'E-Mail'}), die Objektadresse, die dokumentierten Mängel sowie die zugehörigen Beweisfotos an ausgewählte Handwerksbetriebe zur unverbindlichen Angebotserstellung weitergegeben werden. Die Einwilligung kann jederzeit widerrufen werden.{' '}
                   <a href="/datenschutz" className="underline text-primary">Datenschutzerklärung</a>.
                 </label>
               </div>
