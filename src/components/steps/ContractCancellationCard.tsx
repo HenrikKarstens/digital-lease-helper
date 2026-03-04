@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Camera, Upload, FileText, CheckCircle2, Mail, Bell,
   Zap, Flame, Droplets, Thermometer, HelpCircle, Loader2, Pencil
@@ -48,7 +48,7 @@ export const ContractCancellationCard = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const [mode, setMode] = useState<'idle' | 'upload' | 'reminder'>('idle');
+  const [mode, setMode] = useState<'idle' | 'upload'>('idle');
   const [scanning, setScanning] = useState(false);
   const [providerInfo, setProviderInfo] = useState<ProviderInfo>({
     providerName: '',
@@ -146,6 +146,11 @@ export const ContractCancellationCard = ({
     }
   };
 
+  const handleProviderFieldChange = (field: keyof ProviderInfo, value: string) => {
+    setProviderInfo(prev => ({ ...prev, [field]: value }));
+    if (infoSaved) setInfoSaved(false);
+  };
+
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-3">
       {/* Meter header */}
@@ -171,155 +176,151 @@ export const ContractCancellationCard = ({
       </div>
 
       {/* Two options */}
-      {!infoSaved && !reminderSet && (
-        <div className="space-y-2">
-          {/* Option A: Upload/Photo */}
-          <AnimatePresence mode="wait">
-            {mode !== 'reminder' && (
-              <motion.div
-                key="upload-option"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-2"
+      <div className="space-y-2">
+        {/* Option A: Upload/Photo */}
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="space-y-2"
+        >
+          <p className="text-xs font-medium text-foreground">
+            Option A: Versorger-Unterlagen hochladen
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            Abrechnung, Vertrag oder Kundenschreiben – KI extrahiert Kundennummer & Versorger
+          </p>
+
+          {mode === 'idle' && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 rounded-xl gap-1.5 text-xs h-9"
+                onClick={() => cameraInputRef.current?.click()}
               >
-                <p className="text-xs font-medium text-foreground">
-                  Option A: Versorger-Unterlagen hochladen
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  Abrechnung, Vertrag oder Kundenschreiben – KI extrahiert Kundennummer & Versorger
-                </p>
-
-                {mode === 'idle' && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 rounded-xl gap-1.5 text-xs h-9"
-                      onClick={() => cameraInputRef.current?.click()}
-                    >
-                      <Camera className="w-3.5 h-3.5" />
-                      Foto
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 rounded-xl gap-1.5 text-xs h-9"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      Upload
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 rounded-xl gap-1.5 text-xs h-9"
-                      onClick={() => { setMode('upload'); setManualEntry(true); }}
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      Manuell
-                    </Button>
-                  </div>
-                )}
-
-                {/* Scanning state */}
-                {scanning && (
-                  <div className="flex items-center gap-2 bg-primary/5 rounded-xl p-3">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <span className="text-xs text-muted-foreground">KI analysiert Dokument…</span>
-                  </div>
-                )}
-
-                {/* Manual entry / AI results form */}
-                {mode === 'upload' && !scanning && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-2 bg-secondary/30 rounded-xl p-3"
-                  >
-                    {providerInfo.providerName && !manualEntry && (
-                      <div className="flex items-center gap-1.5 text-[10px] font-medium text-primary mb-1">
-                        <CheckCircle2 className="w-3 h-3" />
-                        KI-Erkennung erfolgreich – bitte prüfen
-                      </div>
-                    )}
-                    <div>
-                      <label className="text-[10px] text-muted-foreground mb-0.5 block">Versorgername</label>
-                      <Input
-                        value={providerInfo.providerName}
-                        onChange={e => setProviderInfo(p => ({ ...p, providerName: e.target.value }))}
-                        placeholder="z. B. Vattenfall, E.ON"
-                        className="rounded-lg h-8 text-xs bg-background"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Kundennummer</label>
-                        <Input
-                          value={providerInfo.customerNumber}
-                          onChange={e => setProviderInfo(p => ({ ...p, customerNumber: e.target.value }))}
-                          placeholder="z. B. 12345678"
-                          className="rounded-lg h-8 text-xs bg-background"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-muted-foreground mb-0.5 block">Vertragsnummer</label>
-                        <Input
-                          value={providerInfo.contractNumber}
-                          onChange={e => setProviderInfo(p => ({ ...p, contractNumber: e.target.value }))}
-                          placeholder="optional"
-                          className="rounded-lg h-8 text-xs bg-background"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      className="w-full rounded-xl gap-1.5 text-xs h-8 mt-1"
-                      onClick={handleSaveProvider}
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Daten übernehmen
-                    </Button>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Divider */}
-          {mode !== 'upload' && mode !== 'reminder' && (
-            <div className="flex items-center gap-2 py-1">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-[10px] text-muted-foreground font-medium">ODER</span>
-              <div className="flex-1 h-px bg-border" />
+                <Camera className="w-3.5 h-3.5" />
+                Foto
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 rounded-xl gap-1.5 text-xs h-9"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Upload
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 rounded-xl gap-1.5 text-xs h-9"
+                onClick={() => { setMode('upload'); setManualEntry(true); }}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Manuell
+              </Button>
             </div>
           )}
 
-          {/* Option B: Email reminder */}
-          {mode !== 'upload' && (
-            <div className="flex items-start gap-3 bg-secondary/30 rounded-xl p-3">
-              <Checkbox
-                id={`reminder-${meter.id}`}
-                checked={reminderSet}
-                onCheckedChange={(checked) => handleReminderToggle(checked === true)}
-                className="mt-0.5"
-              />
-              <label htmlFor={`reminder-${meter.id}`} className="cursor-pointer space-y-0.5">
-                <p className="text-xs font-medium">
-                  Per E-Mail an Kündigung erinnern
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  Erinnerung an <span className="font-medium text-foreground">{tenantEmail || '(keine E-Mail hinterlegt)'}</span>
-                </p>
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1">
-                  <Mail className="w-3 h-3" />
-                  E-Mail-Adresse aus Ihren Vertragsdaten
+          {/* Scanning state */}
+          {scanning && (
+            <div className="flex items-center gap-2 bg-primary/5 rounded-xl p-3">
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              <span className="text-xs text-muted-foreground">KI analysiert Dokument…</span>
+            </div>
+          )}
+
+          {/* Manual entry / AI results form */}
+          {mode === 'upload' && !scanning && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-2 bg-secondary/30 rounded-xl p-3"
+            >
+              {providerInfo.providerName && !manualEntry && (
+                <div className="flex items-center gap-1.5 text-[10px] font-medium text-primary mb-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  KI-Erkennung erfolgreich – bitte prüfen
                 </div>
-              </label>
-            </div>
+              )}
+              <div>
+                <label className="text-[10px] text-muted-foreground mb-0.5 block">Versorgername</label>
+                <Input
+                  value={providerInfo.providerName}
+                  onChange={e => handleProviderFieldChange('providerName', e.target.value)}
+                  placeholder="z. B. Vattenfall, E.ON"
+                  className="rounded-lg h-8 text-xs bg-background"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-0.5 block">Kundennummer</label>
+                  <Input
+                    value={providerInfo.customerNumber}
+                    onChange={e => handleProviderFieldChange('customerNumber', e.target.value)}
+                    placeholder="z. B. 12345678"
+                    className="rounded-lg h-8 text-xs bg-background"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-0.5 block">Vertragsnummer</label>
+                  <Input
+                    value={providerInfo.contractNumber}
+                    onChange={e => handleProviderFieldChange('contractNumber', e.target.value)}
+                    placeholder="optional"
+                    className="rounded-lg h-8 text-xs bg-background"
+                  />
+                </div>
+              </div>
+              <Button
+                size="sm"
+                className="w-full rounded-xl gap-1.5 text-xs h-8 mt-1"
+                onClick={handleSaveProvider}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Daten übernehmen
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full rounded-xl text-[11px]"
+                onClick={() => setMode('idle')}
+              >
+                Andere Option auswählen
+              </Button>
+            </motion.div>
           )}
+        </motion.div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-2 py-1">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-[10px] text-muted-foreground font-medium">ODER</span>
+          <div className="flex-1 h-px bg-border" />
         </div>
-      )}
+
+        {/* Option B: Email reminder */}
+        <div className="flex items-start gap-3 bg-secondary/30 rounded-xl p-3">
+          <Checkbox
+            id={`reminder-${meter.id}`}
+            checked={reminderSet}
+            onCheckedChange={(checked) => handleReminderToggle(checked === true)}
+            className="mt-0.5"
+          />
+          <label htmlFor={`reminder-${meter.id}`} className="cursor-pointer space-y-0.5">
+            <p className="text-xs font-medium">
+              Per E-Mail an Kündigung erinnern
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              Erinnerung an <span className="font-medium text-foreground">{tenantEmail || '(keine E-Mail hinterlegt)'}</span>
+            </p>
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1">
+              <Mail className="w-3 h-3" />
+              E-Mail-Adresse aus Ihren Vertragsdaten
+            </div>
+          </label>
+        </div>
+      </div>
 
       {/* Saved state: provider info */}
       {infoSaved && (
