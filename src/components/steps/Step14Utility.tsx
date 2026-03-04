@@ -291,30 +291,9 @@ export const Step14Utility = () => {
     goToStepById('unlock');
   };
 
-  // For move-out: if already sent, show completion screen
-  if (isMoveOut && data.protocolSent && isUnlocked) {
-    return (
-      <TooltipProvider>
-        <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md glass-card-premium rounded-2xl p-6 text-center"
-          >
-            <PartyPopper className="w-14 h-14 text-primary mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">Übergabe abgeschlossen!</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Das rechtssichere Protokoll wurde an alle Beteiligten gesendet.
-            </p>
-            <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mb-6">
-              <Mail className="w-3.5 h-3.5" />
-              <span>{recipientList.map(r => r.email).join(', ') || 'Alle Beteiligten'}</span>
-            </div>
-            <Button variant="outline" onClick={resetData} className="rounded-xl gap-2">
-              Neue Übergabe starten
-            </Button>
-          </motion.div>
-        </div>
-      </TooltipProvider>
-    );
+  // For move-out: if already sent, redirect to unlock step
+  if (isMoveOut && data.protocolSent) {
+    return null;
   }
 
   return (
