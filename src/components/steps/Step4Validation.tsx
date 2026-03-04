@@ -99,6 +99,7 @@ export const Step4Validation = () => {
   const [showScanner, setShowScanner] = useState(!hasAnalysisData);
 
   const isMoveIn = data.handoverDirection === 'move-in';
+  const hasAmendment = (data.capturedDocuments || []).some(d => d.type === 'amendment');
 
 
   const rows: { key: keyof typeof data; label: string }[] = [
