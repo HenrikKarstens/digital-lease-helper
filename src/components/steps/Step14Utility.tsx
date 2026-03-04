@@ -105,8 +105,8 @@ export const Step14Utility = () => {
   const { cancellationTarget, isSale, ownerRole, clientRole } = useTransactionLabels();
   const isMoveOut = data.handoverDirection === 'move-out';
 
-  const [cancellationStarted, setCancellationStarted] = useState(false);
-  const [cancellationDone, setCancellationDone] = useState(false);
+  const [providerInfoMap, setProviderInfoMap] = useState<Record<string, any>>({});
+  const [reminderMap, setReminderMap] = useState<Record<string, boolean>>({});
   const [dsgvoConsent, setDsgvoConsent] = useState(false);
   const [manualKwhEdit, setManualKwhEdit] = useState(false);
   const [manualKwh, setManualKwh] = useState<number | null>(null);
