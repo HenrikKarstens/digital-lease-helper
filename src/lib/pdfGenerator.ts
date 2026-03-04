@@ -1167,6 +1167,20 @@ export function generateMasterProtocol(data: HandoverData): void {
       }));
     y = embedPhotos(doc, meterPhotosAppendix, y, pageW, pageH, col1);
 
+    // §10c Legal notice: Tenant responsibility for utility cancellations
+    if (y > pageH - 50) { doc.addPage(); y = 36; }
+    y = sectionTitle(doc, '§10c  Hinweis zur Versorgerkündigung', y, pageW);
+    doc.setFillColor(255, 248, 235);
+    const utilityNoticeText = `Gemäß § 433 BGB i.V.m. aktueller Rechtsprechung (BGH, Urt. v. 22.02.2012 – VIII ZR 34/11) ist der bisherige Mieter (${data.tenantName || 'Mieter'}) eigenverantwortlich für die fristgerechte Kündigung bzw. Ummeldung sämtlicher auf seinen Namen laufenden Versorgungsverträge (Strom, Gas, Internet, Telefon etc.) zum Übergabezeitpunkt verantwortlich. Der Vermieter (${data.landlordName || 'Vermieter'}) übernimmt hierfür keine Haftung. Nicht gekündigte Verträge gehen weiterhin zu Lasten des bisherigen Mieters (§ 546 Abs. 1 BGB).`;
+    const utilityNoticeLines = doc.splitTextToSize(utilityNoticeText, pageW - 36);
+    const utilityNoticeH = utilityNoticeLines.length * 4 + 10;
+    doc.roundedRect(14, y, pageW - 28, utilityNoticeH, 2, 2, 'F');
+    doc.setTextColor(120, 90, 20);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(utilityNoticeLines, 18, y + 6);
+    y += utilityNoticeH + 6;
+
     // Confirmation text
     if (y > pageH - 40) { doc.addPage(); y = 36; }
     doc.setFillColor(...GOLD_LIGHT);

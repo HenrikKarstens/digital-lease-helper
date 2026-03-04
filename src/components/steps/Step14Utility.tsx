@@ -444,8 +444,8 @@ export const Step14Utility = () => {
             </motion.div>
           )}
 
-          {/* ── 3. Eigene Verträge kündigen (per Zähler) ── */}
-          {selfCancelMeters.length > 0 && (
+          {/* ── 3. Eigene Verträge kündigen (per Zähler) – nur für Mieter-Rolle ── */}
+          {selfCancelMeters.length > 0 && data.role !== 'landlord' && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="glass-card-premium rounded-2xl p-5 space-y-3"
             >
