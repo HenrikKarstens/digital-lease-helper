@@ -386,6 +386,7 @@ export const Step14Utility = () => {
                   onChange={e => setStreetNew(e.target.value)}
                   placeholder="z. B. Musterstraße 12"
                   className="rounded-xl bg-secondary/50 border-0 h-10 text-sm"
+                  disabled={tenantRefusesAddress}
                 />
               </div>
               <div>
@@ -395,6 +396,7 @@ export const Step14Utility = () => {
                   onChange={e => setPlzCityNew(e.target.value)}
                   placeholder="z. B. 20095 Hamburg"
                   className="rounded-xl bg-secondary/50 border-0 h-10 text-sm"
+                  disabled={tenantRefusesAddress}
                 />
               </div>
             </div>
