@@ -505,7 +505,7 @@ export const Step14Utility = () => {
           )}
 
           {/* ── 4. Smart-Switch: Check24 Lead (shown after cancellation) ── */}
-          {cancellationDone && (
+          {allMetersHandled && (
             <motion.div
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
               className="glass-card-premium rounded-2xl p-5 border-2 border-accent/30 bg-gradient-to-br from-accent/5 to-transparent"
