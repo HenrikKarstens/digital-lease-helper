@@ -204,6 +204,7 @@ export interface HandoverData {
   // Kautions-Schiedsrichter: beiderseitiges Anerkenntnis
   depositAgreementReached: boolean;
   depositAgreementTimestamp: string;
+  tenantRefusesNewAddress: boolean;
 }
 
 const STORAGE_KEY = 'estateturn_draft';
@@ -281,6 +282,7 @@ const defaultData: HandoverData = {
   serviceCheckStatus: 'none',
   depositAgreementReached: false,
   depositAgreementTimestamp: '',
+  tenantRefusesNewAddress: false,
 };
 
 interface HandoverContextType {

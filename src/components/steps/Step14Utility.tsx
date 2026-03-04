@@ -3,8 +3,12 @@ import {
   Zap, Leaf, TrendingDown, Euro, ArrowRight, FileText, CheckCircle2,
   PartyPopper, Info, Users, ExternalLink, Building2, Pencil, ShieldCheck,
   Home, Wifi, MapPin, Mail, Eye, Printer, X, CreditCard, Shield,
-  AlertTriangle, Flame, Droplets, Phone
+  AlertTriangle, Flame, Droplets, Phone, Ban
 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -110,6 +114,8 @@ export const Step14Utility = () => {
   const [dsgvoConsent, setDsgvoConsent] = useState(false);
   const [manualKwhEdit, setManualKwhEdit] = useState(false);
   const [manualKwh, setManualKwh] = useState<number | null>(null);
+  const [tenantRefusesAddress, setTenantRefusesAddress] = useState(data.tenantRefusesNewAddress ?? false);
+  const [showAddressWarning, setShowAddressWarning] = useState(false);
   // Forwarding address fields
   const [streetNew, setStreetNew] = useState(data.nextAddress?.split(',')[0]?.trim() || '');
   const [plzCityNew, setPlzCityNew] = useState(data.nextAddress?.split(',')[1]?.trim() || '');
@@ -287,7 +293,19 @@ export const Step14Utility = () => {
   };
 
   const handleContinue = () => {
-    updateData({ nextAddress });
+    // If no address and not explicitly refused → show legal warning
+    if (!nextAddress && !tenantRefusesAddress) {
+      setShowAddressWarning(true);
+      return;
+    }
+    updateData({ nextAddress, tenantRefusesNewAddress: tenantRefusesAddress });
+    goToStepById('unlock');
+  };
+
+  const handleAddressRefusalConfirm = () => {
+    setTenantRefusesAddress(true);
+    setShowAddressWarning(false);
+    updateData({ nextAddress: '', tenantRefusesNewAddress: true });
     goToStepById('unlock');
   };
 
@@ -368,6 +386,7 @@ export const Step14Utility = () => {
                   onChange={e => setStreetNew(e.target.value)}
                   placeholder="z. B. Musterstraße 12"
                   className="rounded-xl bg-secondary/50 border-0 h-10 text-sm"
+                  disabled={tenantRefusesAddress}
                 />
               </div>
               <div>
@@ -377,17 +396,53 @@ export const Step14Utility = () => {
                   onChange={e => setPlzCityNew(e.target.value)}
                   placeholder="z. B. 20095 Hamburg"
                   className="rounded-xl bg-secondary/50 border-0 h-10 text-sm"
+                  disabled={tenantRefusesAddress}
                 />
               </div>
             </div>
 
-            {nextAddress && (
+            {nextAddress && !tenantRefusesAddress && (
               <div className="bg-accent/10 rounded-xl p-3 flex items-start gap-2 text-xs">
                 <CheckCircle2 className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium text-accent">Adresse übernommen</p>
                   <p className="text-muted-foreground mt-0.5">
                     Wird automatisch als Rücksendeadresse für die Kautionsrückzahlung und im PDF-Zertifikat unter „Zukünftige Erreichbarkeit" verwendet.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Option: Mieter verweigert Adressangabe */}
+            <div className="flex items-start gap-3 pt-1">
+              <Checkbox
+                id="refuse-address"
+                checked={tenantRefusesAddress}
+                onCheckedChange={(checked) => {
+                  const val = checked === true;
+                  setTenantRefusesAddress(val);
+                  updateData({ tenantRefusesNewAddress: val });
+                  if (val) {
+                    setStreetNew('');
+                    setPlzCityNew('');
+                  }
+                }}
+              />
+              <label htmlFor="refuse-address" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                <span className="font-semibold text-foreground">Mieter gibt neue Adresse nicht an</span>
+                <br />
+                Die Verweigerung wird im Protokoll dokumentiert.
+              </label>
+            </div>
+
+            {tenantRefusesAddress && (
+              <div className="bg-warning/10 rounded-xl p-3 flex items-start gap-2 text-xs border border-warning/30">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-warning">Hinweis dokumentiert</p>
+                  <p className="text-muted-foreground mt-0.5">
+                    Der Mieter wurde auf die Pflicht zur Angabe einer zustellfähigen Adresse hingewiesen (§ 259 BGB, § 242 BGB). 
+                    Die Verweigerung wird im Übergabeprotokoll vermerkt.
                   </p>
                 </div>
               </div>
@@ -505,6 +560,51 @@ export const Step14Utility = () => {
             <p className="text-sm font-medium">Zahlung wird verarbeitet…</p>
           </div>
         )}
+
+        {/* Address warning AlertDialog */}
+        <AlertDialog open={showAddressWarning} onOpenChange={setShowAddressWarning}>
+          <AlertDialogContent className="rounded-2xl max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-warning">
+                <AlertTriangle className="w-5 h-5" />
+                Keine Nachsendeadresse hinterlegt
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>
+                    <strong className="text-foreground">Der Mieter hat keine neue Zustelladresse angegeben.</strong> Dies hat erhebliche rechtliche Konsequenzen:
+                  </p>
+                  <ul className="list-disc pl-4 space-y-1.5 text-xs">
+                    <li>
+                      <strong>§ 259 BGB (Rechenschaftspflicht):</strong> Der Mieter ist nach Beendigung des Mietverhältnisses verpflichtet, eine zustellfähige Anschrift mitzuteilen, damit der Vermieter die Betriebskostenabrechnung und Kautionsrückzahlung ordnungsgemäß zustellen kann.
+                    </li>
+                    <li>
+                      <strong>§ 242 BGB (Treu und Glauben):</strong> Die Verweigerung einer Zustelladresse verstößt gegen den Grundsatz von Treu und Glauben und kann als treuwidrig gewertet werden.
+                    </li>
+                    <li>
+                      <strong>BGH, Urt. v. 22.11.2017 – VIII ZR 291/16:</strong> Der Vermieter ist ohne zustellfähige Adresse berechtigt, die Kaution bis zur Klärung zurückzubehalten. Die Verjährungshemmung beginnt erst mit Zugang der Abrechnung.
+                    </li>
+                    <li>
+                      <strong>Zustellungsfiktion (§ 132 BGB):</strong> Ohne bekannte Adresse kann die Betriebskostenabrechnung unter Umständen nicht wirksam zugestellt werden, was zu Fristproblemen führt.
+                    </li>
+                  </ul>
+                  <p className="text-xs font-medium text-foreground bg-warning/10 rounded-lg p-2.5 border border-warning/20">
+                    ⚠️ Bei Verweigerung wird dies im Übergabeprotokoll dokumentiert. Dem Vermieter stehen in diesem Fall erweiterte Zurückbehaltungsrechte an der Kaution zu.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl">Zurück – Adresse eingeben</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleAddressRefusalConfirm}
+                className="rounded-xl bg-warning text-warning-foreground hover:bg-warning/90"
+              >
+                Trotzdem fortfahren
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
   );
