@@ -3,8 +3,12 @@ import {
   Zap, Leaf, TrendingDown, Euro, ArrowRight, FileText, CheckCircle2,
   PartyPopper, Info, Users, ExternalLink, Building2, Pencil, ShieldCheck,
   Home, Wifi, MapPin, Mail, Eye, Printer, X, CreditCard, Shield,
-  AlertTriangle, Flame, Droplets, Phone
+  AlertTriangle, Flame, Droplets, Phone, Ban
 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -110,6 +114,8 @@ export const Step14Utility = () => {
   const [dsgvoConsent, setDsgvoConsent] = useState(false);
   const [manualKwhEdit, setManualKwhEdit] = useState(false);
   const [manualKwh, setManualKwh] = useState<number | null>(null);
+  const [tenantRefusesAddress, setTenantRefusesAddress] = useState(data.tenantRefusesNewAddress ?? false);
+  const [showAddressWarning, setShowAddressWarning] = useState(false);
   // Forwarding address fields
   const [streetNew, setStreetNew] = useState(data.nextAddress?.split(',')[0]?.trim() || '');
   const [plzCityNew, setPlzCityNew] = useState(data.nextAddress?.split(',')[1]?.trim() || '');
@@ -287,7 +293,19 @@ export const Step14Utility = () => {
   };
 
   const handleContinue = () => {
-    updateData({ nextAddress });
+    // If no address and not explicitly refused → show legal warning
+    if (!nextAddress && !tenantRefusesAddress) {
+      setShowAddressWarning(true);
+      return;
+    }
+    updateData({ nextAddress, tenantRefusesNewAddress: tenantRefusesAddress });
+    goToStepById('unlock');
+  };
+
+  const handleAddressRefusalConfirm = () => {
+    setTenantRefusesAddress(true);
+    setShowAddressWarning(false);
+    updateData({ nextAddress: '', tenantRefusesNewAddress: true });
     goToStepById('unlock');
   };
 
