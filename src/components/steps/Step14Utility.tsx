@@ -209,16 +209,17 @@ export const Step14Utility = () => {
     return `https://www.check24.de/strom/vergleich/?${params.toString()}`;
   };
 
-  const handleCancellation = () => {
-    setCancellationStarted(true);
-    setTimeout(() => {
-      setCancellationDone(true);
-      toast({
-        title: '📄 Kündigungsschreiben erstellt',
-        description: `Kündigung für Strom an ${city} wurde als PDF-Entwurf generiert. Zählerstand ${stromMeter?.reading || '–'} ${stromMeter?.unit || ''} übernommen.`,
-      });
-    }, 1200);
-  };
+  const handleProviderInfoSaved = useCallback((meterId: string, info: any) => {
+    setProviderInfoMap(prev => ({ ...prev, [meterId]: info }));
+  }, []);
+
+  const handleReminderSet = useCallback((meterId: string, enabled: boolean) => {
+    setReminderMap(prev => ({ ...prev, [meterId]: enabled }));
+  }, []);
+
+  const allMetersHandled = selfCancelMeters.length > 0 && selfCancelMeters.every(
+    m => providerInfoMap[m.id] || reminderMap[m.id]
+  );
 
   // PDF Preview
   const handlePreview = useCallback(() => {
