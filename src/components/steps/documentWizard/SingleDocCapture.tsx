@@ -166,6 +166,7 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
         smallRepairSourceRef: 'smallRepairSourceRef',
         endRenovationSourceRef: 'endRenovationSourceRef',
         preDamages: 'preDamages',
+        amendmentDate: 'amendmentDate',
       };
 
       const patch: Record<string, string> = {};

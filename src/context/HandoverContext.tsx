@@ -136,6 +136,7 @@ export interface HandoverData {
   contractDuration: string;
   contractType: 'unbefristet' | 'befristet' | '';
   contractSigningDate: string;
+  amendmentDate: string;
   coldRent: string;
   nkAdvancePayment: string;
   heatingCosts: string;
@@ -232,6 +233,7 @@ const defaultData: HandoverData = {
   contractDuration: '',
   contractType: '',
   contractSigningDate: '',
+  amendmentDate: '',
   preDamages: '',
   contractStart: '',
   contractEnd: '',
