@@ -39,7 +39,13 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
   })();
 
   // ── Rechtliche Referenzdaten (dynamisch aus Phase 3) ──
-  const REFERENCE_TODAY = '2026-03-02';
+  const toIsoLocalDate = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+  const REFERENCE_TODAY = toIsoLocalDate(new Date());
   const today = REFERENCE_TODAY;
 
   const signingDate = data.contractSigningDate || '';
