@@ -282,6 +282,7 @@ const defaultData: HandoverData = {
   serviceCheckStatus: 'none',
   depositAgreementReached: false,
   depositAgreementTimestamp: '',
+  tenantRefusesNewAddress: false,
 };
 
 interface HandoverContextType {
