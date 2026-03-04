@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 const METER_TYPES = [
   { value: 'Strom', label: 'Strom', icon: Zap, unit: 'kWh' },
   { value: 'Wasser', label: 'Wasser', icon: Droplets, unit: 'm³' },
-  { value: 'Gas', label: 'Gas', icon: Flame, unit: 'kWh' },
+  { value: 'Gas', label: 'Gas', icon: Flame, unit: 'm³' },
   { value: 'Wärmemengenzähler', label: 'Wärmemengenzähler', icon: Thermometer, unit: 'kWh' },
   { value: 'Sonstiges', label: 'Sonstiges', icon: HelpCircle, unit: '' },
 ];
