@@ -48,9 +48,23 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
   const REFERENCE_TODAY = toIsoLocalDate(new Date());
   const today = REFERENCE_TODAY;
 
-  const signingDate = data.contractSigningDate || '';
-  const moveInDate = data.contractStart || '';
-  const moveOutDate = data.contractEnd || '';
+  const normalizeToIso = (dateStr: string): string => {
+    const raw = (dateStr || '').trim();
+    if (!raw) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+    const dotMatch = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    if (dotMatch) {
+      const [, d, m, y] = dotMatch;
+      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+
+    return '';
+  };
+
+  const signingDate = normalizeToIso(data.contractSigningDate || '');
+  const moveInDate = normalizeToIso(data.contractStart || '');
+  const moveOutDate = normalizeToIso(data.contractEnd || '');
 
   // Frühestmögliche Kautionszahlung = frühestes (am weitesten zurückliegendes) Datum von Vertragsunterschrift ODER Mietbeginn
   const missingPhase3Dates = !signingDate && !moveInDate;
