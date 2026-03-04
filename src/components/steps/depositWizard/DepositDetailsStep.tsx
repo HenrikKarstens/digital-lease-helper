@@ -109,13 +109,14 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
 
   /** Live onChange handler for single payment date – hard-rejects out-of-range */
   const handleDateChange = (value: string) => {
+    if (missingPhase3Dates) return; // safety: block if no Phase 3 dates
     if (!value) {
       updateData({ depositPaymentDate: '' });
       setErrors(prev => { const { depositPaymentDate, ...rest } = prev; return rest; });
       return;
     }
     // Hard reject: before lower bound or after today
-    if ((lowerBound && value < lowerBound) || value > REFERENCE_TODAY) {
+    if (!lowerBound || value < lowerBound || value > REFERENCE_TODAY) {
       setErrors(prev => ({ ...prev, depositPaymentDate: invalidDepositDateMessage }));
       return; // do NOT store invalid date
     }
@@ -125,6 +126,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
 
   /** Live onChange handler for installment dates – hard-rejects out-of-range */
   const handleInstallmentDateChange = (index: number, value: string) => {
+    if (missingPhase3Dates) return; // safety
     const key = `installment_${index}`;
     if (!value) {
       const newDates = [...installmentDates] as [string, string, string];
@@ -134,7 +136,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
       return;
     }
     // Hard reject: before lower bound or after today
-    if ((lowerBound && value < lowerBound) || value > REFERENCE_TODAY) {
+    if (!lowerBound || value < lowerBound || value > REFERENCE_TODAY) {
       setErrors(prev => ({ ...prev, [key]: invalidDepositDateMessage }));
       return; // do NOT store invalid date
     }
@@ -355,6 +357,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                 onChange={handleDateChange}
                 placeholder="Kautionsdatum wählen"
                 hasError={!!errors.depositPaymentDate}
+                disabled={missingPhase3Dates}
               />
               {errorMsg('depositPaymentDate')}
               {singleResult && singleResult.interest > 0 && !errors.depositPaymentDate && isDateValid && (
@@ -396,6 +399,7 @@ export const DepositDetailsStep = ({ onNext }: Props) => {
                       onChange={(value) => handleInstallmentDateChange(i, value)}
                       placeholder={`Datum für ${i + 1}. Rate wählen`}
                       hasError={!!errors[errKey]}
+                      disabled={missingPhase3Dates}
                     />
                     {errorMsg(errKey)}
                     {rateData && rateData.days > 0 && rateData.breakdown && !errors[errKey] && isDateValid && (
