@@ -12,6 +12,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { generateMasterProtocolBlob } from '@/lib/pdfGenerator';
 import { ContractCancellationCard } from './ContractCancellationCard';
+import { ElectricityCancellationModal } from './ElectricityCancellationModal';
 import {
   Tooltip,
   TooltipContent,
@@ -112,6 +113,7 @@ export const Step14Utility = () => {
   // Forwarding address fields (read-only, used for Check24 link)
   const streetNew = data.nextAddress?.split(',')[0]?.trim() || '';
   const plzCityNew = data.nextAddress?.split(',')[1]?.trim() || '';
+  const [cancellationModalMeter, setCancellationModalMeter] = useState<typeof data.meterReadings[0] | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewViewed, setPreviewViewed] = useState(data.previewViewed ?? false);
   const [sending, setSending] = useState(false);
@@ -416,35 +418,25 @@ export const Step14Utility = () => {
                       {/* Self-cancellation action */}
                       {!isLandlordManaged && data.role !== 'landlord' && (
                         <div className="px-3 pb-3">
-                          {!isExpanded && !isHandled && (
+                          {!isHandled && (
                             <Button
                               variant="outline"
                               size="sm"
                               className="w-full rounded-xl gap-2 text-xs h-9 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
-                              onClick={() => setExpandedCancellation(prev => ({ ...prev, [m.id]: true }))}
+                              onClick={() => setCancellationModalMeter(m)}
                             >
                               <FileText className="w-3.5 h-3.5" />
                               Eigenkündigung durchführen
                             </Button>
                           )}
 
-                          {isExpanded && !isHandled && (
-                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-                              <ContractCancellationCard
-                                meter={m}
-                                tenantEmail={data.tenantEmail || ''}
-                                tenantName={data.tenantName || 'Mieter'}
-                                onProviderInfoSaved={handleProviderInfoSaved}
-                                onReminderSet={handleReminderSet}
-                              />
-                            </motion.div>
-                          )}
-
                           {isHandled && (
                             <div className="bg-accent/10 rounded-lg p-2.5 flex items-center gap-2 text-[10px]">
                               <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
                               <span className="font-medium text-accent">
-                                {providerInfoMap[m.id] ? `${providerInfoMap[m.id].providerName || 'Versorger'} – Daten erfasst` : 'Erinnerung aktiviert'}
+                                {providerInfoMap[m.id]
+                                  ? `${providerInfoMap[m.id].providerName || 'Versorger'} – Erfolgreich gekündigt`
+                                  : 'Erinnerung aktiviert'}
                               </span>
                             </div>
                           )}
@@ -486,6 +478,19 @@ export const Step14Utility = () => {
             <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin mb-3" />
             <p className="text-sm font-medium">Zahlung wird verarbeitet…</p>
           </div>
+        )}
+
+        {/* Electricity Cancellation Modal */}
+        {cancellationModalMeter && (
+          <ElectricityCancellationModal
+            open={!!cancellationModalMeter}
+            onOpenChange={(open) => { if (!open) setCancellationModalMeter(null); }}
+            meter={cancellationModalMeter}
+            onCancellationComplete={(meterId, info) => {
+              handleProviderInfoSaved(meterId, info);
+              setCancellationModalMeter(null);
+            }}
+          />
         )}
 
       </div>
