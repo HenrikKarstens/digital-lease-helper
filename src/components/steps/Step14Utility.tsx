@@ -309,10 +309,12 @@ export const Step14Utility = () => {
     goToStepById('unlock');
   };
 
-  // For move-out: if already sent, redirect to unlock step
-  if (isMoveOut && data.protocolSent) {
-    return null;
-  }
+  // For move-out: if already sent, skip to unlock
+  useEffect(() => {
+    if (isMoveOut && data.protocolSent && isUnlocked) {
+      goToStepById('unlock');
+    }
+  }, [isMoveOut, data.protocolSent, isUnlocked, goToStepById]);
 
   return (
     <TooltipProvider>
