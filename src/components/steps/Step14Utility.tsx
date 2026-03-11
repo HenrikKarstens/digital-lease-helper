@@ -418,35 +418,25 @@ export const Step14Utility = () => {
                       {/* Self-cancellation action */}
                       {!isLandlordManaged && data.role !== 'landlord' && (
                         <div className="px-3 pb-3">
-                          {!isExpanded && !isHandled && (
+                          {!isHandled && (
                             <Button
                               variant="outline"
                               size="sm"
                               className="w-full rounded-xl gap-2 text-xs h-9 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
-                              onClick={() => setExpandedCancellation(prev => ({ ...prev, [m.id]: true }))}
+                              onClick={() => setCancellationModalMeter(m)}
                             >
                               <FileText className="w-3.5 h-3.5" />
                               Eigenkündigung durchführen
                             </Button>
                           )}
 
-                          {isExpanded && !isHandled && (
-                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-                              <ContractCancellationCard
-                                meter={m}
-                                tenantEmail={data.tenantEmail || ''}
-                                tenantName={data.tenantName || 'Mieter'}
-                                onProviderInfoSaved={handleProviderInfoSaved}
-                                onReminderSet={handleReminderSet}
-                              />
-                            </motion.div>
-                          )}
-
                           {isHandled && (
                             <div className="bg-accent/10 rounded-lg p-2.5 flex items-center gap-2 text-[10px]">
                               <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
                               <span className="font-medium text-accent">
-                                {providerInfoMap[m.id] ? `${providerInfoMap[m.id].providerName || 'Versorger'} – Daten erfasst` : 'Erinnerung aktiviert'}
+                                {providerInfoMap[m.id]
+                                  ? `${providerInfoMap[m.id].providerName || 'Versorger'} – Erfolgreich gekündigt`
+                                  : 'Erinnerung aktiviert'}
                               </span>
                             </div>
                           )}
