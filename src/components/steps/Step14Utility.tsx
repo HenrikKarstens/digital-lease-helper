@@ -360,22 +360,22 @@ export const Step14Utility = () => {
 
         <div className="w-full max-w-md space-y-4">
 
-          {/* ── 0. Zähler-Übersicht: Eigenkündigung ja/nein ── */}
+          {/* ── Zähler-Übersicht: Unified card ── */}
           {data.meterReadings.length > 0 && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}
-              className="glass-card-premium rounded-2xl p-5 space-y-3"
+              className="glass-card-premium rounded-2xl p-5 space-y-4"
             >
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                   <ShieldCheck className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">Kündigungspflicht je Zähler</h3>
-                  <p className="text-xs text-muted-foreground">Automatische Bewertung auf Basis Ihres Mietvertrags</p>
+                  <h3 className="font-semibold text-sm">Versorger-Bewertung je Zähler</h3>
+                  <p className="text-xs text-muted-foreground">Automatische Analyse auf Basis Ihres Mietvertrags</p>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {data.meterReadings.map(m => {
                   const medium = m.medium.toLowerCase();
                   const isLandlordManaged =
@@ -388,209 +388,102 @@ export const Step14Utility = () => {
                       ? <Flame className="w-4 h-4 text-orange-500" />
                       : <Droplets className="w-4 h-4 text-blue-500" />;
 
+                  const isExpanded = expandedCancellation[m.id] ?? false;
+                  const isHandled = providerInfoMap[m.id] || reminderMap[m.id];
+
                   return (
-                    <div key={m.id} className="flex items-center justify-between bg-secondary/30 rounded-xl px-3 py-2.5">
-                      <div className="flex items-center gap-2.5">
-                        {icon}
-                        <div>
-                          <span className="text-xs font-semibold">{m.medium}</span>
-                          {m.meterNumber && <span className="text-[10px] text-muted-foreground ml-1.5">Nr. {m.meterNumber}</span>}
+                    <div key={m.id} className="rounded-xl border border-border bg-card overflow-hidden">
+                      {/* Meter row */}
+                      <div className="flex items-center justify-between px-3 py-2.5">
+                        <div className="flex items-center gap-2.5">
+                          {icon}
+                          <div>
+                            <span className="text-xs font-semibold">{m.medium}</span>
+                            <div className="flex items-center gap-1.5">
+                              {m.meterNumber && <span className="text-[10px] text-muted-foreground">Nr. {m.meterNumber}</span>}
+                              {m.maloId && <span className="text-[10px] text-muted-foreground">· MaLo {m.maloId}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-sm font-bold text-primary">{m.reading} {m.unit}</span>
+                          {isLandlordManaged ? (
+                            <span className="text-[9px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Building2 className="w-2.5 h-2.5" />
+                              Keine Eigenkündigung
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <AlertTriangle className="w-2.5 h-2.5" />
+                              Eigenkündigung nötig
+                            </span>
+                          )}
                         </div>
                       </div>
-                      {isLandlordManaged ? (
-                        <span className="text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2.5 py-1 rounded-full flex items-center gap-1">
-                          <Ban className="w-3 h-3" />
-                          Keine Eigenkündigung
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          Eigenkündigung nötig
-                        </span>
+
+                      {/* Landlord-managed info */}
+                      {isLandlordManaged && (
+                        <div className="px-3 pb-3">
+                          <div className="bg-blue-500/5 rounded-lg p-2.5 flex items-start gap-2 text-[10px] text-muted-foreground">
+                            <Info className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                            <span>
+                              Wird über {landlordName} per Vorauszahlung abgerechnet (§§ 4, 7).
+                              {m.medium.toLowerCase().includes('heiz') || m.medium.toLowerCase().includes('gas')
+                                ? data.heatingCosts ? ` Heizung: ${data.heatingCosts} €/Monat` : ''
+                                : data.nkAdvancePayment ? ` NK: ${data.nkAdvancePayment} €/Monat` : ''
+                              }
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Self-cancellation action */}
+                      {!isLandlordManaged && data.role !== 'landlord' && (
+                        <div className="px-3 pb-3">
+                          {!isExpanded && !isHandled && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full rounded-xl gap-2 text-xs h-9 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                              onClick={() => setExpandedCancellation(prev => ({ ...prev, [m.id]: true }))}
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              Eigenkündigung durchführen
+                            </Button>
+                          )}
+
+                          {isExpanded && !isHandled && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                              <ContractCancellationCard
+                                meter={m}
+                                tenantEmail={data.tenantEmail || ''}
+                                tenantName={data.tenantName || 'Mieter'}
+                                onProviderInfoSaved={handleProviderInfoSaved}
+                                onReminderSet={handleReminderSet}
+                              />
+                            </motion.div>
+                          )}
+
+                          {isHandled && (
+                            <div className="bg-accent/10 rounded-lg p-2.5 flex items-center gap-2 text-[10px]">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
+                              <span className="font-medium text-accent">
+                                {providerInfoMap[m.id] ? `${providerInfoMap[m.id].providerName || 'Versorger'} – Daten erfasst` : 'Erinnerung aktiviert'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   );
                 })}
               </div>
 
-              {landlordManagedMeters.length > 0 && (
-                <div className="text-[10px] text-muted-foreground bg-secondary/20 rounded-lg px-3 py-2">
-                  <strong>Rechtsgrundlage:</strong> Heizung/Wasser werden laut §§ 4, 7 Ihres Mietvertrags über den Vermieter ({landlordName}) per Vorauszahlung abgerechnet –
-                  keine Eigenkündigung erforderlich.
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* ── 1. Nachsendeadresse (structured) ── */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-            className="glass-card-premium rounded-2xl p-5 space-y-4"
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Home className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm">Neue Adresse von {tenantName}</h3>
-                <p className="text-xs text-muted-foreground">Pflichtangabe für Endabrechnung & Kautionsrückzahlung</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Straße & Hausnummer</label>
-                <Input
-                  value={streetNew}
-                  onChange={e => setStreetNew(e.target.value)}
-                  placeholder="z. B. Musterstraße 12"
-                  className="rounded-xl bg-secondary/50 border-0 h-10 text-sm"
-                  disabled={tenantRefusesAddress}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">PLZ & Ort</label>
-                <Input
-                  value={plzCityNew}
-                  onChange={e => setPlzCityNew(e.target.value)}
-                  placeholder="z. B. 20095 Hamburg"
-                  className="rounded-xl bg-secondary/50 border-0 h-10 text-sm"
-                  disabled={tenantRefusesAddress}
-                />
-              </div>
-            </div>
-
-            {nextAddress && !tenantRefusesAddress && (
-              <div className="bg-accent/10 rounded-xl p-3 flex items-start gap-2 text-xs">
-                <CheckCircle2 className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-accent">Adresse übernommen</p>
-                  <p className="text-muted-foreground mt-0.5">
-                    Wird automatisch als Rücksendeadresse für die Kautionsrückzahlung und im PDF-Zertifikat unter „Zukünftige Erreichbarkeit" verwendet.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Option: Mieter verweigert Adressangabe */}
-            <div className="flex items-start gap-3 pt-1">
-              <Checkbox
-                id="refuse-address"
-                checked={tenantRefusesAddress}
-                onCheckedChange={(checked) => {
-                  const val = checked === true;
-                  setTenantRefusesAddress(val);
-                  updateData({ tenantRefusesNewAddress: val });
-                  if (val) {
-                    setStreetNew('');
-                    setPlzCityNew('');
-                  }
-                }}
-              />
-              <label htmlFor="refuse-address" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
-                <span className="font-semibold text-foreground">Mieter gibt neue Adresse nicht an</span>
-                <br />
-                Die Verweigerung wird im Protokoll dokumentiert.
-              </label>
-            </div>
-
-            {tenantRefusesAddress && (
-              <div className="bg-warning/10 rounded-xl p-3 flex items-start gap-2 text-xs border border-warning/30">
-                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-warning">Hinweis dokumentiert</p>
-                  <p className="text-muted-foreground mt-0.5">
-                    Der Mieter wurde auf die Pflicht zur Angabe einer zustellfähigen Adresse hingewiesen (§ 259 BGB, § 242 BGB). 
-                    Die Verweigerung wird im Übergabeprotokoll vermerkt.
-                  </p>
-                </div>
-              </div>
-            )}
-          </motion.div>
-
-          {/* ── 2. Versorger über Vermieter (§4/§7 Hinweis) ── */}
-          {landlordManagedMeters.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-              className="glass-card-premium rounded-2xl p-5 space-y-3"
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-blue-500" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Über Vermieter abgerechnet</h3>
-                  <p className="text-xs text-muted-foreground">Laut §§ 4, 7 Ihres Mietvertrags</p>
-                </div>
-              </div>
-
-              <div className="bg-blue-500/10 rounded-xl p-3 flex items-start gap-2.5">
-                <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                <div className="text-xs">
-                  <p className="font-medium text-blue-600 dark:text-blue-400">Keine Eigenkündigung nötig</p>
-                  <p className="text-muted-foreground mt-1">
-                    Heizung und Wasser werden über den Vermieter ({landlordName}) per Vorauszahlung abgerechnet (
-                    {data.heatingCosts ? `Heizung: ${data.heatingCosts} €` : ''}
-                    {data.heatingCosts && data.nkAdvancePayment ? ' / ' : ''}
-                    {data.nkAdvancePayment ? `NK: ${data.nkAdvancePayment} €` : ''}
-                    ). Die Endabrechnung erfolgt durch den Vermieter.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {landlordManagedMeters.map(m => (
-                  <div key={m.id} className="flex items-center justify-between bg-secondary/30 rounded-xl px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      {m.medium.toLowerCase().includes('heiz') || m.medium.toLowerCase().includes('gas')
-                        ? <Flame className="w-3.5 h-3.5 text-orange-500" />
-                        : <Droplets className="w-3.5 h-3.5 text-blue-500" />
-                      }
-                      <span className="text-xs font-medium">{m.medium}</span>
-                      {m.meterNumber && <span className="text-[10px] text-muted-foreground">Nr. {m.meterNumber}</span>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-primary">{m.reading} {m.unit}</span>
-                      <span className="text-[9px] bg-blue-500/10 text-blue-600 px-1.5 py-0.5 rounded-full">Vermieter</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* ── 3. Eigene Verträge kündigen (per Zähler) – nur für Mieter-Rolle ── */}
-          {selfCancelMeters.length > 0 && data.role !== 'landlord' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              className="glass-card-premium rounded-2xl p-5 space-y-3"
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-amber-500" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Eigene Verträge kündigen</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {selfCancelMeters.map(m => m.medium).join(', ')} – Eigenkündigung erforderlich
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {selfCancelMeters.map(m => (
-                  <ContractCancellationCard
-                    key={m.id}
-                    meter={m}
-                    tenantEmail={data.tenantEmail || ''}
-                    tenantName={data.tenantName || 'Mieter'}
-                    onProviderInfoSaved={handleProviderInfoSaved}
-                    onReminderSet={handleReminderSet}
-                  />
-                ))}
-              </div>
-
-              {allMetersHandled && (
+              {/* Summary when all handled */}
+              {selfCancelMeters.length > 0 && allMetersHandled && (
                 <div className="bg-accent/10 rounded-xl p-3 flex items-center gap-2 text-xs">
                   <CheckCircle2 className="w-4 h-4 text-accent" />
-                  <span className="font-medium text-accent">Alle Verträge bearbeitet</span>
+                  <span className="font-medium text-accent">Alle Versorger-Verträge bearbeitet</span>
                 </div>
               )}
             </motion.div>
