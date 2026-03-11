@@ -40,9 +40,8 @@ export const Step11ForcedPreview = () => {
   }, [previewUrl]);
 
   const closePreview = useCallback(() => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
-  }, [previewUrl]);
+  }, []);
 
   const deposit = parseFloat(data.depositAmount) || 0;
   const defectsCost = data.findings.reduce((sum, f) => sum + f.recommendedWithholding, 0);

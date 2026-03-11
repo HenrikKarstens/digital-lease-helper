@@ -56,9 +56,8 @@ export const Step10DataComplete = () => {
   }, [previewUrl]);
 
   const closePreview = useCallback(() => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
-  }, [previewUrl]);
+  }, []);
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8">

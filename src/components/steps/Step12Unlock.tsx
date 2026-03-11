@@ -70,9 +70,8 @@ export const Step12Unlock = () => {
   }, [data, toast, updateData]);
 
   const closePreview = useCallback(() => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
-  }, [previewUrl]);
+  }, []);
 
   const handlePrint = useCallback(() => {
     if (!previewUrl) return;
