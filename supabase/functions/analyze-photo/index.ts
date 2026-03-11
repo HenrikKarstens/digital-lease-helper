@@ -46,7 +46,18 @@ serve(async (req) => {
 
     let prompt: string;
 
-    if (context === 'meter') {
+    if (context === 'utility-bill') {
+      prompt = `Du bist ein Experte für deutsche Stromrechnungen und Versorgungsverträge.
+Analysiere dieses Foto/Dokument und extrahiere folgende Informationen als JSON:
+
+- "providerName": Name des Stromversorgers (z.B. "E.ON", "Vattenfall", "SWM")
+- "customerNumber": Die Kundennummer
+- "contractNumber": Vertragskonto- oder Vertragsnummer (falls vorhanden, sonst "")
+- "meterNumber": Zählernummer (falls sichtbar, sonst "")
+- "confidence": "high", "medium" oder "low"
+
+WICHTIG: Antworte NUR mit validem JSON. Falls Werte nicht lesbar sind, verwende "".`;
+    } else if (context === 'meter') {
       prompt = `Du bist ein Experte für Zählerablesung in deutschen Immobilien.
 Analysiere dieses Foto eines Zählers und extrahiere folgende Informationen als JSON:
 
