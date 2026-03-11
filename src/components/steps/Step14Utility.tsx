@@ -12,6 +12,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { generateMasterProtocolBlob } from '@/lib/pdfGenerator';
 import { ContractCancellationCard } from './ContractCancellationCard';
+import { ElectricityCancellationModal } from './ElectricityCancellationModal';
 import {
   Tooltip,
   TooltipContent,
