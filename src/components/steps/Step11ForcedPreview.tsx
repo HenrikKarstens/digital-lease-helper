@@ -16,9 +16,13 @@ export const Step11ForcedPreview = () => {
   const handlePreview = useCallback(() => {
     try {
       const blob = generateMasterProtocolBlob(data);
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-      updateData({ previewViewed: true });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        setPreviewUrl(dataUrl);
+        updateData({ previewViewed: true });
+      };
+      reader.readAsDataURL(blob);
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
