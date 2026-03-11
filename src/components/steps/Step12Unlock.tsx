@@ -51,19 +51,10 @@ export const Step12Unlock = () => {
   const handlePreview = useCallback(() => {
     try {
       const blob = generateMasterProtocolBlob(data);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if (isMobile) {
-          window.open(dataUrl, '_blank');
-        } else {
-          setPreviewUrl(dataUrl);
-        }
-        setPreviewViewed(true);
-        updateData({ previewViewed: true });
-      };
-      reader.readAsDataURL(blob);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setPreviewViewed(true);
+      updateData({ previewViewed: true });
     } catch {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }

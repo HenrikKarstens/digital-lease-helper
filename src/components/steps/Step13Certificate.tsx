@@ -25,7 +25,7 @@ export const Step13Certificate = () => {
     try {
       const blob = generateMasterProtocolBlob(data);
       const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
+      window.open(url, '_blank');
       setHasPreviewed(true);
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
