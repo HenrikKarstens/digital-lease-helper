@@ -115,11 +115,10 @@ export const Step14Utility = () => {
   const [dsgvoConsent, setDsgvoConsent] = useState(false);
   const [manualKwhEdit, setManualKwhEdit] = useState(false);
   const [manualKwh, setManualKwh] = useState<number | null>(null);
-  const [tenantRefusesAddress, setTenantRefusesAddress] = useState(data.tenantRefusesNewAddress ?? false);
-  const [showAddressWarning, setShowAddressWarning] = useState(false);
-  // Forwarding address fields
-  const [streetNew, setStreetNew] = useState(data.nextAddress?.split(',')[0]?.trim() || '');
-  const [plzCityNew, setPlzCityNew] = useState(data.nextAddress?.split(',')[1]?.trim() || '');
+  const [tenantRefusesAddress] = useState(data.tenantRefusesNewAddress ?? false);
+  // Forwarding address fields (read-only, used for Check24 link)
+  const streetNew = data.nextAddress?.split(',')[0]?.trim() || '';
+  const plzCityNew = data.nextAddress?.split(',')[1]?.trim() || '';
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewViewed, setPreviewViewed] = useState(data.previewViewed ?? false);
   const [sending, setSending] = useState(false);
