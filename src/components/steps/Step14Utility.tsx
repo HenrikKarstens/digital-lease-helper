@@ -425,8 +425,8 @@ export const Step14Utility = () => {
                               className="w-full rounded-xl gap-2 text-xs h-9 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
                               onClick={() => setCancellationModalMeter(m)}
                             >
-                              <FileText className="w-3.5 h-3.5" />
-                              Eigenkündigung durchführen
+                              <Zap className="w-3.5 h-3.5" />
+                              Vertrag jetzt kündigen
                             </Button>
                           )}
 
@@ -434,9 +434,7 @@ export const Step14Utility = () => {
                             <div className="bg-accent/10 rounded-lg p-2.5 flex items-center gap-2 text-[10px]">
                               <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
                               <span className="font-medium text-accent">
-                                {providerInfoMap[m.id]
-                                  ? `${providerInfoMap[m.id].providerName || 'Versorger'} – Erfolgreich gekündigt`
-                                  : 'Erinnerung aktiviert'}
+                                {providerInfoMap[m.id]?.status || 'Kündigungsschreiben generiert'}
                               </span>
                             </div>
                           )}
