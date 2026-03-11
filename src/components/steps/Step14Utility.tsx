@@ -285,22 +285,6 @@ export const Step14Utility = () => {
     }, 2000);
   };
 
-  const handleContinue = () => {
-    // If no address and not explicitly refused → show legal warning
-    if (!nextAddress && !tenantRefusesAddress) {
-      setShowAddressWarning(true);
-      return;
-    }
-    updateData({ nextAddress, tenantRefusesNewAddress: tenantRefusesAddress });
-    goToStepById('unlock');
-  };
-
-  const handleAddressRefusalConfirm = () => {
-    setTenantRefusesAddress(true);
-    setShowAddressWarning(false);
-    updateData({ nextAddress: '', tenantRefusesNewAddress: true });
-    goToStepById('unlock');
-  };
 
   // For move-out: if already sent, skip to unlock
   useEffect(() => {
