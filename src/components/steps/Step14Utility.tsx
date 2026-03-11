@@ -113,6 +113,7 @@ export const Step14Utility = () => {
   // Forwarding address fields (read-only, used for Check24 link)
   const streetNew = data.nextAddress?.split(',')[0]?.trim() || '';
   const plzCityNew = data.nextAddress?.split(',')[1]?.trim() || '';
+  const [cancellationModalMeter, setCancellationModalMeter] = useState<typeof data.meterReadings[0] | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewViewed, setPreviewViewed] = useState(data.previewViewed ?? false);
   const [sending, setSending] = useState(false);
