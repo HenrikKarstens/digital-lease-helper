@@ -1,18 +1,11 @@
 import { motion } from 'framer-motion';
 import {
-  Zap, Leaf, TrendingDown, Euro, ArrowRight, FileText, CheckCircle2,
-  PartyPopper, Info, Users, ExternalLink, Building2, Pencil, ShieldCheck,
-  Home, Wifi, MapPin, Mail, Eye, Printer, X, CreditCard, Shield,
-  AlertTriangle, Flame, Droplets, Phone, Ban
+  Zap, ArrowRight, FileText, CheckCircle2,
+  Info, Building2, ShieldCheck,
+  MapPin, Printer, X,
+  AlertTriangle, Flame, Droplets
 } from 'lucide-react';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState, useMemo, useEffect, useCallback } from 'react';
