@@ -480,9 +480,18 @@ export const Step14Utility = () => {
           </div>
         )}
 
+        {/* Electricity Cancellation Modal */}
+        {cancellationModalMeter && (
+          <ElectricityCancellationModal
+            open={!!cancellationModalMeter}
+            onOpenChange={(open) => { if (!open) setCancellationModalMeter(null); }}
+            meter={cancellationModalMeter}
+            onCancellationComplete={(meterId, info) => {
+              handleProviderInfoSaved(meterId, info);
+              setCancellationModalMeter(null);
+            }}
+          />
+        )}
+
       </div>
     </TooltipProvider>
-  );
-};
-
-export default Step14Utility;
