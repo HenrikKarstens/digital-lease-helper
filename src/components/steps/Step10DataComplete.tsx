@@ -27,16 +27,18 @@ export const Step10DataComplete = () => {
   const handlePreview = useCallback(() => {
     try {
       const blob = generateMasterProtocolBlob(data);
-      const url = URL.createObjectURL(blob);
-      // On mobile, blob iframes often fail – open in new tab instead
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        window.open(url, '_blank');
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+          window.open(dataUrl, '_blank');
+        } else {
+          setPreviewUrl(dataUrl);
+        }
         updateData({ previewViewed: true });
-        return;
-      }
-      setPreviewUrl(url);
-      updateData({ previewViewed: true });
+      };
+      reader.readAsDataURL(blob);
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
@@ -54,9 +56,8 @@ export const Step10DataComplete = () => {
   }, [previewUrl]);
 
   const closePreview = useCallback(() => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
-  }, [previewUrl]);
+  }, []);
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8">
