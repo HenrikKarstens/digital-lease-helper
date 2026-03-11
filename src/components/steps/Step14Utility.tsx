@@ -359,6 +359,68 @@ export const Step14Utility = () => {
 
         <div className="w-full max-w-md space-y-4">
 
+          {/* ── 0. Zähler-Übersicht: Eigenkündigung ja/nein ── */}
+          {data.meterReadings.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}
+              className="glass-card-premium rounded-2xl p-5 space-y-3"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Kündigungspflicht je Zähler</h3>
+                  <p className="text-xs text-muted-foreground">Automatische Bewertung auf Basis Ihres Mietvertrags</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {data.meterReadings.map(m => {
+                  const medium = m.medium.toLowerCase();
+                  const isLandlordManaged =
+                    ((medium.includes('heiz') || medium.includes('gas') || medium.includes('fernwärme') || medium.includes('wärme')) && heatingViaLandlord) ||
+                    (medium.includes('wasser') && waterViaLandlord);
+
+                  const icon = medium.includes('strom')
+                    ? <Zap className="w-4 h-4 text-amber-500" />
+                    : (medium.includes('heiz') || medium.includes('gas') || medium.includes('fernwärme') || medium.includes('wärme'))
+                      ? <Flame className="w-4 h-4 text-orange-500" />
+                      : <Droplets className="w-4 h-4 text-blue-500" />;
+
+                  return (
+                    <div key={m.id} className="flex items-center justify-between bg-secondary/30 rounded-xl px-3 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        {icon}
+                        <div>
+                          <span className="text-xs font-semibold">{m.medium}</span>
+                          {m.meterNumber && <span className="text-[10px] text-muted-foreground ml-1.5">Nr. {m.meterNumber}</span>}
+                        </div>
+                      </div>
+                      {isLandlordManaged ? (
+                        <span className="text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2.5 py-1 rounded-full flex items-center gap-1">
+                          <Ban className="w-3 h-3" />
+                          Keine Eigenkündigung
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          Eigenkündigung nötig
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {landlordManagedMeters.length > 0 && (
+                <div className="text-[10px] text-muted-foreground bg-secondary/20 rounded-lg px-3 py-2">
+                  <strong>Rechtsgrundlage:</strong> Heizung/Wasser werden laut §§ 4, 7 Ihres Mietvertrags über den Vermieter ({landlordName}) per Vorauszahlung abgerechnet –
+                  keine Eigenkündigung erforderlich.
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {/* ── 1. Nachsendeadresse (structured) ── */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
             className="glass-card-premium rounded-2xl p-5 space-y-4"
