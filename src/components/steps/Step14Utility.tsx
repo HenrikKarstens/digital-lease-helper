@@ -495,3 +495,7 @@ export const Step14Utility = () => {
 
       </div>
     </TooltipProvider>
+  );
+};
+
+export default Step14Utility;
