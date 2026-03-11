@@ -111,6 +111,7 @@ export const Step14Utility = () => {
 
   const [providerInfoMap, setProviderInfoMap] = useState<Record<string, any>>({});
   const [reminderMap, setReminderMap] = useState<Record<string, boolean>>({});
+  const [expandedCancellation, setExpandedCancellation] = useState<Record<string, boolean>>({});
   const [dsgvoConsent, setDsgvoConsent] = useState(false);
   const [manualKwhEdit, setManualKwhEdit] = useState(false);
   const [manualKwh, setManualKwh] = useState<number | null>(null);
