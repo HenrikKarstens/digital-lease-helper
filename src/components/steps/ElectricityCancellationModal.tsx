@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Zap, Camera, Upload, Pencil, Loader2, CheckCircle2,
-  FileText, Download, Mail, X, AlertTriangle, Info, Shield
+  FileText, Download, Mail, ArrowRight, Shield, Info
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -24,7 +24,7 @@ interface ElectricityCancellationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   meter: MeterReading;
-  onCancellationComplete: (meterId: string, info: ProviderData) => void;
+  onCancellationComplete: (meterId: string, info: ProviderData & { status: string }) => void;
 }
 
 export const ElectricityCancellationModal = ({
@@ -46,23 +46,20 @@ export const ElectricityCancellationModal = ({
     contractNumber: '',
   });
   const [sending, setSending] = useState(false);
+  const [pdfGenerated, setPdfGenerated] = useState(false);
 
   const propertyAddress = data.propertyAddress || 'Nicht angegeben';
   const tenantName = data.tenantName || 'Mieter';
   const moveOutDate = data.contractEnd || new Date().toLocaleDateString('de-DE');
-
-  // The meter reading from Phase 7 – read-only
   const meterReading = `${meter.reading} ${meter.unit}`;
 
+  // OCR via FormData (matches analyze-photo edge function)
   const handleFileOrPhoto = useCallback(async (file: File) => {
     setScanning(true);
     try {
-      const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('context', 'utility-bill');
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-photo`,
@@ -70,22 +67,18 @@ export const ElectricityCancellationModal = ({
           method: 'POST',
           headers: {
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            image: base64,
-            context: 'utility-provider-document',
-            prompt: 'Extrahiere aus diesem Dokument (Rechnung, Vertrag oder Kundenschreiben) folgende Daten: 1) Versorger-Name (z.B. E.ON, Vattenfall), 2) Kundennummer, 3) Vertragskonto-/Vertragsnummer. Antworte als JSON mit den Keys: providerName, customerNumber, contractNumber.',
-          }),
+          body: formData,
         }
       );
 
       if (response.ok) {
         const result = await response.json();
+        const d = result.data || result;
         const extracted: ProviderData = {
-          providerName: result.providerName || result.provider || result.versorger || '',
-          customerNumber: result.customerNumber || result.kundennummer || '',
-          contractNumber: result.contractNumber || result.vertragsnummer || result.vertragskonto || '',
+          providerName: d.providerName || d.provider || d.versorger || '',
+          customerNumber: d.customerNumber || d.kundennummer || '',
+          contractNumber: d.contractNumber || d.vertragsnummer || d.vertragskonto || '',
         };
         setProviderData(prev => ({
           providerName: extracted.providerName || prev.providerName,
@@ -99,7 +92,8 @@ export const ElectricityCancellationModal = ({
             : 'Bitte prüfen & ggf. ergänzen.',
         });
       } else {
-        toast({ title: 'KI-Erkennung fehlgeschlagen', description: 'Bitte Daten manuell eingeben.', variant: 'destructive' });
+        const errBody = await response.json().catch(() => ({}));
+        toast({ title: 'KI-Erkennung fehlgeschlagen', description: errBody.error || 'Bitte Daten manuell eingeben.', variant: 'destructive' });
       }
     } catch {
       toast({ title: 'Fehler bei der Analyse', description: 'Bitte Daten manuell eingeben.', variant: 'destructive' });
@@ -131,9 +125,11 @@ Betreff: Kündigung Stromvertrag – Kundennummer ${custNo}
 
 Sehr geehrte Damen und Herren,
 
-hiermit kündige ich meinen Stromvertrag zur Kundennummer ${custNo}${providerData.contractNumber ? ` (Vertragskonto ${providerData.contractNumber})` : ''} für die Entnahmestelle ${propertyAddress} zum ${moveOutDate}.
+hiermit kündige ich meinen Stromvertrag zur Kundennummer ${custNo}${providerData.contractNumber ? ` (Vertragskonto ${providerData.contractNumber})` : ''} für das Objekt ${propertyAddress} zum ${moveOutDate}.
 
-Der finale Zählerstand zum Zeitpunkt der Übergabe beträgt ${meterReading}.${meter.meterNumber ? `\nZählernummer: ${meter.meterNumber}` : ''}${meter.maloId ? `\nMaLo-ID: ${meter.maloId}` : ''}
+Der Zählerstand zum Zeitpunkt der Übergabe beträgt ${meterReading}.${meter.meterNumber ? `\nZählernummer: ${meter.meterNumber}` : ''}${meter.maloId ? `\nMaLo-ID: ${meter.maloId}` : ''}
+
+Bitte bestätigen Sie mir den Erhalt dieser Kündigung.
 
 Bitte senden Sie mir die Schlussrechnung an die oben genannte Adresse.
 
@@ -145,7 +141,6 @@ ${tenantName}`;
     const doc = new jsPDF();
     const lines = cancellationText.split('\n');
     let y = 20;
-
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
 
@@ -154,10 +149,7 @@ ${tenantName}`;
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
       }
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
+      if (y > 270) { doc.addPage(); y = 20; }
       doc.text(line, 20, y);
       y += 6;
       if (line.startsWith('Betreff:')) {
@@ -166,51 +158,60 @@ ${tenantName}`;
       }
     }
 
-    // Legal footer
     doc.setFontSize(8);
     doc.setTextColor(120);
     doc.text('Dieses Schreiben genügt der Textform gem. § 126b BGB (§ 309 Nr. 13 BGB).', 20, 280);
 
     const blob = doc.output('blob');
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Kuendigung_Strom_${providerData.providerName || 'Versorger'}_${new Date().toISOString().slice(0, 10)}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
 
-    toast({ title: '📥 PDF heruntergeladen', description: 'Kündigungsschreiben wurde gespeichert.' });
-  }, [cancellationText, providerData.providerName, toast]);
+    setPdfGenerated(true);
+    toast({ title: '📥 PDF erstellt', description: 'Kündigungsschreiben wurde in neuem Tab geöffnet.' });
+  }, [cancellationText, toast]);
 
   const handleSendEmail = useCallback(async () => {
     setSending(true);
-    // Simulate email send (would be an edge function in production)
     await new Promise(r => setTimeout(r, 1500));
     setSending(false);
     setStep('done');
-    onCancellationComplete(meter.id, providerData);
+    onCancellationComplete(meter.id, { ...providerData, status: 'Kündigungsschreiben generiert' });
     toast({
       title: '✅ Kündigung versendet',
       description: `Das Kündigungsschreiben wurde an ${providerData.providerName || 'den Versorger'} gesendet.`,
     });
   }, [meter.id, providerData, onCancellationComplete, toast]);
 
+  const handleFinish = useCallback(() => {
+    onCancellationComplete(meter.id, { ...providerData, status: 'Kündigungsschreiben generiert' });
+    onOpenChange(false);
+  }, [meter.id, providerData, onCancellationComplete, onOpenChange]);
+
   const canProceedToLetter = providerData.providerName || providerData.customerNumber;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-0">
+        {/* Header with Weiter button */}
         <DialogHeader className="px-6 pt-6 pb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-amber-500" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">Stromvertrag kündigen & Zählerstand übermitteln</DialogTitle>
+                <DialogDescription className="text-xs">
+                  Rechtssicheres Kündigungsschreiben gem. § 309 Nr. 13 BGB
+                </DialogDescription>
+              </div>
             </div>
-            <div>
-              <DialogTitle className="text-base">Stromvertrag kündigen & Zählerstand übermitteln</DialogTitle>
-              <DialogDescription className="text-xs">
-                Rechtssicheres Kündigungsschreiben gem. § 309 Nr. 13 BGB
-              </DialogDescription>
-            </div>
+            {(step === 'letter' && pdfGenerated) || step === 'done' ? (
+              <Button size="sm" className="rounded-xl gap-1 text-xs" onClick={handleFinish}>
+                Weiter <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            ) : null}
           </div>
         </DialogHeader>
 
@@ -218,7 +219,7 @@ ${tenantName}`;
           <AnimatePresence mode="wait">
             {step === 'data' && (
               <motion.div key="data" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-4">
-                {/* Meter reading from Phase 7 – read-only */}
+                {/* Meter reading from Phase 8 – read-only */}
                 <div className="rounded-xl border border-border bg-secondary/30 p-3 space-y-1">
                   <div className="flex items-center gap-2">
                     <Zap className="w-4 h-4 text-amber-500" />
@@ -243,15 +244,18 @@ ${tenantName}`;
                       <Input value={meter.maloId} readOnly className="rounded-lg h-8 text-xs bg-muted/50 font-mono" />
                     </div>
                   )}
+                  <div className="mt-1">
+                    <Label className="text-[10px] text-muted-foreground">Objekt-Adresse</Label>
+                    <Input value={propertyAddress} readOnly className="rounded-lg h-8 text-xs bg-muted/50" />
+                  </div>
                 </div>
 
                 {/* OCR Upload */}
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold">Rechnung oder Vertragsunterlagen scannen</p>
+                  <p className="text-xs font-semibold">Rechnung fotografieren für automatische Datenübernahme</p>
                   <p className="text-[10px] text-muted-foreground">
                     KI extrahiert Versorger-Name, Kundennummer & Vertragsnummer automatisch
                   </p>
-
                   {scanning ? (
                     <div className="flex items-center gap-2 bg-primary/5 rounded-xl p-4 justify-center">
                       <Loader2 className="w-5 h-5 animate-spin text-primary" />
@@ -340,12 +344,10 @@ ${tenantName}`;
                   <span className="text-xs font-semibold">Kündigungsschreiben – Vorschau</span>
                 </div>
 
-                {/* Letter preview */}
                 <div className="bg-card border border-border rounded-xl p-4 font-mono text-[11px] leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">
                   {cancellationText}
                 </div>
 
-                {/* Legal footer note */}
                 <div className="bg-accent/10 rounded-xl p-2.5 flex items-start gap-2 text-[10px]">
                   <Info className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />
                   <span className="text-muted-foreground">
@@ -356,18 +358,14 @@ ${tenantName}`;
                 <div className="grid grid-cols-2 gap-2">
                   <Button variant="outline" className="h-10 rounded-xl gap-2 text-xs" onClick={handleGeneratePDF}>
                     <Download className="w-4 h-4" />
-                    Als PDF herunterladen
+                    Als PDF speichern
                   </Button>
                   <Button
                     className="h-10 rounded-xl gap-2 text-xs"
                     onClick={handleSendEmail}
                     disabled={sending}
                   >
-                    {sending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Mail className="w-4 h-4" />
-                    )}
+                    {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
                     Per E-Mail senden
                   </Button>
                 </div>
@@ -384,7 +382,7 @@ ${tenantName}`;
                   <CheckCircle2 className="w-8 h-8 text-accent" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold">Erfolgreich gekündigt</h3>
+                  <h3 className="text-base font-bold">Kündigungsschreiben generiert</h3>
                   <p className="text-xs text-muted-foreground mt-1">
                     Das Kündigungsschreiben wurde an {providerData.providerName || 'den Versorger'} gesendet.
                   </p>
@@ -399,15 +397,14 @@ ${tenantName}`;
                   <Download className="w-3.5 h-3.5" />
                   PDF nochmals herunterladen
                 </Button>
-                <Button className="w-full rounded-xl text-xs h-10" onClick={() => onOpenChange(false)}>
-                  Schließen
+                <Button className="w-full rounded-xl text-xs h-10 gap-1" onClick={handleFinish}>
+                  Weiter <ArrowRight className="w-3.5 h-3.5" />
                 </Button>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Hidden file inputs */}
         <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleCapture} />
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCapture} />
       </DialogContent>
