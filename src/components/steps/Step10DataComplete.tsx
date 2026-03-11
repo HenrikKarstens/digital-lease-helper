@@ -27,18 +27,9 @@ export const Step10DataComplete = () => {
   const handlePreview = useCallback(() => {
     try {
       const blob = generateMasterProtocolBlob(data);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if (isMobile) {
-          window.open(dataUrl, '_blank');
-        } else {
-          setPreviewUrl(dataUrl);
-        }
-        updateData({ previewViewed: true });
-      };
-      reader.readAsDataURL(blob);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      updateData({ previewViewed: true });
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }

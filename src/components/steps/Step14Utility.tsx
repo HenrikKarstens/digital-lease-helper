@@ -233,14 +233,7 @@ export const Step14Utility = () => {
       updateData({ nextAddress });
       const blob = generateMasterProtocolBlob(data);
       const url = URL.createObjectURL(blob);
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        window.open(url, '_blank');
-        setPreviewViewed(true);
-        updateData({ previewViewed: true });
-        return;
-      }
-      setPreviewUrl(url);
+      window.open(url, '_blank');
       setPreviewViewed(true);
       updateData({ previewViewed: true });
     } catch {
