@@ -619,27 +619,38 @@ export function generateMasterProtocol(data: HandoverData): void {
     y += 8;
   }
 
-  // ── §5b Schlüsselübergabe ─────────────────────────────────────────────────
+  // ── §5a Schlüsselrückgabe ─────────────────────────────────────────────────
   if (data.keyEntries && data.keyEntries.length > 0) {
     if (y > pageH - 60) { doc.addPage(); y = 36; }
-    y = sectionTitle(doc, '§5b  Schlüsselübergabe', y, pageW);
+    y = sectionTitle(doc, '§5a  Schlüsselrückgabe', y, pageW);
     autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
-      head: [['Schlüssel-Typ', 'Anzahl', 'Notiz']],
-      body: data.keyEntries.map(k => [k.type, String(k.count), k.note || '–']),
+      head: [['Schlüssel-Typ', 'Anzahl', 'Zustand', 'Notiz']],
+      body: data.keyEntries.map(k => [
+        k.type,
+        String(k.count),
+        k.condition === 'gut' ? 'Gut' : k.condition === 'beschädigt' ? 'Beschädigt' : k.condition === 'fehlt' ? 'Fehlt' : '–',
+        k.note || '–',
+      ]),
       headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
       bodyStyles: { fontSize: 8, textColor: TEXT_COLOR },
       alternateRowStyles: { fillColor: [248, 249, 255] },
-      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 55 }, 1: { cellWidth: 20, halign: 'center' } },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 50 },
+        1: { cellWidth: 18, halign: 'center' },
+        2: { cellWidth: 28, halign: 'center' },
+      },
     });
     y = (doc as any).lastAutoTable.finalY + 4;
 
     const totalKeys = data.keyEntries.reduce((s, k) => s + k.count, 0);
     doc.setTextColor(...MUTED_COLOR);
     doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
     doc.text(`Gesamtanzahl übergebener Schlüssel: ${totalKeys}`, col1, y);
-    y += 4;
+    doc.setFont('helvetica', 'normal');
+    y += 5;
 
     // Embed key bundle photo
     if (data.keyBundlePhotoUrl) {
@@ -669,6 +680,40 @@ export function generateMasterProtocol(data: HandoverData): void {
     doc.text('Der Mieter versichert, alle in seinem Besitz befindlichen Schlüssel (inkl. Duplikate) zurückgegeben zu haben.', col1, y);
     doc.setFont('helvetica', 'normal');
     y += 7;
+  }
+
+  // ── §5b Zustand & Sicherheit ──────────────────────────────────────────────
+  {
+    const hasConditionData = data.cleaningBesenrein || data.cleaningBriefkasten || data.cleaningKeller || data.smokeDetectorChecked || data.wallsNeutralColors !== null;
+    if (hasConditionData) {
+      if (y > pageH - 60) { doc.addPage(); y = 36; }
+      y = sectionTitle(doc, '§5b  Zustand & Sicherheit', y, pageW);
+      const condRows: string[][] = [];
+      condRows.push(['Wohnung besenrein übergeben', data.cleaningBesenrein ? '☑ Ja' : '☐ Nein']);
+      condRows.push(['Briefkasten geleert', data.cleaningBriefkasten ? '☑ Ja' : '☐ Nein']);
+      condRows.push(['Keller geräumt', data.cleaningKeller ? '☑ Ja' : '☐ Nein']);
+      condRows.push(['Rauchwarnmelder geprüft (LBO SH)', data.smokeDetectorChecked ? '☑ Ja – funktionsgeprüft' : '☐ Nein – NICHT GEPRÜFT']);
+      condRows.push(['Wände in neutralen Farben', data.wallsNeutralColors === true ? '☑ Ja' : data.wallsNeutralColors === false ? '☐ Nein – auffällige Farben' : '☐ Nicht geprüft']);
+      autoTable(doc, {
+        startY: y,
+        margin: { left: 14, right: 14 },
+        head: [['Prüfpunkt', 'Ergebnis']],
+        body: condRows,
+        headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
+        bodyStyles: { fontSize: 8, textColor: TEXT_COLOR },
+        alternateRowStyles: { fillColor: [248, 249, 255] },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 } },
+      });
+      y = (doc as any).lastAutoTable.finalY + 4;
+      if (!data.smokeDetectorChecked) {
+        doc.setTextColor(...DANGER_COLOR);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.text('⚠ Rauchwarnmelder: Pflichtprüfung gemäß § 49 Abs. 4 LBO Schleswig-Holstein nicht bestätigt.', col1, y);
+        doc.setFont('helvetica', 'normal');
+        y += 6;
+      }
+    }
   }
 
   // ── §6a  Mängel / Zustandsdokumentation ────────────────────────────────────
