@@ -15,12 +15,22 @@ export type RemediationOption = 'self' | 'notice';
 
 export type EntryType = 'defect' | 'note';
 
+export interface PhotoGeoMeta {
+  latitude: number | null;
+  longitude: number | null;
+  accuracy: number | null;
+  timestamp: string;
+  verified: boolean;
+  distanceMeters: number | null;
+}
+
 export interface Finding {
   id: string;
   room: string;
   pinX: number;
   pinY: number;
   photoUrl?: string;
+  photoGeo?: PhotoGeoMeta;
   material: string;
   damageType: string;
   bghReference: string;
