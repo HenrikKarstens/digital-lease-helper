@@ -43,12 +43,13 @@ export function getFilteredSteps(
       if (step.id === 'direction') return false;
     }
 
-    // Rental Move-In: no defect-analysis, no deposit, no deposit-check, no utility, no forwarding-address (no Auszug)
+    // Rental Move-In: no defect-analysis, no deposit, no deposit-check, no utility, no forwarding-address, no condition-check (no Auszug)
     if (transactionType === 'rental' && handoverDirection === 'move-in') {
       if (step.id === 'defect-analysis') return false;
       if (step.id === 'deposit-check') return false;
       if (step.id === 'utility') return false;
       if (step.id === 'forwarding-address') return false;
+      if (step.id === 'condition-check') return false;
     }
 
     // Rental Move-Out: no data-complete, no separate defect-analysis
