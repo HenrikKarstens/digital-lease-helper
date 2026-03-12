@@ -1268,7 +1268,8 @@ export function generateMasterProtocol(data: HandoverData): void {
       .map(m => ({
         url: m.photoUrl!,
         label: `${m.medium} – Zähler ${m.meterNumber || '–'}`,
-        timestamp: date,
+        timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date,
+        gps: formatGeoForPdf(m.photoGeo),
       }));
     y = embedPhotos(doc, meterPhotosAppendix, y, pageW, pageH, col1);
 
