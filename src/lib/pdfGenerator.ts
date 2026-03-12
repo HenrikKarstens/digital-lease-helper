@@ -604,13 +604,14 @@ export function generateMasterProtocol(data: HandoverData): void {
       y = (doc as any).lastAutoTable.finalY + 4;
     }
     
-    // Embed meter photos
+    // Embed meter photos with GPS
     const meterPhotos = data.meterReadings
       .filter(m => m.photoUrl)
       .map(m => ({
         url: m.photoUrl!,
         label: `${m.medium} – Zähler ${m.meterNumber || '–'}`,
-        timestamp: date,
+        timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date,
+        gps: formatGeoForPdf(m.photoGeo),
       }));
     y = embedPhotos(doc, meterPhotos, y, pageW, pageH, col1);
   } else {
