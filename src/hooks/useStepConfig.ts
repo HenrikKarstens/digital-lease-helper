@@ -58,11 +58,12 @@ export function getFilteredSteps(
       if (step.id === 'defect-analysis') return false;
     }
 
-    // Sale: no deposit-check (only for rental move-out), no utility, no forwarding-address
+    // Sale: no deposit-check (only for rental move-out), no utility, no forwarding-address, no condition-check
     if (transactionType === 'sale') {
       if (step.id === 'deposit-check') return false;
       if (step.id === 'utility') return false;
       if (step.id === 'forwarding-address') return false;
+      if (step.id === 'condition-check') return false;
     }
 
     return true;
