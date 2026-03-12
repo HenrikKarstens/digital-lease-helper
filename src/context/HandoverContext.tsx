@@ -214,6 +214,12 @@ export interface HandoverData {
   depositAgreementReached: boolean;
   depositAgreementTimestamp: string;
   tenantRefusesNewAddress: boolean;
+  // Condition checks (Phase 8 extension)
+  cleaningBesenrein: boolean;
+  cleaningBriefkasten: boolean;
+  cleaningKeller: boolean;
+  smokeDetectorChecked: boolean;
+  wallsNeutralColors: boolean | null;
 }
 
 const STORAGE_KEY = 'estateturn_draft';
