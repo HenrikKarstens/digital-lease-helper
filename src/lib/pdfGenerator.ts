@@ -944,8 +944,9 @@ export function generateMasterProtocol(data: HandoverData): void {
         ? `Berechnung gemäß BGH VIII ZR 71/05 (NK-Puffer) & BGH VIII ZR 222/15 (Zeitwert-Abzug, § 538 BGB). Zinsen: Kaution × ${interestRate}% × ${interestDays}/360 gem. § 551 Abs. 3 BGB.`
         : `Berechnung gemäß BGH VIII ZR 71/05 (NK-Puffer) & BGH VIII ZR 222/15 (Zeitwert-Abzug). Kontostand laut Sparbuch (Zinsen bankseitig gutgeschrieben).`;
       doc.text(basisText, col1, y);
+      y += 4;
+      doc.text('Die Kaution wurde gemäß § 551 Abs. 3 BGB getrennt vom Privatvermögen des Vermieters angelegt.', col1, y);
       y += 6;
-      doc.setFont('helvetica', 'normal');
 
       // ── §7c Zahlungsanweisung ──────────────────────────────
       if (payoutFinal > 0 && (data.payeeIban || data.payeeAccountHolder)) {
