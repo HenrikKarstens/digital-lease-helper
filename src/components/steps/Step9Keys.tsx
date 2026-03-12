@@ -25,6 +25,7 @@ const CONDITIONS = [
 
 export const Step9Keys = () => {
   const { data, updateData, goToStepById } = useHandover();
+  const { requestPermission, captureGeo } = useGeoPhoto(data.propertyAddress);
   const isMoveOut = data.handoverDirection === 'move-out';
   const photoInputRef = useRef<HTMLInputElement>(null);
 
