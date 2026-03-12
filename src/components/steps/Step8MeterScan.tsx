@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, CheckCircle2, Plus, Gauge, Zap, Droplets, Flame, Edit3, Thermometer, HelpCircle, Trash2, PenLine, CalendarIcon, X, Home, ShieldCheck, Paintbrush, Trash } from 'lucide-react';
+import { Camera, CheckCircle2, Plus, Gauge, Zap, Droplets, Flame, Edit3, Thermometer, HelpCircle, Trash2, PenLine, CalendarIcon, X, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
