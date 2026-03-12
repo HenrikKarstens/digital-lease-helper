@@ -63,6 +63,7 @@ export const Step7Evidence = () => {
   const { evidenceTitle, evidenceSubtitle, isMoveIn } = useTransactionLabels();
   const { data, updateData, goToStepById } = useHandover();
   const { toast } = useToast();
+  const { requestPermission, captureGeo } = useGeoPhoto(data.propertyAddress);
 
   const [phase, setPhase] = useState<Phase>('list');
   const [selectedRoom, setSelectedRoom] = useState('');
