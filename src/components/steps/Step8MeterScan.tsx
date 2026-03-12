@@ -9,6 +9,7 @@ import { useHandover, MeterReading, HkvRoomReading } from '@/context/HandoverCon
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { useGeoPhoto } from '@/hooks/useGeoPhoto';
 
 const METER_TYPES = [
   { value: 'Strom', label: 'Strom', icon: Zap, unit: 'kWh' },
