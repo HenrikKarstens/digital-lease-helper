@@ -27,6 +27,7 @@ const Step9Keys = lazy(() => import('@/components/steps/Step9Keys').then(m => ({
 const Step10DataComplete = lazy(() => import('@/components/steps/Step10DataComplete').then(m => ({ default: m.Step10DataComplete })));
 const Step10DefectAnalysis = lazy(() => import('@/components/steps/Step10DefectAnalysis').then(m => ({ default: m.Step10DefectAnalysis })));
 const StepDepositCheck = lazy(() => import('@/components/steps/StepDepositCheck'));
+const StepConditionCheck = lazy(() => import('@/components/steps/StepConditionCheck'));
 
 
 const Step12Unlock = lazy(() => import('@/components/steps/Step12Unlock').then(m => ({ default: m.Step12Unlock })));
@@ -45,6 +46,7 @@ const COMPONENT_MAP: Record<string, React.ComponentType> = {
   Step10DataComplete,
   Step10DefectAnalysis,
   StepDepositCheck,
+  StepConditionCheck,
   StepForwardingAddress,
   Step14Utility,
   Step12Unlock,

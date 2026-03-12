@@ -1,10 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, CheckCircle2, Plus, Gauge, Zap, Droplets, Flame, Edit3, Thermometer, HelpCircle, Trash2, PenLine, CalendarIcon, X, Home, ShieldCheck, Paintbrush, Trash } from 'lucide-react';
+import { Camera, CheckCircle2, Plus, Gauge, Zap, Droplets, Flame, Edit3, Thermometer, HelpCircle, Trash2, PenLine, CalendarIcon, X, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useHandover, MeterReading, HkvRoomReading } from '@/context/HandoverContext';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
@@ -554,92 +553,6 @@ export const Step8MeterScan = () => {
             </div>
             <span className="text-xs font-semibold text-center leading-tight">Zähler manuell<br />hinzufügen</span>
           </button>
-        </motion.div>
-      )}
-
-      {/* Zustand & Sicherheit */}
-      {data.meterReadings.length > 0 && !scanning && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="w-full max-w-md glass-card rounded-2xl p-5 mt-6 space-y-4">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-primary" />
-            Zustand & Sicherheit
-          </h3>
-
-          {/* Reinigungszustand */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-              <Trash className="w-3.5 h-3.5" />
-              Reinigungszustand
-            </p>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <Checkbox
-                checked={data.cleaningBesenrein}
-                onCheckedChange={(v) => updateData({ cleaningBesenrein: !!v })}
-              />
-              <span className="text-sm">Wohnung besenrein übergeben?</span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <Checkbox
-                checked={data.cleaningBriefkasten}
-                onCheckedChange={(v) => updateData({ cleaningBriefkasten: !!v })}
-              />
-              <span className="text-sm">Briefkasten geleert?</span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <Checkbox
-                checked={data.cleaningKeller}
-                onCheckedChange={(v) => updateData({ cleaningKeller: !!v })}
-              />
-              <span className="text-sm">Keller geräumt?</span>
-            </label>
-          </div>
-
-          {/* Rauchwarnmelder */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Rauchwarnmelder (LBO SH)
-            </p>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <Checkbox
-                checked={data.smokeDetectorChecked}
-                onCheckedChange={(v) => updateData({ smokeDetectorChecked: !!v })}
-              />
-              <span className="text-sm">Rauchwarnmelder in allen Schlafräumen und Fluren vorhanden und funktionsgeprüft?</span>
-            </label>
-            {!data.smokeDetectorChecked && (
-              <p className="text-xs text-destructive ml-7">⚠ Pflichtprüfung gemäß § 49 Abs. 4 LBO Schleswig-Holstein</p>
-            )}
-          </div>
-
-          {/* Schönheitsreparaturen */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-              <Paintbrush className="w-3.5 h-3.5" />
-              Schönheitsreparaturen
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant={data.wallsNeutralColors === true ? 'default' : 'outline'}
-                size="sm"
-                className="rounded-xl text-xs h-9"
-                onClick={() => updateData({ wallsNeutralColors: true })}
-              >
-                ✓ Wände in neutralen Farben
-              </Button>
-              <Button
-                variant={data.wallsNeutralColors === false ? 'destructive' : 'outline'}
-                size="sm"
-                className="rounded-xl text-xs h-9"
-                onClick={() => updateData({ wallsNeutralColors: false })}
-              >
-                ✗ Auffällige Farben / Mängel
-              </Button>
-            </div>
-            {data.wallsNeutralColors === false && (
-              <p className="text-xs text-destructive">Hinweis: Nicht-neutrale Wandfarben können Schadensersatzansprüche begründen (BGH VIII ZR 224/07).</p>
-            )}
-          </div>
         </motion.div>
       )}
 
