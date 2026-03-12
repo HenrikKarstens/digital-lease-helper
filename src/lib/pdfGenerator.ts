@@ -1354,7 +1354,7 @@ export function generateMasterProtocol(data: HandoverData): void {
   // ── Foto-Anhang (alle Mängelfotos) ─────────────────────────────────────────
   const allPhotos = data.findings
     .filter(f => f.photoUrl && f.photoUrl.startsWith('data:'))
-    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: f.timestamp }));
+    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
   if (allPhotos.length > 0) {
     doc.addPage();
     y = 36;
