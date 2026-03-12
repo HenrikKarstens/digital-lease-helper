@@ -1579,7 +1579,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     // Embed meter photos (blob)
     const meterPhotos2 = data.meterReadings
       .filter(m => m.photoUrl)
-      .map(m => ({ url: m.photoUrl!, label: `${m.medium} – Zähler ${m.meterNumber || '–'}`, timestamp: date }));
+      .map(m => ({ url: m.photoUrl!, label: `${m.medium} – Zähler ${m.meterNumber || '–'}`, timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date, gps: formatGeoForPdf(m.photoGeo) }));
     y = embedPhotos(doc, meterPhotos2, y, pageW, pageH, col1);
   } else {
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(8);
