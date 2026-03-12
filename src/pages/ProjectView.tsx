@@ -46,6 +46,7 @@ const COMPONENT_MAP: Record<string, React.ComponentType> = {
   Step10DataComplete,
   Step10DefectAnalysis,
   StepDepositCheck,
+  StepConditionCheck,
   StepForwardingAddress,
   Step14Utility,
   Step12Unlock,
