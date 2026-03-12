@@ -289,6 +289,7 @@ const defaultData: HandoverData = {
   meterReadings: [],
   keyEntries: [],
   keyBundlePhotoUrl: null,
+  keyBundlePhotoGeo: null,
   signatureLandlord: null,
   signatureTenant: null,
   nkVorauszahlung: 150,
