@@ -1993,7 +1993,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   // ── Foto-Anhang (blob) ─────────────────────────────────────────────────────
   const allPhotos2 = data.findings
     .filter(f => f.photoUrl && f.photoUrl.startsWith('data:'))
-    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: f.timestamp }));
+    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
   if (allPhotos2.length > 0) {
     doc.addPage();
     let yAppendix = 36;
