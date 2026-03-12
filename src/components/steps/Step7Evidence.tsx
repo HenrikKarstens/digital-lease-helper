@@ -11,6 +11,7 @@ import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useGeoPhoto } from '@/hooks/useGeoPhoto';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,7 @@ export const Step7Evidence = () => {
   const { evidenceTitle, evidenceSubtitle, isMoveIn } = useTransactionLabels();
   const { data, updateData, goToStepById } = useHandover();
   const { toast } = useToast();
+  const { requestPermission, captureGeo } = useGeoPhoto(data.propertyAddress);
 
   const [phase, setPhase] = useState<Phase>('list');
   const [selectedRoom, setSelectedRoom] = useState('');
@@ -93,6 +95,7 @@ export const Step7Evidence = () => {
     if (!file) return;
     e.target.value = '';
     setCapturedFile(file);
+    requestPermission();
     // Create preview URL
     const reader = new FileReader();
     reader.onload = (ev) => setCapturedPreview(ev.target?.result as string);
@@ -242,14 +245,16 @@ export const Step7Evidence = () => {
     setPhase('list');
   };
 
-  const saveFinding = () => {
+  const saveFinding = async () => {
     if (!selectedRoom) return;
+    const geo = await captureGeo();
     const finding: Finding = {
       id: Date.now().toString(),
       room: selectedRoom,
       pinX: 50,
       pinY: 50,
       photoUrl: capturedPreview || undefined,
+      photoGeo: geo,
       material: editMaterial,
       damageType: editDamageType,
       bghReference: currentResult?.bghReference || '',

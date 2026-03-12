@@ -15,12 +15,22 @@ export type RemediationOption = 'self' | 'notice';
 
 export type EntryType = 'defect' | 'note';
 
+export interface PhotoGeoMeta {
+  latitude: number | null;
+  longitude: number | null;
+  accuracy: number | null;
+  timestamp: string;
+  verified: boolean;
+  distanceMeters: number | null;
+}
+
 export interface Finding {
   id: string;
   room: string;
   pinX: number;
   pinY: number;
   photoUrl?: string;
+  photoGeo?: PhotoGeoMeta;
   material: string;
   damageType: string;
   bghReference: string;
@@ -45,6 +55,7 @@ export interface MeterReading {
   unit: string;
   maloId: string;
   photoUrl?: string;
+  photoGeo?: PhotoGeoMeta;
   source?: 'ai' | 'manual';
   aiConfidence?: 'high' | 'medium' | 'low';
   hkvRoomReadings?: HkvRoomReading[];
@@ -177,6 +188,7 @@ export interface HandoverData {
   // Step 6
   participants: Participant[];
   attendancePhotoUrl: string | null;
+  attendancePhotoGeo: PhotoGeoMeta | null;
   // Step 7
   findings: Finding[];
   // Step 8
@@ -184,6 +196,7 @@ export interface HandoverData {
   // Step 9 – Schlüssel
   keyEntries: KeyEntry[];
   keyBundlePhotoUrl: string | null;
+  keyBundlePhotoGeo: PhotoGeoMeta | null;
   // Step 9
   signatureLandlord: string | null;
   signatureTenant: string | null;
@@ -271,10 +284,12 @@ const defaultData: HandoverData = {
   rooms: [],
   participants: [],
   attendancePhotoUrl: null,
+  attendancePhotoGeo: null,
   findings: [],
   meterReadings: [],
   keyEntries: [],
   keyBundlePhotoUrl: null,
+  keyBundlePhotoGeo: null,
   signatureLandlord: null,
   signatureTenant: null,
   nkVorauszahlung: 150,

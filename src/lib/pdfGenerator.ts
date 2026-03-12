@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { HandoverData } from '@/context/HandoverContext';
 import { createThumbnail } from '@/lib/imageUtils';
+import { formatGeoForPdf, formatTimestampForPdf } from '@/hooks/useGeoPhoto';
 
 // Executive Certificate Theme
 const BRAND_COLOR: [number, number, number] = [15, 23, 42];      // Midnight Blue #0F172A
@@ -551,7 +552,29 @@ export function generateMasterProtocol(data: HandoverData): void {
     bodyStyles: { fontSize: 8 },
     alternateRowStyles: { fillColor: [248, 249, 255] },
   });
-  y = (doc as any).lastAutoTable.finalY + 4;
+    y = (doc as any).lastAutoTable.finalY + 4;
+
+    // Embed attendance photo if available
+    if (data.attendancePhotoUrl && data.attendancePhotoUrl.startsWith('data:')) {
+      if (y > pageH - 60) { doc.addPage(); y = 36; }
+      try {
+        const imgW = 60;
+        const imgH = 45;
+        doc.addImage(data.attendancePhotoUrl, 'JPEG', col1, y, imgW, imgH);
+        doc.setDrawColor(200, 200, 215);
+        doc.rect(col1, y, imgW, imgH);
+        doc.setTextColor(...MUTED_COLOR);
+        doc.setFontSize(6.5);
+        doc.text('Beweisfoto: Anwesenheit der Teilnehmer', col1 + imgW + 4, y + 6);
+        if (data.attendancePhotoGeo) {
+          const gpsText = formatGeoForPdf(data.attendancePhotoGeo);
+          const tsText = formatTimestampForPdf(data.attendancePhotoGeo.timestamp);
+          if (tsText) doc.text(tsText, col1 + imgW + 4, y + 10);
+          if (gpsText) doc.text(gpsText, col1 + imgW + 4, y + 14);
+        }
+        y += imgH + 6;
+      } catch { /* skip */ }
+    }
 
   // ── §5 Zählerstände ───────────────────────────────────────────────────────
   if (y > pageH - 60) { doc.addPage(); y = 36; }
@@ -603,13 +626,14 @@ export function generateMasterProtocol(data: HandoverData): void {
       y = (doc as any).lastAutoTable.finalY + 4;
     }
     
-    // Embed meter photos
+    // Embed meter photos with GPS
     const meterPhotos = data.meterReadings
       .filter(m => m.photoUrl)
       .map(m => ({
         url: m.photoUrl!,
         label: `${m.medium} – Zähler ${m.meterNumber || '–'}`,
-        timestamp: date,
+        timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date,
+        gps: formatGeoForPdf(m.photoGeo),
       }));
     y = embedPhotos(doc, meterPhotos, y, pageW, pageH, col1);
   } else {
@@ -664,6 +688,12 @@ export function generateMasterProtocol(data: HandoverData): void {
         doc.setTextColor(...MUTED_COLOR);
         doc.setFontSize(6.5);
         doc.text('Beweisfoto: Schlüsselbund bei Übergabe', col1 + imgW + 4, y + 6);
+        if (data.keyBundlePhotoGeo) {
+          const gpsText = formatGeoForPdf(data.keyBundlePhotoGeo);
+          const tsText = formatTimestampForPdf(data.keyBundlePhotoGeo.timestamp);
+          if (tsText) { doc.setFontSize(5.5); doc.setFont('helvetica', 'italic'); doc.text(tsText, col1 + imgW + 4, y + 10); }
+          if (gpsText) { doc.setFontSize(5.5); doc.text(gpsText, col1 + imgW + 4, y + 14); doc.setFont('helvetica', 'normal'); }
+        }
         y += imgH + 6;
       } catch {
         doc.setTextColor(...MUTED_COLOR);
@@ -751,7 +781,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       // Embed finding photos (move-in)
       const findingPhotos = data.findings
         .filter(f => f.photoUrl)
-        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: f.timestamp }));
+        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
       y = embedPhotos(doc, findingPhotos, y, pageW, pageH, col1);
     } else {
       doc.setTextColor(...SUCCESS_COLOR);
@@ -803,7 +833,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       // Embed defect photos (move-out)
       const defectPhotos = defectFindings
         .filter(f => f.photoUrl)
-        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: f.timestamp }));
+        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
       y = embedPhotos(doc, defectPhotos, y, pageW, pageH, col1);
     } else {
       doc.setTextColor(...SUCCESS_COLOR);
@@ -1136,6 +1166,7 @@ export function generateMasterProtocol(data: HandoverData): void {
     `4. Schönheitsreparaturen: Formularklauseln zu Renovierungspflichten des Mieters sind nach BGH-Rechtsprechung in der Regel unwirksam, sofern sie von § 307 BGB abweichen.`,
     `5. Protokollverbindlichkeit: Dieses Protokoll wurde digital mit einem SHA-256-Hash versiegelt und ist urkundlich zu verwahren.`,
     `6. Anerkennung: Dem Mieter wird eine Prüffrist von 14 Tagen eingeräumt. Erfolgt innerhalb dieser Frist kein begründeter Widerspruch gegen die Feststellungen in diesem Protokoll, gilt der dokumentierte Zustand als anerkannt.`,
+    `7. GPS-Validierung: Die Zählerstände wurden mittels Live-GPS-Validierung am Standort ${data.propertyAddress || 'des Objekts'} verifiziert. Die erfassten Koordinaten und Zeitstempel sind Bestandteil dieses Protokolls.`,
   ];
   const clauseLines = clauses.flatMap(c => doc.splitTextToSize(c, pageW - 36));
   const clauseH = clauseLines.length * 3.8 + 8;
@@ -1238,7 +1269,8 @@ export function generateMasterProtocol(data: HandoverData): void {
       .map(m => ({
         url: m.photoUrl!,
         label: `${m.medium} – Zähler ${m.meterNumber || '–'}`,
-        timestamp: date,
+        timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date,
+        gps: formatGeoForPdf(m.photoGeo),
       }));
     y = embedPhotos(doc, meterPhotosAppendix, y, pageW, pageH, col1);
 
@@ -1324,7 +1356,7 @@ export function generateMasterProtocol(data: HandoverData): void {
   // ── Foto-Anhang (alle Mängelfotos) ─────────────────────────────────────────
   const allPhotos = data.findings
     .filter(f => f.photoUrl && f.photoUrl.startsWith('data:'))
-    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: f.timestamp }));
+    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
   if (allPhotos.length > 0) {
     doc.addPage();
     y = 36;
@@ -1507,6 +1539,24 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     y = (doc as any).lastAutoTable.finalY + 4;
   }
 
+  // Embed attendance photo (blob version)
+  if (data.attendancePhotoUrl && data.attendancePhotoUrl.startsWith('data:')) {
+    if (y > pageH - 60) { doc.addPage(); y = 36; }
+    try {
+      doc.addImage(data.attendancePhotoUrl, 'JPEG', col1, y, 60, 45);
+      doc.setDrawColor(200, 200, 215); doc.rect(col1, y, 60, 45);
+      doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
+      doc.text('Beweisfoto: Anwesenheit der Teilnehmer', col1 + 64, y + 6);
+      if (data.attendancePhotoGeo) {
+        const gpsText = formatGeoForPdf(data.attendancePhotoGeo);
+        const tsText = formatTimestampForPdf(data.attendancePhotoGeo.timestamp);
+        if (tsText) { doc.setFontSize(5.5); doc.setFont('helvetica', 'italic'); doc.text(tsText, col1 + 64, y + 10); }
+        if (gpsText) { doc.setFontSize(5.5); doc.text(gpsText, col1 + 64, y + 14); doc.setFont('helvetica', 'normal'); }
+      }
+      y += 51;
+    } catch { /* skip */ }
+  }
+
   if (y > pageH - 60) { doc.addPage(); y = 36; }
   y = sectionTitle(doc, '§5  Zählerstände', y, pageW);
   if (data.meterReadings.length > 0) {
@@ -1549,7 +1599,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     // Embed meter photos (blob)
     const meterPhotos2 = data.meterReadings
       .filter(m => m.photoUrl)
-      .map(m => ({ url: m.photoUrl!, label: `${m.medium} – Zähler ${m.meterNumber || '–'}`, timestamp: date }));
+      .map(m => ({ url: m.photoUrl!, label: `${m.medium} – Zähler ${m.meterNumber || '–'}`, timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date, gps: formatGeoForPdf(m.photoGeo) }));
     y = embedPhotos(doc, meterPhotos2, y, pageW, pageH, col1);
   } else {
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(8);
@@ -1585,6 +1635,12 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
         doc.setDrawColor(200, 200, 215); doc.rect(col1, y, 60, 45);
         doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
         doc.text('Beweisfoto: Schlüsselbund bei Übergabe', col1 + 64, y + 6);
+        if (data.keyBundlePhotoGeo) {
+          const gpsText = formatGeoForPdf(data.keyBundlePhotoGeo);
+          const tsText = formatTimestampForPdf(data.keyBundlePhotoGeo.timestamp);
+          if (tsText) { doc.setFontSize(5.5); doc.setFont('helvetica', 'italic'); doc.text(tsText, col1 + 64, y + 10); }
+          if (gpsText) { doc.setFontSize(5.5); doc.text(gpsText, col1 + 64, y + 14); doc.setFont('helvetica', 'normal'); }
+        }
         y += 51;
       } catch { y += 6; }
     }
@@ -1672,7 +1728,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     // Embed defect photos (blob)
     const defectPhotos2 = defectFindings2
       .filter(f => f.photoUrl)
-      .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: f.timestamp }));
+      .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
     y = embedPhotos(doc, defectPhotos2, y, pageW, pageH, col1);
   } else {
     doc.setTextColor(...SUCCESS_COLOR); doc.setFontSize(8);
@@ -1886,6 +1942,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     `5. Protokollverbindlichkeit: Dieses Protokoll wurde digital mit einem SHA-256-Hash versiegelt und ist urkundlich zu verwahren.`,
     `6. Anerkennung: Dem Mieter wird eine Prüffrist von 14 Tagen eingeräumt. Erfolgt innerhalb dieser Frist kein begründeter Widerspruch gegen die Feststellungen in diesem Protokoll, gilt der dokumentierte Zustand als anerkannt.`,
     isSale ? `7. Kaufrecht: Mängelansprüche richten sich nach § 434 BGB i.V.m. ${bghRef}.` : `7. Mietrecht: Kautions-Abrechnung gemäß § 551 BGB, Zeitwert-Abzug gemäß ${bghRef}.`,
+    `8. GPS-Validierung: Die Zählerstände wurden mittels Live-GPS-Validierung am Standort ${data.propertyAddress || 'des Objekts'} verifiziert. Die erfassten Koordinaten und Zeitstempel sind Bestandteil dieses Protokolls.`,
   ];
   const clauseLines = clauses.flatMap(c => doc.splitTextToSize(c, pageW - 36));
   const clauseH = clauseLines.length * 3.8 + 8;
@@ -1957,7 +2014,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   // ── Foto-Anhang (blob) ─────────────────────────────────────────────────────
   const allPhotos2 = data.findings
     .filter(f => f.photoUrl && f.photoUrl.startsWith('data:'))
-    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: f.timestamp }));
+    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
   if (allPhotos2.length > 0) {
     doc.addPage();
     let yAppendix = 36;

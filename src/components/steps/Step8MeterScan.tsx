@@ -9,6 +9,7 @@ import { useHandover, MeterReading, HkvRoomReading } from '@/context/HandoverCon
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { useGeoPhoto } from '@/hooks/useGeoPhoto';
 
 const METER_TYPES = [
   { value: 'Strom', label: 'Strom', icon: Zap, unit: 'kWh' },
@@ -124,6 +125,7 @@ const HkvRoomSection = ({ meter, onUpdate }: { meter: MeterReading; onUpdate: (r
 export const Step8MeterScan = () => {
   const { data, updateData, goToStepById } = useHandover();
   const { toast } = useToast();
+  const { requestPermission, captureGeo } = useGeoPhoto(data.propertyAddress);
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState('KI analysiert Zähler...');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -138,6 +140,7 @@ export const Step8MeterScan = () => {
     if (!file) return;
     e.target.value = '';
 
+    requestPermission();
     setScanning(true);
     setScanMessage('KI analysiert Zähler...');
 
@@ -170,6 +173,7 @@ export const Step8MeterScan = () => {
       }
 
       const aiData = result.data;
+      const geo = await captureGeo();
       const newMeter: MeterReading = {
         id: Date.now().toString(),
         medium: aiData.medium || 'Sonstiges',
@@ -179,6 +183,7 @@ export const Step8MeterScan = () => {
         maloId: aiData.maloId || '',
         source: 'ai',
         aiConfidence: aiData.confidence || 'medium',
+        photoGeo: geo,
       };
       updateData({ meterReadings: [...data.meterReadings, newMeter] });
       toast({

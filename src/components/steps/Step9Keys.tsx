@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useHandover } from '@/context/HandoverContext';
+import { useGeoPhoto } from '@/hooks/useGeoPhoto';
 
 const KEY_TYPES = [
   'Haus- / Wohnungstür',
@@ -24,6 +25,7 @@ const CONDITIONS = [
 
 export const Step9Keys = () => {
   const { data, updateData, goToStepById } = useHandover();
+  const { requestPermission, captureGeo } = useGeoPhoto(data.propertyAddress);
   const isMoveOut = data.handoverDirection === 'move-out';
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,13 +61,15 @@ export const Step9Keys = () => {
     updateData({ keyEntries: keys.filter((k) => k.id !== id) });
   };
 
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
+    await requestPermission();
+    const geo = await captureGeo();
     const reader = new FileReader();
     reader.onload = (ev) => {
-      updateData({ keyBundlePhotoUrl: ev.target?.result as string });
+      updateData({ keyBundlePhotoUrl: ev.target?.result as string, keyBundlePhotoGeo: geo });
     };
     reader.readAsDataURL(file);
   };
