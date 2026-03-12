@@ -284,6 +284,7 @@ const defaultData: HandoverData = {
   rooms: [],
   participants: [],
   attendancePhotoUrl: null,
+  attendancePhotoGeo: null,
   findings: [],
   meterReadings: [],
   keyEntries: [],
