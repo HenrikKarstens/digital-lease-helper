@@ -1,10 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, CheckCircle2, Plus, Gauge, Zap, Droplets, Flame, Edit3, Thermometer, HelpCircle, Trash2, PenLine, CalendarIcon, X } from 'lucide-react';
+import { Camera, CheckCircle2, Plus, Gauge, Zap, Droplets, Flame, Edit3, Thermometer, HelpCircle, Trash2, PenLine, CalendarIcon, X, Home, ShieldCheck, Paintbrush, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useHandover, MeterReading } from '@/context/HandoverContext';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useHandover, MeterReading, HkvRoomReading } from '@/context/HandoverContext';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
