@@ -1321,6 +1321,19 @@ export function generateMasterProtocol(data: HandoverData): void {
     }
   }
 
+  // ── Foto-Anhang (alle Mängelfotos) ─────────────────────────────────────────
+  const allPhotos = data.findings
+    .filter(f => f.photoUrl && f.photoUrl.startsWith('data:'))
+    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: f.timestamp }));
+  if (allPhotos.length > 0) {
+    doc.addPage();
+    y = 36;
+    addHeader(doc, 'Foto-Anhang – Mängeldokumentation', `${date} · ID: ${protocolId}`, pageW);
+    y = 36;
+    y = sectionTitle(doc, 'Beweisfotos aus der Mängelerfassung', y, pageW);
+    y = embedPhotos(doc, allPhotos, y, pageW, pageH, col1);
+  }
+
   // Page numbers
   const totalPages = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
