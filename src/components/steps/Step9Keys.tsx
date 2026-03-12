@@ -16,6 +16,12 @@ const KEY_TYPES = [
   'Sonstiger...',
 ];
 
+const CONDITIONS = [
+  { value: 'gut', label: 'Gut' },
+  { value: 'beschädigt', label: 'Beschädigt' },
+  { value: 'fehlt', label: 'Fehlt' },
+];
+
 export const Step9Keys = () => {
   const { data, updateData, goToStepById } = useHandover();
   const isMoveOut = data.handoverDirection === 'move-out';
@@ -28,6 +34,7 @@ export const Step9Keys = () => {
   const [newCustomName, setNewCustomName] = useState('');
   const [newCount, setNewCount] = useState('1');
   const [newNote, setNewNote] = useState('');
+  const [newCondition, setNewCondition] = useState<'gut' | 'beschädigt' | 'fehlt' | ''>('gut');
 
   const addKey = () => {
     if (!newType) return;
@@ -38,12 +45,14 @@ export const Step9Keys = () => {
       type: isCustom ? newCustomName.trim() : newType,
       count: parseInt(newCount) || 1,
       note: newNote,
+      condition: newCondition || 'gut' as const,
     };
     updateData({ keyEntries: [...keys, entry] });
     setNewType('');
     setNewCustomName('');
     setNewCount('1');
     setNewNote('');
+    setNewCondition('gut');
   };
 
   const removeKey = (id: string) => {
@@ -63,6 +72,15 @@ export const Step9Keys = () => {
 
   const totalKeys = keys.reduce((s, k) => s + k.count, 0);
   const showWarning = isMoveOut && totalKeys === 0;
+
+  const conditionBadge = (cond: string) => {
+    switch (cond) {
+      case 'gut': return <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600">Gut</span>;
+      case 'beschädigt': return <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600">Beschädigt</span>;
+      case 'fehlt': return <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive">Fehlt</span>;
+      default: return null;
+    }
+  };
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
@@ -147,7 +165,7 @@ export const Step9Keys = () => {
           )}
         </AnimatePresence>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Anzahl *</Label>
             <Input
@@ -157,6 +175,19 @@ export const Step9Keys = () => {
               onChange={(e) => setNewCount(e.target.value)}
               className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Zustand *</Label>
+            <Select value={newCondition} onValueChange={(v) => setNewCondition(v as any)}>
+              <SelectTrigger className="rounded-xl h-11 bg-secondary/50 border-0 focus:ring-1">
+                <SelectValue placeholder="Zustand..." />
+              </SelectTrigger>
+              <SelectContent className="z-50 bg-card border border-border rounded-xl shadow-lg">
+                {CONDITIONS.map(c => (
+                  <SelectItem key={c.value} value={c.value} className="cursor-pointer">{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Notiz</Label>
@@ -192,7 +223,10 @@ export const Step9Keys = () => {
                   <Key className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-sm">{k.type}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-sm">{k.type}</p>
+                    {conditionBadge(k.condition)}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {k.count}× {k.note ? `· ${k.note}` : ''}
                   </p>

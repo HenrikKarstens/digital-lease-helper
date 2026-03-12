@@ -1,10 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, CheckCircle2, Plus, Gauge, Zap, Droplets, Flame, Edit3, Thermometer, HelpCircle, Trash2, PenLine, CalendarIcon, X } from 'lucide-react';
+import { Camera, CheckCircle2, Plus, Gauge, Zap, Droplets, Flame, Edit3, Thermometer, HelpCircle, Trash2, PenLine, CalendarIcon, X, Home, ShieldCheck, Paintbrush, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useHandover, MeterReading } from '@/context/HandoverContext';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useHandover, MeterReading, HkvRoomReading } from '@/context/HandoverContext';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +16,7 @@ const METER_TYPES = [
   { value: 'Gas', label: 'Gas', icon: Flame, unit: 'm³' },
   { value: 'Wärmemengenzähler', label: 'Wärmemengenzähler', icon: Thermometer, unit: 'kWh' },
   { value: 'Sonstiges', label: 'Sonstiges', icon: HelpCircle, unit: '' },
+  { value: 'Heizkostenverteiler', label: 'Heizkostenverteiler (HKV)', icon: Thermometer, unit: 'Einheiten' },
 ];
 
 const MEDIUM_ICONS: Record<string, React.ElementType> = {
@@ -22,6 +24,7 @@ const MEDIUM_ICONS: Record<string, React.ElementType> = {
   Wasser: Droplets,
   Gas: Flame,
   Wärmemengenzähler: Thermometer,
+  Heizkostenverteiler: Thermometer,
   Sonstiges: HelpCircle,
 };
 
@@ -46,6 +49,77 @@ const emptyForm = (): ManualForm => ({
   maloId: '',
   date: TODAY,
 });
+
+const HKV_ROOMS = ['Wohnzimmer', 'Schlafzimmer', 'Kinderzimmer', 'Küche', 'Flur', 'Bad', 'Gäste-WC', 'Arbeitszimmer', 'Esszimmer', 'Sonstiges'];
+
+const HkvRoomSection = ({ meter, onUpdate }: { meter: MeterReading; onUpdate: (readings: HkvRoomReading[]) => void }) => {
+  const readings = meter.hkvRoomReadings || [];
+  const [showForm, setShowForm] = useState(false);
+  const [room, setRoom] = useState('');
+  const [num, setNum] = useState('');
+  const [val, setVal] = useState('');
+
+  const addRoom = () => {
+    if (!room || !val) return;
+    const entry: HkvRoomReading = { id: crypto.randomUUID(), room, meterNumber: num, reading: val };
+    onUpdate([...readings, entry]);
+    setRoom(''); setNum(''); setVal('');
+    setShowForm(false);
+  };
+
+  const removeRoom = (id: string) => onUpdate(readings.filter(r => r.id !== id));
+
+  return (
+    <div className="mt-3 border-t border-border/50 pt-3">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+          <Home className="w-3.5 h-3.5" />
+          Raumweise HKV-Ablesewerte
+        </p>
+        <button onClick={() => setShowForm(!showForm)} className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1">
+          <Plus className="w-3 h-3" />
+          Raum
+        </button>
+      </div>
+
+      {readings.map(r => (
+        <div key={r.id} className="flex items-center justify-between bg-secondary/30 rounded-lg px-3 py-1.5 mb-1.5 text-xs">
+          <div className="flex items-center gap-3">
+            <span className="font-semibold">{r.room}</span>
+            {r.meterNumber && <span className="text-muted-foreground">Nr. {r.meterNumber}</span>}
+            <span className="font-mono font-medium">{r.reading} Einheiten</span>
+          </div>
+          <button onClick={() => removeRoom(r.id)} className="text-destructive hover:text-destructive/80">
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      ))}
+
+      <AnimatePresence>
+        {showForm && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-2 overflow-hidden mt-2">
+            <Select value={room} onValueChange={setRoom}>
+              <SelectTrigger className="rounded-lg h-9 bg-secondary/50 border-0 text-xs">
+                <SelectValue placeholder="Raum wählen..." />
+              </SelectTrigger>
+              <SelectContent className="z-50 bg-card border border-border rounded-xl shadow-lg">
+                {HKV_ROOMS.map(r => <SelectItem key={r} value={r} className="cursor-pointer text-xs">{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="grid grid-cols-2 gap-2">
+              <Input placeholder="HKV-Nr." value={num} onChange={e => setNum(e.target.value)} className="rounded-lg h-9 text-xs bg-secondary/50 border-0" />
+              <Input placeholder="Ablesewert" type="number" inputMode="decimal" value={val} onChange={e => setVal(e.target.value)} className="rounded-lg h-9 text-xs bg-secondary/50 border-0" />
+            </div>
+            <Button onClick={addRoom} disabled={!room || !val} size="sm" className="w-full h-8 rounded-lg text-xs gap-1">
+              <Plus className="w-3 h-3" />
+              Raum hinzufügen
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 export const Step8MeterScan = () => {
   const { data, updateData, goToStepById } = useHandover();
@@ -434,6 +508,17 @@ export const Step8MeterScan = () => {
                     )}
                   </div>
                 )}
+
+                {/* HKV Room Readings – expandable section for Heizkostenverteiler */}
+                {(meter.medium === 'Heizkostenverteiler' || meter.medium === 'Wärmemengenzähler') && !isEditing && (
+                  <HkvRoomSection meter={meter} onUpdate={(readings) => {
+                    updateData({
+                      meterReadings: data.meterReadings.map(m =>
+                        m.id === meter.id ? { ...m, hkvRoomReadings: readings } : m
+                      ),
+                    });
+                  }} />
+                )}
               </motion.div>
             );
           })}
@@ -464,6 +549,92 @@ export const Step8MeterScan = () => {
             </div>
             <span className="text-xs font-semibold text-center leading-tight">Zähler manuell<br />hinzufügen</span>
           </button>
+        </motion.div>
+      )}
+
+      {/* Zustand & Sicherheit */}
+      {data.meterReadings.length > 0 && !scanning && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="w-full max-w-md glass-card rounded-2xl p-5 mt-6 space-y-4">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-primary" />
+            Zustand & Sicherheit
+          </h3>
+
+          {/* Reinigungszustand */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Trash className="w-3.5 h-3.5" />
+              Reinigungszustand
+            </p>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <Checkbox
+                checked={data.cleaningBesenrein}
+                onCheckedChange={(v) => updateData({ cleaningBesenrein: !!v })}
+              />
+              <span className="text-sm">Wohnung besenrein übergeben?</span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <Checkbox
+                checked={data.cleaningBriefkasten}
+                onCheckedChange={(v) => updateData({ cleaningBriefkasten: !!v })}
+              />
+              <span className="text-sm">Briefkasten geleert?</span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <Checkbox
+                checked={data.cleaningKeller}
+                onCheckedChange={(v) => updateData({ cleaningKeller: !!v })}
+              />
+              <span className="text-sm">Keller geräumt?</span>
+            </label>
+          </div>
+
+          {/* Rauchwarnmelder */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Rauchwarnmelder (LBO SH)
+            </p>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <Checkbox
+                checked={data.smokeDetectorChecked}
+                onCheckedChange={(v) => updateData({ smokeDetectorChecked: !!v })}
+              />
+              <span className="text-sm">Rauchwarnmelder in allen Schlafräumen und Fluren vorhanden und funktionsgeprüft?</span>
+            </label>
+            {!data.smokeDetectorChecked && (
+              <p className="text-xs text-destructive ml-7">⚠ Pflichtprüfung gemäß § 49 Abs. 4 LBO Schleswig-Holstein</p>
+            )}
+          </div>
+
+          {/* Schönheitsreparaturen */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Paintbrush className="w-3.5 h-3.5" />
+              Schönheitsreparaturen
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant={data.wallsNeutralColors === true ? 'default' : 'outline'}
+                size="sm"
+                className="rounded-xl text-xs h-9"
+                onClick={() => updateData({ wallsNeutralColors: true })}
+              >
+                ✓ Wände in neutralen Farben
+              </Button>
+              <Button
+                variant={data.wallsNeutralColors === false ? 'destructive' : 'outline'}
+                size="sm"
+                className="rounded-xl text-xs h-9"
+                onClick={() => updateData({ wallsNeutralColors: false })}
+              >
+                ✗ Auffällige Farben / Mängel
+              </Button>
+            </div>
+            {data.wallsNeutralColors === false && (
+              <p className="text-xs text-destructive">Hinweis: Nicht-neutrale Wandfarben können Schadensersatzansprüche begründen (BGH VIII ZR 224/07).</p>
+            )}
+          </div>
         </motion.div>
       )}
 

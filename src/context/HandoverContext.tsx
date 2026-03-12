@@ -47,6 +47,7 @@ export interface MeterReading {
   photoUrl?: string;
   source?: 'ai' | 'manual';
   aiConfidence?: 'high' | 'medium' | 'low';
+  hkvRoomReadings?: HkvRoomReading[];
 }
 
 export interface DocumentPage {
@@ -104,11 +105,19 @@ export interface DeltaCheckResult {
   };
 }
 
+export interface HkvRoomReading {
+  id: string;
+  room: string;
+  meterNumber: string;
+  reading: string;
+}
+
 export interface KeyEntry {
   id: string;
   type: string;
   count: number;
   note: string;
+  condition: 'gut' | 'beschädigt' | 'fehlt' | '';
 }
 
 export interface HandoverData {
@@ -205,6 +214,12 @@ export interface HandoverData {
   depositAgreementReached: boolean;
   depositAgreementTimestamp: string;
   tenantRefusesNewAddress: boolean;
+  // Condition checks (Phase 8 extension)
+  cleaningBesenrein: boolean;
+  cleaningBriefkasten: boolean;
+  cleaningKeller: boolean;
+  smokeDetectorChecked: boolean;
+  wallsNeutralColors: boolean | null;
 }
 
 const STORAGE_KEY = 'estateturn_draft';
@@ -283,6 +298,11 @@ const defaultData: HandoverData = {
   depositAgreementReached: false,
   depositAgreementTimestamp: '',
   tenantRefusesNewAddress: false,
+  cleaningBesenrein: false,
+  cleaningBriefkasten: false,
+  cleaningKeller: false,
+  smokeDetectorChecked: false,
+  wallsNeutralColors: null,
 };
 
 interface HandoverContextType {
