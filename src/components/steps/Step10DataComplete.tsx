@@ -26,7 +26,7 @@ export const Step10DataComplete = () => {
 
   const handlePreview = useCallback(() => {
     try {
-      generateMasterProtocol(data, 'Protokoll-Vorschau');
+      generateMasterProtocol(data);
       updateData({ previewViewed: true });
       toast({ title: '📥 PDF heruntergeladen', description: 'Protokoll-Vorschau wurde als PDF gespeichert.' });
     } catch (e) {
