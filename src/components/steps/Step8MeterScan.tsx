@@ -173,6 +173,7 @@ export const Step8MeterScan = () => {
       }
 
       const aiData = result.data;
+      const geo = await captureGeo();
       const newMeter: MeterReading = {
         id: Date.now().toString(),
         medium: aiData.medium || 'Sonstiges',
@@ -182,6 +183,7 @@ export const Step8MeterScan = () => {
         maloId: aiData.maloId || '',
         source: 'ai',
         aiConfidence: aiData.confidence || 'medium',
+        photoGeo: geo,
       };
       updateData({ meterReadings: [...data.meterReadings, newMeter] });
       toast({
