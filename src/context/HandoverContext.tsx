@@ -298,6 +298,11 @@ const defaultData: HandoverData = {
   depositAgreementReached: false,
   depositAgreementTimestamp: '',
   tenantRefusesNewAddress: false,
+  cleaningBesenrein: false,
+  cleaningBriefkasten: false,
+  cleaningKeller: false,
+  smokeDetectorChecked: false,
+  wallsNeutralColors: null,
 };
 
 interface HandoverContextType {
