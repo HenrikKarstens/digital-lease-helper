@@ -1641,6 +1641,8 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     y += 14;
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'italic');
     doc.text(`Berechnung gemäß BGH VIII ZR 71/05 (NK-Puffer) & ${bghRef} (Zeitwert-Abzug, § 538 BGB). Zinsen gemäß § 551 Abs. 3 BGB.`, col1, y);
+    y += 4;
+    doc.text('Die Kaution wurde gemäß § 551 Abs. 3 BGB getrennt vom Privatvermögen des Vermieters angelegt.', col1, y);
     y += 6; doc.setFont('helvetica', 'normal');
 
     // §7c Zahlungsanweisung
