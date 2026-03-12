@@ -195,6 +195,7 @@ export interface HandoverData {
   // Step 9 – Schlüssel
   keyEntries: KeyEntry[];
   keyBundlePhotoUrl: string | null;
+  keyBundlePhotoGeo: PhotoGeoMeta | null;
   // Step 9
   signatureLandlord: string | null;
   signatureTenant: string | null;
