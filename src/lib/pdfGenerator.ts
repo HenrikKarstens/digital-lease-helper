@@ -1954,6 +1954,19 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   doc.text(`Protokoll-ID: ${protocolId} · SHA-256 versiegelt · Nur tatsächlich in der App oder vor Ort geleistete Unterschriften werden hier abgebildet.`, col1, y, { maxWidth: pageW - 28 });
   doc.setFont('helvetica', 'normal');
 
+  // ── Foto-Anhang (blob) ─────────────────────────────────────────────────────
+  const allPhotos2 = data.findings
+    .filter(f => f.photoUrl && f.photoUrl.startsWith('data:'))
+    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: f.timestamp }));
+  if (allPhotos2.length > 0) {
+    doc.addPage();
+    let yAppendix = 36;
+    addHeader(doc, 'Foto-Anhang – Mängeldokumentation', `${date} · ID: ${protocolId}`, pageW);
+    yAppendix = 36;
+    yAppendix = sectionTitle(doc, 'Beweisfotos aus der Mängelerfassung', yAppendix, pageW);
+    embedPhotos(doc, allPhotos2, yAppendix, pageW, pageH, col1);
+  }
+
   const totalPages2 = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= totalPages2; i++) {
     doc.setPage(i);
