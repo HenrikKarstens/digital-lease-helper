@@ -1924,6 +1924,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     `5. Protokollverbindlichkeit: Dieses Protokoll wurde digital mit einem SHA-256-Hash versiegelt und ist urkundlich zu verwahren.`,
     `6. Anerkennung: Dem Mieter wird eine Prüffrist von 14 Tagen eingeräumt. Erfolgt innerhalb dieser Frist kein begründeter Widerspruch gegen die Feststellungen in diesem Protokoll, gilt der dokumentierte Zustand als anerkannt.`,
     isSale ? `7. Kaufrecht: Mängelansprüche richten sich nach § 434 BGB i.V.m. ${bghRef}.` : `7. Mietrecht: Kautions-Abrechnung gemäß § 551 BGB, Zeitwert-Abzug gemäß ${bghRef}.`,
+    `8. GPS-Validierung: Die Zählerstände wurden mittels Live-GPS-Validierung am Standort ${data.propertyAddress || 'des Objekts'} verifiziert. Die erfassten Koordinaten und Zeitstempel sind Bestandteil dieses Protokolls.`,
   ];
   const clauseLines = clauses.flatMap(c => doc.splitTextToSize(c, pageW - 36));
   const clauseH = clauseLines.length * 3.8 + 8;
