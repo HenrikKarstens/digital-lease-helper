@@ -1708,7 +1708,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     // Embed defect photos (blob)
     const defectPhotos2 = defectFindings2
       .filter(f => f.photoUrl)
-      .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: f.timestamp }));
+      .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
     y = embedPhotos(doc, defectPhotos2, y, pageW, pageH, col1);
   } else {
     doc.setTextColor(...SUCCESS_COLOR); doc.setFontSize(8);
