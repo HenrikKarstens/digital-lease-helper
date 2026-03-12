@@ -245,14 +245,16 @@ export const Step7Evidence = () => {
     setPhase('list');
   };
 
-  const saveFinding = () => {
+  const saveFinding = async () => {
     if (!selectedRoom) return;
+    const geo = await captureGeo();
     const finding: Finding = {
       id: Date.now().toString(),
       room: selectedRoom,
       pinX: 50,
       pinY: 50,
       photoUrl: capturedPreview || undefined,
+      photoGeo: geo,
       material: editMaterial,
       damageType: editDamageType,
       bghReference: currentResult?.bghReference || '',
