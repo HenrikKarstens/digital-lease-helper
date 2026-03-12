@@ -49,6 +49,77 @@ const emptyForm = (): ManualForm => ({
   date: TODAY,
 });
 
+const HKV_ROOMS = ['Wohnzimmer', 'Schlafzimmer', 'Kinderzimmer', 'Küche', 'Flur', 'Bad', 'Gäste-WC', 'Arbeitszimmer', 'Esszimmer', 'Sonstiges'];
+
+const HkvRoomSection = ({ meter, onUpdate }: { meter: MeterReading; onUpdate: (readings: HkvRoomReading[]) => void }) => {
+  const readings = meter.hkvRoomReadings || [];
+  const [showForm, setShowForm] = useState(false);
+  const [room, setRoom] = useState('');
+  const [num, setNum] = useState('');
+  const [val, setVal] = useState('');
+
+  const addRoom = () => {
+    if (!room || !val) return;
+    const entry: HkvRoomReading = { id: crypto.randomUUID(), room, meterNumber: num, reading: val };
+    onUpdate([...readings, entry]);
+    setRoom(''); setNum(''); setVal('');
+    setShowForm(false);
+  };
+
+  const removeRoom = (id: string) => onUpdate(readings.filter(r => r.id !== id));
+
+  return (
+    <div className="mt-3 border-t border-border/50 pt-3">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+          <Home className="w-3.5 h-3.5" />
+          Raumweise HKV-Ablesewerte
+        </p>
+        <button onClick={() => setShowForm(!showForm)} className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1">
+          <Plus className="w-3 h-3" />
+          Raum
+        </button>
+      </div>
+
+      {readings.map(r => (
+        <div key={r.id} className="flex items-center justify-between bg-secondary/30 rounded-lg px-3 py-1.5 mb-1.5 text-xs">
+          <div className="flex items-center gap-3">
+            <span className="font-semibold">{r.room}</span>
+            {r.meterNumber && <span className="text-muted-foreground">Nr. {r.meterNumber}</span>}
+            <span className="font-mono font-medium">{r.reading} Einheiten</span>
+          </div>
+          <button onClick={() => removeRoom(r.id)} className="text-destructive hover:text-destructive/80">
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      ))}
+
+      <AnimatePresence>
+        {showForm && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-2 overflow-hidden mt-2">
+            <Select value={room} onValueChange={setRoom}>
+              <SelectTrigger className="rounded-lg h-9 bg-secondary/50 border-0 text-xs">
+                <SelectValue placeholder="Raum wählen..." />
+              </SelectTrigger>
+              <SelectContent className="z-50 bg-card border border-border rounded-xl shadow-lg">
+                {HKV_ROOMS.map(r => <SelectItem key={r} value={r} className="cursor-pointer text-xs">{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="grid grid-cols-2 gap-2">
+              <Input placeholder="HKV-Nr." value={num} onChange={e => setNum(e.target.value)} className="rounded-lg h-9 text-xs bg-secondary/50 border-0" />
+              <Input placeholder="Ablesewert" type="number" inputMode="decimal" value={val} onChange={e => setVal(e.target.value)} className="rounded-lg h-9 text-xs bg-secondary/50 border-0" />
+            </div>
+            <Button onClick={addRoom} disabled={!room || !val} size="sm" className="w-full h-8 rounded-lg text-xs gap-1">
+              <Plus className="w-3 h-3" />
+              Raum hinzufügen
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 export const Step8MeterScan = () => {
   const { data, updateData, goToStepById } = useHandover();
   const { toast } = useToast();
