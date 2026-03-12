@@ -1615,6 +1615,12 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
         doc.setDrawColor(200, 200, 215); doc.rect(col1, y, 60, 45);
         doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
         doc.text('Beweisfoto: Schlüsselbund bei Übergabe', col1 + 64, y + 6);
+        if (data.keyBundlePhotoGeo) {
+          const gpsText = formatGeoForPdf(data.keyBundlePhotoGeo);
+          const tsText = formatTimestampForPdf(data.keyBundlePhotoGeo.timestamp);
+          if (tsText) { doc.setFontSize(5.5); doc.setFont('helvetica', 'italic'); doc.text(tsText, col1 + 64, y + 10); }
+          if (gpsText) { doc.setFontSize(5.5); doc.text(gpsText, col1 + 64, y + 14); doc.setFont('helvetica', 'normal'); }
+        }
         y += 51;
       } catch { y += 6; }
     }
