@@ -26,10 +26,9 @@ export const Step10DataComplete = () => {
 
   const handlePreview = useCallback(() => {
     try {
-      const blob = generateMasterProtocolBlob(data);
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      generateMasterProtocol(data, 'Protokoll-Vorschau');
       updateData({ previewViewed: true });
+      toast({ title: '📥 PDF heruntergeladen', description: 'Protokoll-Vorschau wurde als PDF gespeichert.' });
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
