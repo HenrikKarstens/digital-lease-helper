@@ -140,6 +140,7 @@ export const Step8MeterScan = () => {
     if (!file) return;
     e.target.value = '';
 
+    requestPermission();
     setScanning(true);
     setScanMessage('KI analysiert Zähler...');
 
