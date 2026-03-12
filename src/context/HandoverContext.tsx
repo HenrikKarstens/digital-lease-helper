@@ -47,6 +47,7 @@ export interface MeterReading {
   photoUrl?: string;
   source?: 'ai' | 'manual';
   aiConfidence?: 'high' | 'medium' | 'low';
+  hkvRoomReadings?: HkvRoomReading[];
 }
 
 export interface DocumentPage {
