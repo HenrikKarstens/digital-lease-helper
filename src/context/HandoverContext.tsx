@@ -104,11 +104,19 @@ export interface DeltaCheckResult {
   };
 }
 
+export interface HkvRoomReading {
+  id: string;
+  room: string;
+  meterNumber: string;
+  reading: string;
+}
+
 export interface KeyEntry {
   id: string;
   type: string;
   count: number;
   note: string;
+  condition: 'gut' | 'beschädigt' | 'fehlt' | '';
 }
 
 export interface HandoverData {
