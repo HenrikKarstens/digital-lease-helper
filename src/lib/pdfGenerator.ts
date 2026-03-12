@@ -1539,6 +1539,24 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     y = (doc as any).lastAutoTable.finalY + 4;
   }
 
+  // Embed attendance photo (blob version)
+  if (data.attendancePhotoUrl && data.attendancePhotoUrl.startsWith('data:')) {
+    if (y > pageH - 60) { doc.addPage(); y = 36; }
+    try {
+      doc.addImage(data.attendancePhotoUrl, 'JPEG', col1, y, 60, 45);
+      doc.setDrawColor(200, 200, 215); doc.rect(col1, y, 60, 45);
+      doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
+      doc.text('Beweisfoto: Anwesenheit der Teilnehmer', col1 + 64, y + 6);
+      if (data.attendancePhotoGeo) {
+        const gpsText = formatGeoForPdf(data.attendancePhotoGeo);
+        const tsText = formatTimestampForPdf(data.attendancePhotoGeo.timestamp);
+        if (tsText) { doc.setFontSize(5.5); doc.setFont('helvetica', 'italic'); doc.text(tsText, col1 + 64, y + 10); }
+        if (gpsText) { doc.setFontSize(5.5); doc.text(gpsText, col1 + 64, y + 14); doc.setFont('helvetica', 'normal'); }
+      }
+      y += 51;
+    } catch { /* skip */ }
+  }
+
   if (y > pageH - 60) { doc.addPage(); y = 36; }
   y = sectionTitle(doc, '§5  Zählerstände', y, pageW);
   if (data.meterReadings.length > 0) {
