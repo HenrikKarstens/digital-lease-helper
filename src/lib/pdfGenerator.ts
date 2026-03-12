@@ -552,7 +552,29 @@ export function generateMasterProtocol(data: HandoverData): void {
     bodyStyles: { fontSize: 8 },
     alternateRowStyles: { fillColor: [248, 249, 255] },
   });
-  y = (doc as any).lastAutoTable.finalY + 4;
+    y = (doc as any).lastAutoTable.finalY + 4;
+
+    // Embed attendance photo if available
+    if (data.attendancePhotoUrl && data.attendancePhotoUrl.startsWith('data:')) {
+      if (y > pageH - 60) { doc.addPage(); y = 36; }
+      try {
+        const imgW = 60;
+        const imgH = 45;
+        doc.addImage(data.attendancePhotoUrl, 'JPEG', col1, y, imgW, imgH);
+        doc.setDrawColor(200, 200, 215);
+        doc.rect(col1, y, imgW, imgH);
+        doc.setTextColor(...MUTED_COLOR);
+        doc.setFontSize(6.5);
+        doc.text('Beweisfoto: Anwesenheit der Teilnehmer', col1 + imgW + 4, y + 6);
+        if (data.attendancePhotoGeo) {
+          const gpsText = formatGeoForPdf(data.attendancePhotoGeo);
+          const tsText = formatTimestampForPdf(data.attendancePhotoGeo.timestamp);
+          if (tsText) doc.text(tsText, col1 + imgW + 4, y + 10);
+          if (gpsText) doc.text(gpsText, col1 + imgW + 4, y + 14);
+        }
+        y += imgH + 6;
+      } catch { /* skip */ }
+    }
 
   // ── §5 Zählerstände ───────────────────────────────────────────────────────
   if (y > pageH - 60) { doc.addPage(); y = 36; }
