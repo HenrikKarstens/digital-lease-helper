@@ -381,7 +381,7 @@ export const Step6Participants = () => {
               setShowEmailWarning(true);
               return;
             }
-            goToStepById('evidence');
+            goToStepById(data.handoverDirection === 'move-out' ? 'condition-check' : 'evidence');
           }}
           className="w-full h-13 rounded-2xl text-base font-semibold gap-2"
           size="lg"
