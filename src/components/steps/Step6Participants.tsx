@@ -365,7 +365,7 @@ export const Step6Participants = () => {
               <AlertDialogCancel className="rounded-xl">Zurück</AlertDialogCancel>
               <AlertDialogAction
                 className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => { setShowEmailWarning(false); goToStepById('evidence'); }}
+                onClick={() => { setShowEmailWarning(false); goToStepById(data.handoverDirection === 'move-out' ? 'condition-check' : 'evidence'); }}
               >
                 Trotzdem fortfahren
               </AlertDialogAction>
@@ -381,7 +381,7 @@ export const Step6Participants = () => {
               setShowEmailWarning(true);
               return;
             }
-            goToStepById('evidence');
+            goToStepById(data.handoverDirection === 'move-out' ? 'condition-check' : 'evidence');
           }}
           className="w-full h-13 rounded-2xl text-base font-semibold gap-2"
           size="lg"
