@@ -24,6 +24,7 @@ const MEDIUM_ICONS: Record<string, React.ElementType> = {
   Wasser: Droplets,
   Gas: Flame,
   Wärmemengenzähler: Thermometer,
+  Heizkostenverteiler: Thermometer,
   Sonstiges: HelpCircle,
 };
 
