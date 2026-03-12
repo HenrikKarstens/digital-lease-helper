@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { HandoverData } from '@/context/HandoverContext';
 import { createThumbnail } from '@/lib/imageUtils';
+import { formatGeoForPdf, formatTimestampForPdf } from '@/hooks/useGeoPhoto';
 
 // Executive Certificate Theme
 const BRAND_COLOR: [number, number, number] = [15, 23, 42];      // Midnight Blue #0F172A
