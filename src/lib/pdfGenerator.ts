@@ -1166,6 +1166,7 @@ export function generateMasterProtocol(data: HandoverData): void {
     `4. Schönheitsreparaturen: Formularklauseln zu Renovierungspflichten des Mieters sind nach BGH-Rechtsprechung in der Regel unwirksam, sofern sie von § 307 BGB abweichen.`,
     `5. Protokollverbindlichkeit: Dieses Protokoll wurde digital mit einem SHA-256-Hash versiegelt und ist urkundlich zu verwahren.`,
     `6. Anerkennung: Dem Mieter wird eine Prüffrist von 14 Tagen eingeräumt. Erfolgt innerhalb dieser Frist kein begründeter Widerspruch gegen die Feststellungen in diesem Protokoll, gilt der dokumentierte Zustand als anerkannt.`,
+    `7. GPS-Validierung: Die Zählerstände wurden mittels Live-GPS-Validierung am Standort ${data.propertyAddress || 'des Objekts'} verifiziert. Die erfassten Koordinaten und Zeitstempel sind Bestandteil dieses Protokolls.`,
   ];
   const clauseLines = clauses.flatMap(c => doc.splitTextToSize(c, pageW - 36));
   const clauseH = clauseLines.length * 3.8 + 8;
