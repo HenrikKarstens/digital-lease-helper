@@ -436,6 +436,17 @@ export const Step8MeterScan = () => {
                     )}
                   </div>
                 )}
+
+                {/* HKV Room Readings – expandable section for Heizkostenverteiler */}
+                {(meter.medium === 'Heizkostenverteiler' || meter.medium === 'Wärmemengenzähler') && !isEditing && (
+                  <HkvRoomSection meter={meter} onUpdate={(readings) => {
+                    updateData({
+                      meterReadings: data.meterReadings.map(m =>
+                        m.id === meter.id ? { ...m, hkvRoomReadings: readings } : m
+                      ),
+                    });
+                  }} />
+                )}
               </motion.div>
             );
           })}
