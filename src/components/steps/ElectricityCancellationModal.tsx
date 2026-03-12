@@ -162,14 +162,12 @@ ${tenantName}`;
     doc.setTextColor(120);
     doc.text('Dieses Schreiben genügt der Textform gem. § 126b BGB (§ 309 Nr. 13 BGB).', 20, 280);
 
-    const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    const provider = providerData.providerName || 'Versorger';
+    doc.save(`Kuendigung_${provider}_${new Date().toISOString().slice(0, 10)}.pdf`);
 
     setPdfGenerated(true);
-    toast({ title: '📥 PDF erstellt', description: 'Kündigungsschreiben wurde in neuem Tab geöffnet.' });
-  }, [cancellationText, toast]);
+    toast({ title: '📥 PDF heruntergeladen', description: 'Kündigungsschreiben wurde als PDF gespeichert.' });
+  }, [cancellationText, providerData.providerName, toast]);
 
   const handleSendEmail = useCallback(async () => {
     setSending(true);
