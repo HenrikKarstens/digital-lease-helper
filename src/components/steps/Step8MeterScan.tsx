@@ -16,6 +16,7 @@ const METER_TYPES = [
   { value: 'Gas', label: 'Gas', icon: Flame, unit: 'm³' },
   { value: 'Wärmemengenzähler', label: 'Wärmemengenzähler', icon: Thermometer, unit: 'kWh' },
   { value: 'Sonstiges', label: 'Sonstiges', icon: HelpCircle, unit: '' },
+  { value: 'Heizkostenverteiler', label: 'Heizkostenverteiler (HKV)', icon: Thermometer, unit: 'Einheiten' },
 ];
 
 const MEDIUM_ICONS: Record<string, React.ElementType> = {
