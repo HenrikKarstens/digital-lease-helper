@@ -52,9 +52,16 @@ export const Step12Unlock = () => {
     try {
       const blob = generateMasterProtocolBlob(data);
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Uebergabeprotokoll_Vorschau_${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
       setPreviewViewed(true);
       updateData({ previewViewed: true });
+      toast({ title: '📥 PDF heruntergeladen', description: 'Protokoll-Vorschau wurde als PDF gespeichert.' });
     } catch {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
