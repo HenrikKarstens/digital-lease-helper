@@ -61,13 +61,15 @@ export const Step9Keys = () => {
     updateData({ keyEntries: keys.filter((k) => k.id !== id) });
   };
 
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
+    await requestPermission();
+    const geo = await captureGeo();
     const reader = new FileReader();
     reader.onload = (ev) => {
-      updateData({ keyBundlePhotoUrl: ev.target?.result as string });
+      updateData({ keyBundlePhotoUrl: ev.target?.result as string, keyBundlePhotoGeo: geo });
     };
     reader.readAsDataURL(file);
   };
