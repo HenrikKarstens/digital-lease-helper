@@ -1507,6 +1507,32 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
       alternateRowStyles: { fillColor: [248, 249, 255] },
     });
     y = (doc as any).lastAutoTable.finalY + 4;
+
+    // HKV Room Readings sub-table (blob)
+    const hkvMeters2 = data.meterReadings.filter(m => m.hkvRoomReadings && m.hkvRoomReadings.length > 0);
+    if (hkvMeters2.length > 0) {
+      if (y > pageH - 50) { doc.addPage(); y = 36; }
+      doc.setTextColor(...BRAND_COLOR); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+      doc.text('Raumweise HKV-Ablesewerte (Heizkostenverteiler)', col1, y);
+      doc.setFont('helvetica', 'normal'); y += 4;
+      const hkvRows2: string[][] = [];
+      hkvMeters2.forEach(m => {
+        m.hkvRoomReadings!.forEach(r => {
+          hkvRows2.push([r.room, r.meterNumber || '–', r.reading, 'Einheiten', m.meterNumber || '–']);
+        });
+      });
+      autoTable(doc, {
+        startY: y, margin: { left: 14, right: 14 },
+        head: [['Raum', 'HKV-Zählernr.', 'Ablesewert', 'Einheit', 'Hauptzähler']],
+        body: hkvRows2,
+        headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7.5 },
+        bodyStyles: { fontSize: 7.5 },
+        alternateRowStyles: { fillColor: [248, 249, 255] },
+        columnStyles: { 0: { fontStyle: 'bold' }, 2: { halign: 'right', fontStyle: 'bold' } },
+      });
+      y = (doc as any).lastAutoTable.finalY + 4;
+    }
+
     // Embed meter photos (blob)
     const meterPhotos2 = data.meterReadings
       .filter(m => m.photoUrl)
@@ -1515,6 +1541,74 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   } else {
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(8);
     doc.text('Keine Zähler erfasst.', col1, y); y += 8;
+  }
+
+  // ── §5a Schlüsselrückgabe (blob) ──────────────────────────────────────────
+  if (data.keyEntries && data.keyEntries.length > 0) {
+    if (y > pageH - 60) { doc.addPage(); y = 36; }
+    y = sectionTitle(doc, '§5a  Schlüsselrückgabe', y, pageW);
+    autoTable(doc, {
+      startY: y, margin: { left: 14, right: 14 },
+      head: [['Schlüssel-Typ', 'Anzahl', 'Zustand', 'Notiz']],
+      body: data.keyEntries.map(k => [
+        k.type, String(k.count),
+        k.condition === 'gut' ? 'Gut' : k.condition === 'beschädigt' ? 'Beschädigt' : k.condition === 'fehlt' ? 'Fehlt' : '–',
+        k.note || '–',
+      ]),
+      headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
+      bodyStyles: { fontSize: 8, textColor: TEXT_COLOR },
+      alternateRowStyles: { fillColor: [248, 249, 255] },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 }, 1: { cellWidth: 18, halign: 'center' }, 2: { cellWidth: 28, halign: 'center' } },
+    });
+    y = (doc as any).lastAutoTable.finalY + 4;
+    const totalKeys2 = data.keyEntries.reduce((s, k) => s + k.count, 0);
+    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+    doc.text(`Gesamtanzahl übergebener Schlüssel: ${totalKeys2}`, col1, y);
+    doc.setFont('helvetica', 'normal'); y += 5;
+    if (data.keyBundlePhotoUrl) {
+      if (y > pageH - 60) { doc.addPage(); y = 36; }
+      try {
+        doc.addImage(data.keyBundlePhotoUrl, 'JPEG', col1, y, 60, 45);
+        doc.setDrawColor(200, 200, 215); doc.rect(col1, y, 60, 45);
+        doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
+        doc.text('Beweisfoto: Schlüsselbund bei Übergabe', col1 + 64, y + 6);
+        y += 51;
+      } catch { y += 6; }
+    }
+    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5); doc.setFont('helvetica', 'italic');
+    doc.text('Der Mieter versichert, alle in seinem Besitz befindlichen Schlüssel (inkl. Duplikate) zurückgegeben zu haben.', col1, y);
+    doc.setFont('helvetica', 'normal'); y += 7;
+  }
+
+  // ── §5b Zustand & Sicherheit (blob) ───────────────────────────────────────
+  {
+    const hasConditionData2 = data.cleaningBesenrein || data.cleaningBriefkasten || data.cleaningKeller || data.smokeDetectorChecked || data.wallsNeutralColors !== null;
+    if (hasConditionData2) {
+      if (y > pageH - 60) { doc.addPage(); y = 36; }
+      y = sectionTitle(doc, '§5b  Zustand & Sicherheit', y, pageW);
+      const condRows2: string[][] = [
+        ['Wohnung besenrein übergeben', data.cleaningBesenrein ? '☑ Ja' : '☐ Nein'],
+        ['Briefkasten geleert', data.cleaningBriefkasten ? '☑ Ja' : '☐ Nein'],
+        ['Keller geräumt', data.cleaningKeller ? '☑ Ja' : '☐ Nein'],
+        ['Rauchwarnmelder geprüft (LBO SH)', data.smokeDetectorChecked ? '☑ Ja – funktionsgeprüft' : '☐ Nein – NICHT GEPRÜFT'],
+        ['Wände in neutralen Farben', data.wallsNeutralColors === true ? '☑ Ja' : data.wallsNeutralColors === false ? '☐ Nein – auffällige Farben' : '☐ Nicht geprüft'],
+      ];
+      autoTable(doc, {
+        startY: y, margin: { left: 14, right: 14 },
+        head: [['Prüfpunkt', 'Ergebnis']],
+        body: condRows2,
+        headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
+        bodyStyles: { fontSize: 8, textColor: TEXT_COLOR },
+        alternateRowStyles: { fillColor: [248, 249, 255] },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 } },
+      });
+      y = (doc as any).lastAutoTable.finalY + 4;
+      if (!data.smokeDetectorChecked) {
+        doc.setTextColor(...DANGER_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+        doc.text('⚠ Rauchwarnmelder: Pflichtprüfung gemäß § 49 Abs. 4 LBO Schleswig-Holstein nicht bestätigt.', col1, y);
+        doc.setFont('helvetica', 'normal'); y += 6;
+      }
+    }
   }
 
   if (y > pageH - 80) { doc.addPage(); y = 36; }
