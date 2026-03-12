@@ -95,6 +95,7 @@ export const Step7Evidence = () => {
     if (!file) return;
     e.target.value = '';
     setCapturedFile(file);
+    requestPermission();
     // Create preview URL
     const reader = new FileReader();
     reader.onload = (ev) => setCapturedPreview(ev.target?.result as string);
