@@ -573,6 +573,35 @@ export function generateMasterProtocol(data: HandoverData): void {
       alternateRowStyles: { fillColor: [248, 249, 255] },
     });
     y = (doc as any).lastAutoTable.finalY + 4;
+
+    // HKV Room Readings sub-table
+    const hkvMeters = data.meterReadings.filter(m => m.hkvRoomReadings && m.hkvRoomReadings.length > 0);
+    if (hkvMeters.length > 0) {
+      if (y > pageH - 50) { doc.addPage(); y = 36; }
+      doc.setTextColor(...BRAND_COLOR);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Raumweise HKV-Ablesewerte (Heizkostenverteiler)', col1, y);
+      doc.setFont('helvetica', 'normal');
+      y += 4;
+      const hkvRows: string[][] = [];
+      hkvMeters.forEach(m => {
+        m.hkvRoomReadings!.forEach(r => {
+          hkvRows.push([r.room, r.meterNumber || '–', r.reading, 'Einheiten', m.meterNumber || '–']);
+        });
+      });
+      autoTable(doc, {
+        startY: y,
+        margin: { left: 14, right: 14 },
+        head: [['Raum', 'HKV-Zählernr.', 'Ablesewert', 'Einheit', 'Hauptzähler']],
+        body: hkvRows,
+        headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7.5 },
+        bodyStyles: { fontSize: 7.5 },
+        alternateRowStyles: { fillColor: [248, 249, 255] },
+        columnStyles: { 0: { fontStyle: 'bold' }, 2: { halign: 'right', fontStyle: 'bold' } },
+      });
+      y = (doc as any).lastAutoTable.finalY + 4;
+    }
     
     // Embed meter photos
     const meterPhotos = data.meterReadings
