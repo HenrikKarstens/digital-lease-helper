@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { DocumentAnalysisProgress } from './DocumentAnalysisProgress';
-
 import { DocumentScanner } from './DocumentScanner';
+import { ExtractionResultCard } from './ExtractionResultCard';
+import { useExtractionValidation } from './useExtractionValidation';
 import type { DocStep, PagePhoto, InputMode } from './types';
 
 const analysisStepLabels = [
@@ -17,6 +17,7 @@ const analysisStepLabels = [
   'KI liest Dokumentenstruktur...',
   'Parteien & Adresse werden extrahiert...',
   'Finanzielle Konditionen werden erkannt...',
+  'Kautionsprüfung gemäß § 551 BGB...',
   'Rechtliche Klauseln werden geprüft...',
   'Analyse abgeschlossen ✓',
 ];
@@ -70,20 +71,19 @@ const getManualFields = (docType: string, isSale: boolean, ownerRole: string, cl
 export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip }: Props) => {
   const { data, updateData } = useHandover();
   const { isSale, ownerRole, clientRole } = useTransactionLabels();
+  const { fields: validationFields, warnings: validationWarnings } = useExtractionValidation(data);
 
   const [mode, setMode] = useState<InputMode>('idle');
   const [analysisStepIdx, setAnalysisStepIdx] = useState(0);
   const [currentAnalyzingPage, setCurrentAnalyzingPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<Record<string, string> | null>(null);
+  const [showResults, setShowResults] = useState(false);
   const [manualValues, setManualValues] = useState<Record<string, string>>({});
 
-  // ── Core analysis function – accepts pages directly to avoid stale closure ──
   const runAnalysis = async (scannedPages: PagePhoto[]) => {
     if (scannedPages.length === 0) return;
 
     console.log('[EstateTurn] File detected:', scannedPages.map(p => `${p.file.name} (${p.mimeType})`));
-    console.log('[EstateTurn] Datei erhalten –', scannedPages.length, 'Seite(n)');
     setMode('analyzing');
     setError(null);
     setAnalysisStepIdx(0);
@@ -105,91 +105,57 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
         formData.append(`file_${idx}`, page.file);
       });
 
-      console.log('[EstateTurn] Rufe Edge Function auf... (Dokument:', docStep.id, ')');
-      console.log('[EstateTurn] Text extraction successful: True');
-
-      // Use direct fetch instead of supabase.functions.invoke for reliable FormData handling
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
       const response = await fetch(`${supabaseUrl}/functions/v1/analyze-contract`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
+        headers: { 'Authorization': `Bearer ${supabaseKey}` },
         body: formData,
       });
 
       const responseData = await response.json();
-
       clearInterval(interval);
       setAnalysisStepIdx(analysisStepLabels.length - 1);
-
-      console.log('[EstateTurn] AI Response received:', JSON.stringify(responseData));
 
       if (!response.ok) throw new Error(responseData?.error || `HTTP ${response.status}`);
       if (!responseData?.success) throw new Error(responseData?.error || 'Analyse fehlgeschlagen');
 
       const result = responseData.data;
 
-      // Map all returned fields into global state immediately
       const fieldMap: Record<string, string> = {
-        propertyAddress: 'propertyAddress',
-        landlordName: 'landlordName',
-        landlordEmail: 'landlordEmail',
-        landlordPhone: 'landlordPhone',
-        landlordBirthday: 'landlordBirthday',
-        tenantName: 'tenantName',
-        tenantEmail: 'tenantEmail',
-        tenantPhone: 'tenantPhone',
-        tenantBirthday: 'tenantBirthday',
-        priorAddress: 'priorAddress',
-        depositAmount: 'depositAmount',
-        coldRent: 'coldRent',
-        nkAdvancePayment: 'nkAdvancePayment',
-        heatingCosts: 'heatingCosts',
-        totalRent: 'totalRent',
-        roomCount: 'roomCount',
-        contractStart: 'contractStart',
-        contractEnd: 'contractEnd',
-        contractDuration: 'contractDuration',
-        contractType: 'contractType',
-        contractSigningDate: 'contractSigningDate',
-        depositLegalCheck: 'depositLegalCheck',
-        depositLegalStatus: 'depositLegalStatus',
-        smallRepairAnalysis: 'smallRepairAnalysis',
-        smallRepairStatus: 'smallRepairStatus',
-        endRenovationAnalysis: 'endRenovationAnalysis',
-        endRenovationStatus: 'endRenovationStatus',
-        renovationClauseAnalysis: 'renovationClauseAnalysis',
-        depositSourceRef: 'depositSourceRef',
-        smallRepairSourceRef: 'smallRepairSourceRef',
-        endRenovationSourceRef: 'endRenovationSourceRef',
-        preDamages: 'preDamages',
-        amendmentDate: 'amendmentDate',
+        propertyAddress: 'propertyAddress', landlordName: 'landlordName', landlordEmail: 'landlordEmail',
+        landlordPhone: 'landlordPhone', landlordBirthday: 'landlordBirthday', tenantName: 'tenantName',
+        tenantEmail: 'tenantEmail', tenantPhone: 'tenantPhone', tenantBirthday: 'tenantBirthday',
+        priorAddress: 'priorAddress', depositAmount: 'depositAmount', coldRent: 'coldRent',
+        nkAdvancePayment: 'nkAdvancePayment', heatingCosts: 'heatingCosts', totalRent: 'totalRent',
+        roomCount: 'roomCount', contractStart: 'contractStart', contractEnd: 'contractEnd',
+        contractDuration: 'contractDuration', contractType: 'contractType', contractSigningDate: 'contractSigningDate',
+        depositLegalCheck: 'depositLegalCheck', depositLegalStatus: 'depositLegalStatus',
+        smallRepairAnalysis: 'smallRepairAnalysis', smallRepairStatus: 'smallRepairStatus',
+        endRenovationAnalysis: 'endRenovationAnalysis', endRenovationStatus: 'endRenovationStatus',
+        renovationClauseAnalysis: 'renovationClauseAnalysis', depositSourceRef: 'depositSourceRef',
+        smallRepairSourceRef: 'smallRepairSourceRef', endRenovationSourceRef: 'endRenovationSourceRef',
+        preDamages: 'preDamages', amendmentDate: 'amendmentDate',
       };
 
       const patch: Record<string, string> = {};
       Object.entries(fieldMap).forEach(([src, dst]) => {
         if (result[src]) patch[dst] = result[src];
       });
-      // For amendment docs, map contractStart → amendmentDate
       if (docStep.id === 'amendment' && result.contractStart) {
         patch['amendmentDate'] = result.contractStart;
       }
       updateData(patch as any);
       console.log('[EstateTurn] Daten in globalen State geschrieben:', Object.keys(patch));
 
-      const summaryKey = ({
-        'main-contract': result.depositLegalCheck || result.renovationClauseAnalysis,
-        'amendment': result.amendmentSummary,
-        'handover-protocol': result.protocolSummary,
-        'utility-bill': result.billSummary,
-      } as Record<string, string>)[docStep.id];
-
-      setAnalysisResult({ ...result, _summary: summaryKey || '' });
-      // Skip summary screen – go directly to data-check
-      setTimeout(() => onDone(), 300);
+      // For main contract, show extraction results with validation
+      if (docStep.id === 'main-contract') {
+        setMode('idle');
+        setShowResults(true);
+      } else {
+        setTimeout(() => onDone(), 300);
+      }
     } catch (err: any) {
       clearInterval(interval);
       console.error('[EstateTurn] Analyse-Fehler:', err);
@@ -198,19 +164,13 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     }
   };
 
-  // Called by DocumentScanner when the user finishes scanning/uploading
   const handleScannerComplete = (scannedPages: PagePhoto[]) => {
-    // Store the scanned pages in capturedDocuments so DeepParagraphCheck can access them
     const existingDocs = data.capturedDocuments || [];
     const existingIdx = existingDocs.findIndex(d => d.type === docStep.id);
     const newDoc = {
       id: `${docStep.id}-${Date.now()}`,
       type: docStep.id as 'main-contract' | 'amendment' | 'handover-protocol' | 'utility-bill',
-      pages: scannedPages.map(p => ({
-        id: p.id,
-        dataUrl: p.dataUrl,
-        mimeType: p.mimeType,
-      })),
+      pages: scannedPages.map(p => ({ id: p.id, dataUrl: p.dataUrl, mimeType: p.mimeType })),
       analyzed: false,
     };
 
@@ -219,8 +179,6 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       : [...existingDocs, newDoc];
 
     updateData({ capturedDocuments: updatedDocs });
-    console.log('[EstateTurn] capturedDocuments aktualisiert:', docStep.id, scannedPages.length, 'Seite(n)');
-
     runAnalysis(scannedPages);
   };
 
@@ -234,7 +192,21 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     onDone();
   };
 
-  // ── Manual input form ──────────────────────────────────────────────────
+  // ── Extraction results view ──
+  if (showResults && docStep.id === 'main-contract') {
+    return (
+      <div className="min-h-[60vh] flex flex-col py-4">
+        <ExtractionResultCard
+          fields={validationFields}
+          warnings={validationWarnings}
+          onConfirm={onDone}
+          onRescan={() => setShowResults(false)}
+        />
+      </div>
+    );
+  }
+
+  // ── Manual input form ──
   if (mode === 'manual') {
     const manualFields = getManualFields(docStep.id, isSale, ownerRole, clientRole);
     return (
@@ -275,7 +247,7 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     );
   }
 
-  // ── Analyzing ─────────────────────────────────────────────────────────
+  // ── Analyzing ──
   if (mode === 'analyzing') {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
@@ -292,16 +264,15 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     );
   }
 
-  // ── Done → should not happen (we skip directly to next), fallback ──
+  // ── Done fallback ──
   if (mode === 'done') {
     onDone();
     return null;
   }
 
-  // ── Idle / capture ────────────────────────────────────────────────────
+  // ── Idle / capture ──
   return (
     <div className="flex flex-col px-4 py-2">
-      {/* Doc header */}
       <div className="mb-5">
         <div className="flex items-center gap-3 mb-1">
           <span className="text-3xl">{docStep.icon}</span>
@@ -312,7 +283,6 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
         </div>
       </div>
 
-      {/* Error banner */}
       {error && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -324,21 +294,11 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
             <p className="text-xs text-destructive leading-relaxed">{error}</p>
           </div>
           <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => { setError(null); setMode('manual'); }}
-              className="flex-1 rounded-xl text-xs h-9"
-            >
+            <Button size="sm" variant="outline" onClick={() => { setError(null); setMode('manual'); }} className="flex-1 rounded-xl text-xs h-9">
               <PenLine className="w-3.5 h-3.5" />
               Manuell eingeben
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setError(null)}
-              className="flex-1 rounded-xl text-xs h-9"
-            >
+            <Button size="sm" variant="outline" onClick={() => setError(null)} className="flex-1 rounded-xl text-xs h-9">
               <RefreshCw className="w-3.5 h-3.5" />
               Erneut versuchen
             </Button>
@@ -347,7 +307,6 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       )}
 
       <div className="grid grid-cols-1 gap-3">
-        {/* DocumentScanner handles camera + file upload; auto-triggers analysis on complete */}
         <DocumentScanner onComplete={handleScannerComplete} />
 
         <motion.button

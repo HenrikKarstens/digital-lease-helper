@@ -2,6 +2,7 @@ import { useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Upload, Plus, CheckCircle2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { GuidedPageHints } from './GuidedPageHints';
 import type { PagePhoto } from './types';
 
 interface Props {
@@ -19,18 +20,15 @@ export const DocumentScanner = ({ onComplete }: Props) => {
   const [capturedImages, setCapturedImages] = useState<PagePhoto[]>([]);
   const [lastCaptured, setLastCaptured] = useState<PagePhoto | null>(null);
 
-  // Abort any in-flight file reads on unmount
   const cleanup = useCallback(() => {
     abortControllerRef.current?.abort();
   }, []);
 
-  // Cleanup on unmount
   useState(() => {
     return () => cleanup();
   });
 
   const processFile = useCallback((file: File): Promise<PagePhoto> => {
-    // Create a new AbortController per batch
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -65,16 +63,12 @@ export const DocumentScanner = ({ onComplete }: Props) => {
   }, [processFile]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('[EstateTurn] handleFileUpload triggered');
     const files = e.target.files;
-    console.log('[EstateTurn] Files selected:', files?.length, files?.[0]?.name, files?.[0]?.type);
     if (!files || files.length === 0) return;
-    // CRITICAL: snapshot FileList into array BEFORE clearing input (clearing empties the FileList reference)
     const fileArray = Array.from(files);
     e.target.value = '';
     try {
       const photos = await Promise.all(fileArray.map(processFile));
-      console.log('[EstateTurn] Files processed, calling onComplete with', photos.length, 'pages');
       const all = [...capturedImages, ...photos];
       setCapturedImages(all);
       onComplete(all);
@@ -86,7 +80,6 @@ export const DocumentScanner = ({ onComplete }: Props) => {
   const handleAddNextPage = () => {
     setState('idle');
     setLastCaptured(null);
-    // Trigger camera again immediately
     setTimeout(() => cameraInputRef.current?.click(), 50);
   };
 
@@ -100,7 +93,6 @@ export const DocumentScanner = ({ onComplete }: Props) => {
 
   return (
     <div className="relative">
-      {/* Hidden inputs – strictly separated */}
       <input
         ref={cameraInputRef}
         type="file"
@@ -118,7 +110,7 @@ export const DocumentScanner = ({ onComplete }: Props) => {
         onChange={handleFileUpload}
       />
 
-      {/* Review overlay – shown after each camera capture */}
+      {/* Review overlay */}
       <AnimatePresence>
         {state === 'review' && lastCaptured && (
           <motion.div
@@ -129,7 +121,6 @@ export const DocumentScanner = ({ onComplete }: Props) => {
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col"
           >
-            {/* Header */}
             <div className="flex items-center justify-between px-4 pt-safe pt-6 pb-4 border-b border-border">
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Seite aufgenommen</p>
@@ -138,23 +129,26 @@ export const DocumentScanner = ({ onComplete }: Props) => {
                   <span className="text-muted-foreground font-normal text-sm">von bisher {capturedImages.length}</span>
                 </h3>
               </div>
-              {/* Page counter badge */}
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground font-bold text-xl">
                 {capturedImages.length}
               </div>
             </div>
 
-            {/* Preview of last captured image */}
             <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 gap-4 overflow-hidden">
+              {/* Guided hint for next page */}
+              <GuidedPageHints
+                currentPage={capturedImages.length}
+                totalCaptured={capturedImages.length}
+              />
+
               <motion.img
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 src={lastCaptured.dataUrl}
                 alt="Aufgenommene Seite"
-                className="max-h-[45vh] w-auto rounded-2xl shadow-lg border border-border object-contain"
+                className="max-h-[35vh] w-auto rounded-2xl shadow-lg border border-border object-contain"
               />
 
-              {/* Thumbnail strip of all captured so far */}
               {capturedImages.length > 1 && (
                 <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none w-full">
                   {capturedImages.map((p, idx) => (
@@ -182,7 +176,6 @@ export const DocumentScanner = ({ onComplete }: Props) => {
               )}
             </div>
 
-            {/* Action buttons */}
             <div className="px-4 pb-safe pb-8 space-y-3">
               <Button
                 onClick={handleAddNextPage}
@@ -206,9 +199,15 @@ export const DocumentScanner = ({ onComplete }: Props) => {
         )}
       </AnimatePresence>
 
-      {/* Idle state – capture entry points */}
+      {/* Idle state */}
       {state === 'idle' && (
-        <div className="grid grid-cols-1 gap-3">
+        <div className="space-y-3">
+          {/* Guided page hint */}
+          <GuidedPageHints
+            currentPage={capturedImages.length}
+            totalCaptured={capturedImages.length}
+          />
+
           {capturedImages.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
@@ -225,7 +224,6 @@ export const DocumentScanner = ({ onComplete }: Props) => {
             </motion.div>
           )}
 
-          {/* Camera button – opens camera directly, no file picker */}
           <motion.button
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -252,16 +250,12 @@ export const DocumentScanner = ({ onComplete }: Props) => {
             </div>
           </motion.button>
 
-          {/* Upload button – opens file system, no camera */}
           <motion.button
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              console.log('[EstateTurn] Upload button clicked, fileInputRef:', !!fileInputRef.current);
-              fileInputRef.current?.click();
-            }}
+            onClick={() => fileInputRef.current?.click()}
             className="glass-card rounded-2xl p-5 flex items-center gap-4 text-left w-full hover:border-primary/30 transition-colors"
           >
             <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center shrink-0">
@@ -277,4 +271,3 @@ export const DocumentScanner = ({ onComplete }: Props) => {
     </div>
   );
 };
-
