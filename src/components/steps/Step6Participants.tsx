@@ -365,7 +365,7 @@ export const Step6Participants = () => {
               <AlertDialogCancel className="rounded-xl">Zurück</AlertDialogCancel>
               <AlertDialogAction
                 className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => { setShowEmailWarning(false); goToStepById(data.handoverDirection === 'move-out' ? 'condition-check' : 'evidence'); }}
+                onClick={() => { setShowEmailWarning(false); goToStepById('room-dashboard'); }}
               >
                 Trotzdem fortfahren
               </AlertDialogAction>
