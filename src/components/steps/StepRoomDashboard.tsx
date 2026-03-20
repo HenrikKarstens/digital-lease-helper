@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutGrid, Plus, CheckCircle2, ArrowRight, AlertTriangle, X
+  LayoutGrid, Plus, CheckCircle2, ArrowRight, AlertTriangle, X, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { RoomTile } from './roomDashboard/RoomTile';
@@ -17,24 +18,14 @@ export const StepRoomDashboard = () => {
   const { isMoveIn } = useTransactionLabels();
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
-
-  // ── Initialize rooms from contract data (roomCount) ──
-  const rooms: RoomConfig[] = useMemo(() => {
-    if (data.rooms && data.rooms.length > 0) {
-      // If rooms already exist in context (with the new shape), use them
-      return (data as any).__roomConfigs || getInitialRooms(data.roomCount);
-    }
-    return getInitialRooms(data.roomCount);
-  }, []);
+  const [customRoomName, setCustomRoomName] = useState('');
 
   const [roomConfigs, setRoomConfigs] = useState<RoomConfig[]>(() => {
-    // Try to restore from handover data
     const stored = (data as any).__roomConfigs as RoomConfig[] | undefined;
     if (stored && stored.length > 0) return stored;
     return getInitialRooms(data.roomCount);
   });
 
-  // Persist room configs to handover data
   const updateRooms = useCallback((newRooms: RoomConfig[]) => {
     setRoomConfigs(newRooms);
     updateData({ __roomConfigs: newRooms } as any);
@@ -47,7 +38,6 @@ export const StepRoomDashboard = () => {
   const totalWithholding = data.findings.filter(f => f.entryType !== 'note').reduce((s, f) => s + f.recommendedWithholding, 0);
   const allCompleted = roomConfigs.length > 0 && completedCount === roomConfigs.length;
 
-  // Existing room names to prevent duplicates
   const existingNames = new Set(roomConfigs.map(r => r.name));
 
   const addRoom = useCallback((name: string, type: 'indoor' | 'outdoor', icon: string) => {
@@ -59,11 +49,17 @@ export const StepRoomDashboard = () => {
     };
     updateRooms([...roomConfigs, newRoom]);
     setShowAddMenu(false);
+    setCustomRoomName('');
   }, [roomConfigs, existingNames, updateRooms]);
 
   const removeRoom = useCallback((id: string) => {
     updateRooms(roomConfigs.filter(r => r.id !== id));
-  }, [roomConfigs, updateRooms]);
+    // Also remove findings for this room
+    const room = roomConfigs.find(r => r.id === id);
+    if (room) {
+      updateData({ findings: data.findings.filter(f => f.room !== room.name) });
+    }
+  }, [roomConfigs, updateRooms, data.findings, updateData]);
 
   const handleRoomUpdate = useCallback((roomId: string, patch: Partial<RoomConfig>) => {
     updateRooms(roomConfigs.map(r => r.id === roomId ? { ...r, ...patch } : r));
@@ -73,6 +69,12 @@ export const StepRoomDashboard = () => {
     updateRooms(roomConfigs.map(r => r.id === roomId ? { ...r, completed: true } : r));
     setActiveRoomId(null);
   }, [roomConfigs, updateRooms]);
+
+  const addCustomRoom = useCallback(() => {
+    const name = customRoomName.trim();
+    if (!name || existingNames.has(name)) return;
+    addRoom(name, 'indoor', 'Home');
+  }, [customRoomName, existingNames, addRoom]);
 
   // ═══ ACTIVE ROOM DETAIL ═══
   if (activeRoom) {
@@ -124,13 +126,22 @@ export const StepRoomDashboard = () => {
       {/* Room grid */}
       <div className="w-full max-w-md grid grid-cols-2 gap-3 mb-6">
         {roomConfigs.map((room, i) => (
-          <RoomTile
-            key={room.id}
-            room={room}
-            findings={data.findings}
-            onClick={() => setActiveRoomId(room.id)}
-            index={i}
-          />
+          <div key={room.id} className="relative group">
+            <RoomTile
+              room={room}
+              findings={data.findings}
+              onClick={() => setActiveRoomId(room.id)}
+              index={i}
+            />
+            {/* Delete button */}
+            <button
+              onClick={(e) => { e.stopPropagation(); removeRoom(room.id); }}
+              className="absolute top-1.5 left-1.5 p-1 rounded-lg bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              title="Raum entfernen"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         ))}
 
         {/* Add room button */}
@@ -162,6 +173,24 @@ export const StepRoomDashboard = () => {
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-lg">Raum / Bereich hinzufügen</h3>
                 <button onClick={() => setShowAddMenu(false)} className="p-1 rounded-lg hover:bg-secondary/60"><X className="w-5 h-5" /></button>
+              </div>
+
+              {/* Custom room name */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Eigener Raumname</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={customRoomName}
+                    onChange={e => setCustomRoomName(e.target.value)}
+                    placeholder="z. B. Hobbyraum Blau"
+                    className="flex-1 rounded-xl h-9 text-sm"
+                    onKeyDown={e => e.key === 'Enter' && addCustomRoom()}
+                  />
+                  <Button size="sm" onClick={addCustomRoom} disabled={!customRoomName.trim() || existingNames.has(customRoomName.trim())}
+                    className="rounded-xl h-9">
+                    <Plus className="w-3 h-3 mr-1" /> Hinzufügen
+                  </Button>
+                </div>
               </div>
 
               {/* Indoor */}
@@ -219,10 +248,8 @@ function getInitialRooms(roomCountStr: string): RoomConfig[] {
   const count = parseInt(roomCountStr) || 2;
   const rooms: RoomConfig[] = [];
 
-  // Always add Flur
   rooms.push({ id: 'room-flur', name: 'Flur', type: 'indoor', icon: 'DoorOpen', completed: false });
 
-  // Add rooms based on count
   const availableRooms = [
     { name: 'Wohnzimmer', icon: 'Sofa' },
     { name: 'Schlafzimmer', icon: 'Bed' },
@@ -233,7 +260,6 @@ function getInitialRooms(roomCountStr: string): RoomConfig[] {
     { name: 'Gäste-WC', icon: 'Bath' },
   ];
 
-  // count represents number of living rooms (Zimmer), add kitchen + bath automatically
   for (let i = 0; i < Math.min(count, availableRooms.length); i++) {
     rooms.push({
       id: `room-${availableRooms[i].name.toLowerCase()}`,
@@ -244,7 +270,6 @@ function getInitialRooms(roomCountStr: string): RoomConfig[] {
     });
   }
 
-  // If count is small (2 rooms), ensure Küche + Bad are included
   if (count <= 2) {
     if (!rooms.find(r => r.name === 'Küche')) {
       rooms.push({ id: 'room-küche', name: 'Küche', type: 'indoor', icon: 'CookingPot', completed: false });

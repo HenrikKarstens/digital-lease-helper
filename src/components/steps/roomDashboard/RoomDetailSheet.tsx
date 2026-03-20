@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera, CheckCircle2, X, AlertTriangle, StickyNote,
   ShieldCheck, Trash, Paintbrush, MapPin, Pencil, Trash2,
-  Euro, ArrowLeft, Loader2, Plus, FileText
+  Euro, ArrowLeft, Loader2, Plus, FileText, ImagePlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,6 +15,11 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { RoomConfig } from './types';
 
+const MAX_OVERVIEW_PHOTOS = 5;
+
+// Wall defect classification types
+type WallDamageClass = 'verschmutzung' | 'abnutzung';
+
 interface Props {
   room: RoomConfig;
   onClose: () => void;
@@ -22,7 +27,7 @@ interface Props {
   onComplete: () => void;
 }
 
-type Phase = 'overview' | 'camera-overview' | 'camera-defect' | 'room-select' | 'analyzing' | 'result' | 'manual-entry' | 'edit';
+type Phase = 'overview' | 'camera-overview' | 'camera-defect' | 'room-select' | 'analyzing' | 'result' | 'manual-entry' | 'edit' | 'wall-classify';
 
 export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Props) => {
   const { data, updateData } = useHandover();
@@ -44,6 +49,10 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
   const [manualDesc, setManualDesc] = useState('');
   const [manualType, setManualType] = useState<EntryType>('defect');
   const [cameraMode, setCameraMode] = useState<'overview' | 'defect'>('defect');
+  
+  // Wall classification state
+  const [wallDamageClass, setWallDamageClass] = useState<WallDamageClass | null>(null);
+  const [wallCleanable, setWallCleanable] = useState<boolean | null>(null);
 
   const cameraRef = useRef<HTMLInputElement>(null);
   const overviewCameraRef = useRef<HTMLInputElement>(null);
@@ -53,7 +62,10 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
   const notes = roomFindings.filter(f => f.entryType === 'note');
   const totalWithholding = defects.reduce((s, f) => s + f.recommendedWithholding, 0);
 
-  const canComplete = !!room.overviewPhotoUrl;
+  // Multi-photo support
+  const overviewPhotos = room.overviewPhotos || (room.overviewPhotoUrl ? [{ url: room.overviewPhotoUrl, timestamp: room.overviewPhotoTimestamp || '' }] : []);
+  const canComplete = overviewPhotos.length > 0;
+  const canAddMorePhotos = overviewPhotos.length < MAX_OVERVIEW_PHOTOS;
 
   // ─── Camera handlers ───
   const openCameraWithGeo = useCallback((mode: 'overview' | 'defect') => {
@@ -90,10 +102,25 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
     const reader = new FileReader();
     reader.onload = (ev) => {
       const url = ev.target?.result as string;
-      onUpdate({ overviewPhotoUrl: url, overviewPhotoTimestamp: new Date().toISOString() });
+      const newPhoto = { url, timestamp: new Date().toISOString() };
+      const updated = [...overviewPhotos, newPhoto];
+      onUpdate({
+        overviewPhotos: updated,
+        overviewPhotoUrl: updated[0]?.url,
+        overviewPhotoTimestamp: updated[0]?.timestamp,
+      });
     };
     reader.readAsDataURL(file);
-  }, [onUpdate]);
+  }, [onUpdate, overviewPhotos]);
+
+  const removeOverviewPhoto = useCallback((index: number) => {
+    const updated = overviewPhotos.filter((_, i) => i !== index);
+    onUpdate({
+      overviewPhotos: updated,
+      overviewPhotoUrl: updated[0]?.url || undefined,
+      overviewPhotoTimestamp: updated[0]?.timestamp || undefined,
+    });
+  }, [onUpdate, overviewPhotos]);
 
   const handleDefectCapture = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -104,7 +131,6 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
     reader.onload = (ev) => setCapturedPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
     setPhase('analyzing');
-    // Run AI analysis
     runAiAnalysis(file);
   }, []);
 
@@ -143,6 +169,17 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
   }, [room.name, isMoveIn, toast]);
 
   const saveFinding = useCallback(async () => {
+    // Check if wall-related defect needs classification
+    const isWallRelated = editMaterial.toLowerCase().includes('wand') || 
+      editMaterial.toLowerCase().includes('tapete') ||
+      editDamageType.toLowerCase().includes('wand') ||
+      editDamageType.toLowerCase().includes('tapete');
+    
+    if (!isMoveIn && isWallRelated && wallDamageClass === null) {
+      setPhase('wall-classify');
+      return;
+    }
+
     const geo = await captureGeo();
     const finding: Finding = {
       id: Date.now().toString(),
@@ -154,15 +191,16 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
       damageType: editDamageType,
       bghReference: currentResult?.bghReference || '',
       timeValueDeduction: currentResult?.timeValueDeduction || 0,
-      recommendedWithholding: currentResult?.recommendedWithholding || 0,
-      description: editDescription,
+      recommendedWithholding: wallDamageClass === 'abnutzung' ? 0 : (currentResult?.recommendedWithholding || 0),
+      description: editDescription + (wallDamageClass ? ` [${wallDamageClass === 'verschmutzung' ? 'Verschmutzung' : 'Normale Abnutzung'}${wallCleanable !== null ? (wallCleanable ? ', reinigbar' : ', nicht reinigbar') : ''}]` : ''),
       timestamp: new Date().toLocaleString('de-DE'),
       locationDetail: locationDetail.trim() || undefined,
-      entryType: (currentResult?.recommendedWithholding || 0) > 0 ? 'defect' : 'note',
+      entryType: wallDamageClass === 'abnutzung' ? 'note' : ((currentResult?.recommendedWithholding || 0) > 0 ? 'defect' : 'note'),
+      legalClassification: wallDamageClass === 'abnutzung' ? 'Normalverschleiß' : wallDamageClass === 'verschmutzung' ? (wallCleanable ? 'Gebrauchsspur' : 'Schaden') : undefined,
     };
     updateData({ findings: [...data.findings, finding] });
     resetDefectFlow();
-  }, [captureGeo, capturedPreview, editMaterial, editDamageType, editDescription, locationDetail, currentResult, data.findings, updateData, room.name]);
+  }, [captureGeo, capturedPreview, editMaterial, editDamageType, editDescription, locationDetail, currentResult, data.findings, updateData, room.name, wallDamageClass, wallCleanable, isMoveIn]);
 
   const saveManual = useCallback(() => {
     if (!manualDesc.trim()) return;
@@ -193,6 +231,8 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
     setCapturedPreview(null);
     setCurrentResult(null);
     setLocationDetail('');
+    setWallDamageClass(null);
+    setWallCleanable(null);
     setPhase('overview');
   };
 
@@ -204,6 +244,77 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
       <GeoPermissionGuard open={showGeoGuard} propertyAddress={data.propertyAddress} onGranted={handleGeoGranted} onDenied={handleGeoDenied} />
     </>
   );
+
+  // ═══ PHASE: WALL CLASSIFY ═══
+  if (phase === 'wall-classify') {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center px-4 py-6">
+        {hiddenInputs}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-3xl p-6 w-full max-w-md space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-lg">Wandbefund klassifizieren</h3>
+            <button onClick={resetDefectFlow} className="p-1 rounded-lg hover:bg-secondary/60"><X className="w-4 h-4" /></button>
+          </div>
+          
+          <p className="text-sm text-muted-foreground">Handelt es sich um einen Schaden oder normale Abnutzung?</p>
+          
+          <div className="space-y-2">
+            <button
+              onClick={() => setWallDamageClass('verschmutzung')}
+              className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${wallDamageClass === 'verschmutzung' ? 'border-amber-500 bg-amber-500/10' : 'border-border hover:border-amber-500/40'}`}
+            >
+              <p className="font-semibold text-sm">Verschmutzung (Schaden)</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Verursacht durch Mieter, über normale Nutzung hinaus</p>
+            </button>
+            <button
+              onClick={() => { setWallDamageClass('abnutzung'); setWallCleanable(null); }}
+              className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${wallDamageClass === 'abnutzung' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/40'}`}
+            >
+              <p className="font-semibold text-sm">Normale Abnutzung</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Vertragsgemäßer Gebrauch (§ 538 BGB) – kein Einbehalt</p>
+            </button>
+          </div>
+
+          {/* Cleanability follow-up for Verschmutzung */}
+          <AnimatePresence>
+            {wallDamageClass === 'verschmutzung' && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                className="space-y-2 overflow-hidden">
+                <p className="text-sm font-medium">Ist die Verschmutzung durch Reinigung entfernbar?</p>
+                <p className="text-xs text-muted-foreground">Relevant für die Kautionsabrechnung (§ 7 Mietvertrag)</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setWallCleanable(true)}
+                    className={`flex-1 p-3 rounded-xl border-2 text-sm font-semibold transition-all ${wallCleanable === true ? 'border-success bg-success/10 text-success' : 'border-border'}`}
+                  >
+                    Ja, reinigbar
+                  </button>
+                  <button
+                    onClick={() => setWallCleanable(false)}
+                    className={`flex-1 p-3 rounded-xl border-2 text-sm font-semibold transition-all ${wallCleanable === false ? 'border-destructive bg-destructive/10 text-destructive' : 'border-border'}`}
+                  >
+                    Nein, Schaden
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" onClick={() => setPhase('result')} className="flex-1 rounded-xl">Zurück</Button>
+            <Button
+              disabled={wallDamageClass === null || (wallDamageClass === 'verschmutzung' && wallCleanable === null)}
+              onClick={saveFinding}
+              className="flex-1 rounded-xl gap-1"
+            >
+              <CheckCircle2 className="w-4 h-4" /> Speichern
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   // ═══ PHASE: ANALYZING ═══
   if (phase === 'analyzing') {
@@ -339,18 +450,35 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
           {room.completed && <CheckCircle2 className="w-6 h-6 text-success" />}
         </div>
 
-        {/* Overview photo */}
+        {/* Multi-photo overview */}
         <div className="glass-card rounded-2xl p-4 space-y-3">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-            <Camera className="w-3.5 h-3.5" /> Übersichtsfoto {!room.overviewPhotoUrl && <span className="text-destructive">*Pflicht</span>}
+            <Camera className="w-3.5 h-3.5" /> Übersichtsfotos ({overviewPhotos.length}/{MAX_OVERVIEW_PHOTOS})
+            {overviewPhotos.length === 0 && <span className="text-destructive">*Pflicht</span>}
           </p>
-          {room.overviewPhotoUrl ? (
-            <div className="relative">
-              <img src={room.overviewPhotoUrl} alt={`Übersicht ${room.name}`} className="w-full h-36 rounded-xl object-cover" />
-              <Button size="sm" variant="outline" className="absolute bottom-2 right-2 rounded-lg text-xs h-7"
-                onClick={() => openCameraWithGeo('overview')}>
-                <Camera className="w-3 h-3 mr-1" /> Erneut
-              </Button>
+
+          {overviewPhotos.length > 0 ? (
+            <div className="grid grid-cols-3 gap-2">
+              {overviewPhotos.map((photo, i) => (
+                <div key={i} className="relative group/photo">
+                  <img src={photo.url} alt={`Übersicht ${i + 1}`} className="w-full h-20 rounded-xl object-cover border border-border/30" />
+                  <button
+                    onClick={() => removeOverviewPhoto(i)}
+                    className="absolute top-1 right-1 p-0.5 rounded-md bg-background/80 backdrop-blur-sm text-muted-foreground hover:text-destructive opacity-0 group-hover/photo:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {canAddMorePhotos && (
+                <button
+                  onClick={() => openCameraWithGeo('overview')}
+                  className="w-full h-20 rounded-xl border-2 border-dashed border-border/60 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+                >
+                  <ImagePlus className="w-4 h-4" />
+                  <span className="text-[10px]">Foto</span>
+                </button>
+              )}
             </div>
           ) : (
             <Button variant="outline" onClick={() => openCameraWithGeo('overview')} className="w-full h-20 rounded-xl border-dashed gap-2">
@@ -420,6 +548,15 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{f.damageType || f.description}</p>
                       {f.locationDetail && <p className="text-[10px] text-muted-foreground flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{f.locationDetail}</p>}
+                      {f.legalClassification && (
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md mt-0.5 inline-block ${
+                          f.legalClassification === 'Normalverschleiß' ? 'bg-primary/10 text-primary' : 
+                          f.legalClassification === 'Gebrauchsspur' ? 'bg-amber-500/15 text-amber-600' :
+                          'bg-destructive/15 text-destructive'
+                        }`}>
+                          {f.legalClassification}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-0.5 shrink-0">
@@ -454,7 +591,7 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
           {room.completed ? 'Raum aktualisiert' : 'Raum abschließen'}
         </Button>
         {!canComplete && (
-          <p className="text-xs text-center text-muted-foreground">Übersichtsfoto erforderlich, um den Raum abzuschließen.</p>
+          <p className="text-xs text-center text-muted-foreground">Mindestens ein Übersichtsfoto erforderlich.</p>
         )}
       </motion.div>
     </div>
