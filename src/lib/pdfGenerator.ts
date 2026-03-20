@@ -61,6 +61,15 @@ function embedPhotos(
       doc.text(meta.join(' · '), x, y + imgH + 6.5, { maxWidth: imgW });
       doc.setFont('helvetica', 'normal');
     }
+    // Forensic certification line
+    if (validPhotos[i].gps || validPhotos[i].timestamp) {
+      doc.setFontSize(4.5);
+      doc.setTextColor(...GOLD_COLOR);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Forensisch gesichert durch EstateTurn Live-GPS-Validierung', x, y + imgH + 9.5, { maxWidth: imgW });
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...MUTED_COLOR);
+    }
   }
   y += imgH + 14;
   return y;
