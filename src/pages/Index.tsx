@@ -28,7 +28,7 @@ const COMPONENT_MAP: Record<string, React.ComponentType> = {
   Step4Validation,
   
   Step6Participants,
-  Step7Evidence,
+  StepRoomDashboard,
   Step8MeterScan,
   Step9Keys,
   Step10DefectAnalysis,
