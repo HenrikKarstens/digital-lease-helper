@@ -40,14 +40,14 @@ export const StepForwardingAddress = () => {
       return;
     }
     updateData({ nextAddress, tenantRefusesNewAddress: tenantRefusesAddress });
-    goToStepById('utility');
+    goToStepById('deposit-check');
   };
 
   const handleAddressRefusalConfirm = () => {
     setTenantRefusesAddress(true);
     setShowAddressWarning(false);
     updateData({ nextAddress: '', tenantRefusesNewAddress: true });
-    goToStepById('utility');
+    goToStepById('deposit-check');
   };
 
   return (
