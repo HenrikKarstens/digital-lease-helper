@@ -3,6 +3,8 @@ export interface RoomConfig {
   name: string;
   type: 'indoor' | 'outdoor';
   icon: string; // lucide icon key
+  overviewPhotos?: { url: string; timestamp: string }[];
+  /** @deprecated use overviewPhotos instead */
   overviewPhotoUrl?: string;
   overviewPhotoTimestamp?: string;
   completed: boolean;

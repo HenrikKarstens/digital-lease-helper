@@ -1,12 +1,13 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useRef } from 'react';
-import { Key, Plus, Trash2, Camera, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Key, Plus, Trash2, Camera, CheckCircle2, AlertTriangle, Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useHandover } from '@/context/HandoverContext';
 import { useGeoPhoto } from '@/hooks/useGeoPhoto';
+import { useToast } from '@/hooks/use-toast';
 
 const KEY_TYPES = [
   'Haus- / Wohnungstür',
@@ -26,6 +27,7 @@ const CONDITIONS = [
 export const Step9Keys = () => {
   const { data, updateData, goToStepById } = useHandover();
   const { requestPermission, captureGeo } = useGeoPhoto(data.propertyAddress);
+  const { toast } = useToast();
   const isMoveOut = data.handoverDirection === 'move-out';
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -37,6 +39,8 @@ export const Step9Keys = () => {
   const [newCount, setNewCount] = useState('1');
   const [newNote, setNewNote] = useState('');
   const [newCondition, setNewCondition] = useState<'gut' | 'beschädigt' | 'fehlt' | ''>('gut');
+  const [aiVerifying, setAiVerifying] = useState(false);
+  const [aiVerified, setAiVerified] = useState<boolean | null>(null);
 
   const addKey = () => {
     if (!newType) return;
@@ -61,6 +65,58 @@ export const Step9Keys = () => {
     updateData({ keyEntries: keys.filter((k) => k.id !== id) });
   };
 
+  const verifyKeyPhoto = useCallback(async (file: File) => {
+    setAiVerifying(true);
+    setAiVerified(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('context', 'key-verification');
+      formData.append('room', 'Schlüssel');
+      formData.append('isMoveIn', String(!isMoveOut));
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-photo`,
+        {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const result = await response.json();
+
+      // Check if AI detected keys/transponders
+      const desc = (result.data?.description || '').toLowerCase();
+      const material = (result.data?.material || '').toLowerCase();
+      const damageType = (result.data?.damageType || '').toLowerCase();
+      const allText = `${desc} ${material} ${damageType}`;
+
+      const keyTerms = ['schlüssel', 'key', 'transponder', 'rfid', 'chip', 'metallisch', 'metal', 'bund'];
+      const hasKey = keyTerms.some(t => allText.includes(t));
+
+      if (hasKey) {
+        setAiVerified(true);
+        toast({ title: '✓ Schlüssel erkannt', description: 'KI hat Schlüssel/Transponder auf dem Foto identifiziert.' });
+      } else {
+        setAiVerified(false);
+        toast({
+          title: 'Kein Schlüssel erkannt',
+          description: 'Bitte fotografieren Sie den Schlüsselbund deutlich auf einer neutralen Unterlage.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: any) {
+      console.error('Key verification error:', err);
+      // Don't block on AI failure, just warn
+      setAiVerified(true);
+      toast({ title: 'KI-Prüfung fehlgeschlagen', description: 'Foto wird trotzdem akzeptiert.', variant: 'destructive' });
+    } finally {
+      setAiVerifying(false);
+    }
+  }, [isMoveOut, toast]);
+
   const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -72,6 +128,8 @@ export const Step9Keys = () => {
       updateData({ keyBundlePhotoUrl: ev.target?.result as string, keyBundlePhotoGeo: geo });
     };
     reader.readAsDataURL(file);
+    // Run AI verification
+    verifyKeyPhoto(file);
   };
 
   const totalKeys = keys.reduce((s, k) => s + k.count, 0);
@@ -271,6 +329,25 @@ export const Step9Keys = () => {
         {keyPhoto ? (
           <div className="relative">
             <img src={keyPhoto} alt="Schlüsselbund" className="w-full rounded-xl border border-border max-h-48 object-cover" />
+            {/* AI verification badge */}
+            {aiVerifying && (
+              <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-background/90 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-border">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                <span className="text-xs font-medium">KI prüft...</span>
+              </div>
+            )}
+            {!aiVerifying && aiVerified === true && (
+              <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-success/20 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-success/30">
+                <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                <span className="text-xs font-medium text-success">Schlüssel erkannt</span>
+              </div>
+            )}
+            {!aiVerifying && aiVerified === false && (
+              <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-destructive/20 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-destructive/30">
+                <ShieldAlert className="w-3.5 h-3.5 text-destructive" />
+                <span className="text-xs font-medium text-destructive">Kein Schlüssel erkannt</span>
+              </div>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -291,6 +368,18 @@ export const Step9Keys = () => {
             <span className="text-xs text-muted-foreground">Foto aufnehmen</span>
           </Button>
         )}
+
+        {/* AI rejection warning */}
+        <AnimatePresence>
+          {aiVerified === false && (
+            <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="mt-3 p-3 rounded-xl border border-destructive/30 bg-destructive/5">
+              <p className="text-xs text-destructive font-medium">
+                Kein Schlüssel erkannt. Bitte fotografieren Sie den Schlüsselbund deutlich auf einer neutralen Unterlage.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       {/* Legal disclaimer */}
@@ -311,7 +400,7 @@ export const Step9Keys = () => {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="w-full max-w-md">
         <Button
           onClick={() => goToStepById('meters')}
-          disabled={keys.length === 0 || !keyPhoto}
+          disabled={keys.length === 0 || !keyPhoto || aiVerified === false}
           className="w-full h-12 rounded-2xl font-semibold gap-2"
           size="lg"
         >
@@ -321,6 +410,11 @@ export const Step9Keys = () => {
         {(keys.length === 0 || !keyPhoto) && (
           <p className="text-xs text-muted-foreground text-center mt-2">
             Bitte mindestens einen Schlüssel und ein Beweisfoto erfassen.
+          </p>
+        )}
+        {aiVerified === false && keys.length > 0 && keyPhoto && (
+          <p className="text-xs text-destructive text-center mt-2">
+            Bitte nehmen Sie ein deutliches Foto des Schlüsselbunds auf.
           </p>
         )}
       </motion.div>
