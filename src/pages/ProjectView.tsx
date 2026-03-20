@@ -21,13 +21,12 @@ import { Step1cDirection } from '@/components/steps/Step1cDirection';
 const Step4Validation = lazy(() => import('@/components/steps/Step4Validation').then(m => ({ default: m.Step4Validation })));
 
 const Step6Participants = lazy(() => import('@/components/steps/Step6Participants').then(m => ({ default: m.Step6Participants })));
-const Step7Evidence = lazy(() => import('@/components/steps/Step7Evidence').then(m => ({ default: m.Step7Evidence })));
+const StepRoomDashboard = lazy(() => import('@/components/steps/StepRoomDashboard').then(m => ({ default: m.StepRoomDashboard })));
 const Step8MeterScan = lazy(() => import('@/components/steps/Step8MeterScan').then(m => ({ default: m.Step8MeterScan })));
 const Step9Keys = lazy(() => import('@/components/steps/Step9Keys').then(m => ({ default: m.Step9Keys })));
 const Step10DataComplete = lazy(() => import('@/components/steps/Step10DataComplete').then(m => ({ default: m.Step10DataComplete })));
 const Step10DefectAnalysis = lazy(() => import('@/components/steps/Step10DefectAnalysis').then(m => ({ default: m.Step10DefectAnalysis })));
 const StepDepositCheck = lazy(() => import('@/components/steps/StepDepositCheck'));
-const StepConditionCheck = lazy(() => import('@/components/steps/StepConditionCheck'));
 
 
 const Step12Unlock = lazy(() => import('@/components/steps/Step12Unlock').then(m => ({ default: m.Step12Unlock })));
