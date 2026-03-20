@@ -91,12 +91,12 @@ serve(async (req) => {
 - "contractDuration": "unbefristet" wenn unbefristet, oder das Enddatum im Format TT.MM.JJJJ wenn befristet
 - "contractType": "unbefristet" oder "befristet" – suche nach Formulierungen wie "auf unbestimmte Zeit" (= unbefristet) oder "befristet bis"
 - "contractSigningDate": Datum der Vertragsunterzeichnung im Format TT.MM.JJJJ. Suche am Ende des Dokuments nach Datumsangaben neben den Unterschriften.
-- "coldRent": Aktuelle Nettokaltmiete in Euro als Zahl (nur die Zahl, z.B. "800")
-- "nkAdvancePayment": Betriebskostenvorauszahlung in Euro als Zahl (ohne Heizkosten, z.B. "150")
-- "heatingCosts": Heiz- und Warmwasserkosten-Vorauszahlung in Euro als Zahl (z.B. "80"). Falls nicht separat ausgewiesen, "".
-- "depositAmount": ${isSale ? 'Kaufpreis' : 'Kautionshöhe'} als Zahl in Euro (nur die Zahl, z.B. "2400")
-- "depositLegalCheck": Prüfe die ${isSale ? 'Zahlungsbedingungen' : 'Kaution gegen § 551 Abs. 1 BGB'}. ${isSale ? '' : 'Ist die Kaution höher als 3 Nettokaltmieten? Berechne: 3 × Kaltmiete und vergleiche mit der Kaution.'} Kurze Bewertung in 1 Satz.
-- "depositLegalStatus": Bewertung der Kaution: "safe" wenn gesetzeskonform, "warning" wenn grenzwertig, "invalid" wenn rechtswidrig
+- "coldRent": Aktuelle Nettokaltmiete in Euro als Zahl (nur die Zahl, z.B. "280")
+- "nkAdvancePayment": Betriebskostenvorauszahlung in Euro als Zahl (ohne Heizkosten, z.B. "45")
+- "heatingCosts": Heiz- und Warmwasserkosten-Vorauszahlung in Euro als Zahl (z.B. "45"). Falls nicht separat ausgewiesen, "".
+- "depositAmount": ${isSale ? 'Kaufpreis' : 'Kautionshöhe'} als Zahl in Euro (nur die Zahl, z.B. "560")
+- "depositLegalCheck": PFLICHTPRÜFUNG gemäß § 551 Abs. 1 BGB: Berechne EXPLIZIT: 3 × Nettokaltmiete = Maximum. Vergleiche mit der tatsächlichen Kaution. Beispiel: "Kaution 560 € ≤ 3 × 280 € = 840 € → gesetzeskonform." Bei Überschreitung: "Kaution X € > 3 × Y € = Z € → überhöht, Differenz nicht geschuldet."
+- "depositLegalStatus": "safe" wenn Kaution ≤ 3 Kaltmieten, "warning" wenn exakt 3 Kaltmieten, "invalid" wenn Kaution > 3 Kaltmieten
 - "smallRepairAnalysis": Prüfe die Kleinreparaturklausel: Gibt es eine Obergrenze je Einzelfall? Liegt sie über 110-120€? Gibt es eine Jahreshöchstgrenze über 8% der Jahresmiete? Kurze Bewertung in 1 Satz.
 - "smallRepairStatus": "safe" wenn Klausel fehlt oder rechtssicher, "warning" wenn grenzwertig, "invalid" wenn unwirksam
 - "endRenovationAnalysis": Prüfe Schönheitsreparatur-/Endrenovierungsklauseln: Enthalten sie starre Fristenregelungen (z.B. "alle 3 Jahre Küche, alle 5 Jahre Bad")? Gibt es eine Endrenovierungspflicht unabhängig vom Zustand? Suche auch nach handschriftlichen Ergänzungen wie "Weiß-Streich-Klausel". Kurze Bewertung in 1 Satz.
