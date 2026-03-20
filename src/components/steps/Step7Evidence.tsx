@@ -401,10 +401,9 @@ export const Step7Evidence = () => {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PHASE: CAMERA (Foto-First)
+  // PHASE: CAMERA (Foto-First) – now with GPS Permission Guard
   // ═══════════════════════════════════════════════════════════════════════════
   if (phase === 'camera') {
-    setTimeout(() => cameraInputRef.current?.click(), 100);
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8 gap-4">
         <input
@@ -414,6 +413,12 @@ export const Step7Evidence = () => {
           capture="environment"
           className="hidden"
           onChange={handleCameraCapture}
+        />
+        <GeoPermissionGuard
+          open={showGeoGuard}
+          propertyAddress={data.propertyAddress}
+          onGranted={handleGeoGranted}
+          onDenied={handleGeoDeniedProceed}
         />
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -431,7 +436,7 @@ export const Step7Evidence = () => {
             <Button variant="outline" onClick={resetFlow} className="flex-1 rounded-2xl">
               Abbrechen
             </Button>
-            <Button onClick={() => cameraInputRef.current?.click()} className="flex-1 rounded-2xl gap-2">
+            <Button onClick={openCameraWithGeoGuard} className="flex-1 rounded-2xl gap-2">
               <Camera className="w-4 h-4" />
               Kamera öffnen
             </Button>
