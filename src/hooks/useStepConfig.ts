@@ -14,8 +14,7 @@ const ALL_STEPS: StepDef[] = [
   { id: 'data-check',        label: 'Daten-Check', component: 'Step4Validation' },
   
   { id: 'participants',      label: 'Teilnehmer',  component: 'Step6Participants' },
-  { id: 'condition-check',   label: 'Zustand',      component: 'StepConditionCheck' },
-  { id: 'evidence',          label: 'Beweis',       component: 'Step7Evidence' },
+  { id: 'room-dashboard',    label: 'Begehung',     component: 'StepRoomDashboard' },
   { id: 'keys',              label: 'Schlüssel',    component: 'Step9Keys' },
   { id: 'meters',            label: 'Zähler',       component: 'Step8MeterScan' },
   { id: 'forwarding-address', label: 'Nachsende',    component: 'StepForwardingAddress' },
