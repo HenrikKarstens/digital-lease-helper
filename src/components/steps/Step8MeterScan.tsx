@@ -206,8 +206,28 @@ export const Step8MeterScan = () => {
   }, [data.meterReadings, updateData, toast]);
 
   const triggerMeterCamera = () => {
-    meterCameraRef.current?.click();
+    setShowGeoGuard(true);
   };
+
+  const handleMeterGeoGranted = useCallback(async () => {
+    setShowGeoGuard(false);
+    await requestPermission();
+    if (geoDenied) {
+      updateData({ geoPermissionDenied: true });
+    }
+    meterCameraRef.current?.click();
+  }, [requestPermission, geoDenied, updateData]);
+
+  const handleMeterGeoDenied = useCallback(() => {
+    setShowGeoGuard(false);
+    updateData({ geoPermissionDenied: true });
+    toast({
+      title: '⚠ Ohne GPS-Standort',
+      description: 'Ohne Standortdaten sinkt die Beweiskraft dieses Protokolls vor Gericht erheblich.',
+      variant: 'destructive',
+    });
+    meterCameraRef.current?.click();
+  }, [updateData, toast]);
 
   const updateMeter = (id: string, field: keyof MeterReading, value: string) => {
     updateData({ meterReadings: data.meterReadings.map(m => m.id === id ? { ...m, [field]: value } : m) });
