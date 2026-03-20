@@ -125,7 +125,8 @@ const HkvRoomSection = ({ meter, onUpdate }: { meter: MeterReading; onUpdate: (r
 export const Step8MeterScan = () => {
   const { data, updateData, goToStepById } = useHandover();
   const { toast } = useToast();
-  const { requestPermission, captureGeo } = useGeoPhoto(data.propertyAddress);
+  const { requestPermission, captureGeo, geoDenied } = useGeoPhoto(data.propertyAddress);
+  const [showGeoGuard, setShowGeoGuard] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState('KI analysiert Zähler...');
   const [editingId, setEditingId] = useState<string | null>(null);
