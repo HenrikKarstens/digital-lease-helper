@@ -13,7 +13,7 @@ export interface GeoPhotoMetadata {
 // Weddingstedter Str. 39, 25746 Heide — reference coordinates
 const REFERENCE_LAT = 54.1953;
 const REFERENCE_LNG = 9.0936;
-const MAX_DISTANCE_METERS = 200; // tolerance for geofencing
+const MAX_DISTANCE_METERS = 100; // tolerance for geofencing
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
@@ -47,9 +47,10 @@ export function formatTimestampForPdf(isoStr: string | undefined | null): string
 export function useGeoPhoto(propertyAddress?: string) {
   const { toast } = useToast();
   const [geoRequested, setGeoRequested] = useState(false);
+  const [geoDenied, setGeoDenied] = useState(false);
   const permissionGranted = useRef(false);
 
-  const requestPermission = useCallback(async () => {
+  const requestPermission = useCallback(async (): Promise<boolean> => {
     if (permissionGranted.current) return true;
     if (!navigator.geolocation) {
       toast({
@@ -60,16 +61,11 @@ export function useGeoPhoto(propertyAddress?: string) {
       return false;
     }
 
-    const addressHint = propertyAddress || 'des Objekts';
-    toast({
-      title: 'Standort-Berechtigung',
-      description: `Um die Rechtsgültigkeit des Protokolls für ${addressHint} zu garantieren, benötigen wir einmalig Zugriff auf Ihren Standort während der Fotoaufnahme.`,
-    });
-
     setGeoRequested(true);
     return true;
-  }, [propertyAddress, toast]);
+  }, [toast]);
 
+  /** Actually trigger the browser geolocation prompt and capture coordinates */
   const captureGeo = useCallback((): Promise<GeoPhotoMetadata> => {
     const timestamp = new Date().toISOString();
 
@@ -93,6 +89,7 @@ export function useGeoPhoto(propertyAddress?: string) {
           const verified = dist <= MAX_DISTANCE_METERS;
 
           permissionGranted.current = true;
+          setGeoDenied(false);
 
           if (verified) {
             toast({
@@ -119,6 +116,10 @@ export function useGeoPhoto(propertyAddress?: string) {
         (err) => {
           clearTimeout(timeoutId);
           console.warn('Geolocation error:', err);
+          if (err.code === 1) {
+            // PERMISSION_DENIED
+            setGeoDenied(true);
+          }
           resolve({ latitude: null, longitude: null, accuracy: null, timestamp, verified: false, distanceMeters: null });
         },
         { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
@@ -126,5 +127,5 @@ export function useGeoPhoto(propertyAddress?: string) {
     });
   }, [toast]);
 
-  return { requestPermission, captureGeo, geoRequested };
+  return { requestPermission, captureGeo, geoRequested, geoDenied };
 }
