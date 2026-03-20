@@ -299,6 +299,14 @@ export const Step8MeterScan = () => {
         onChange={handleMeterPhoto}
       />
 
+      {/* GPS Permission Guard */}
+      <GeoPermissionGuard
+        open={showGeoGuard}
+        propertyAddress={data.propertyAddress}
+        onGranted={handleMeterGeoGranted}
+        onDenied={handleMeterGeoDenied}
+      />
+
       <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-2 text-center">
         Zählererfassung
       </motion.h2>
