@@ -98,13 +98,38 @@ export const Step7Evidence = () => {
     if (!file) return;
     e.target.value = '';
     setCapturedFile(file);
-    requestPermission();
     // Create preview URL
     const reader = new FileReader();
     reader.onload = (ev) => setCapturedPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
     setPhase('room-select');
   };
+
+  // Open camera with geo permission guard
+  const openCameraWithGeoGuard = useCallback(() => {
+    setShowGeoGuard(true);
+  }, []);
+
+  const handleGeoGranted = useCallback(async () => {
+    setShowGeoGuard(false);
+    await requestPermission();
+    // Track denial state
+    if (geoDenied) {
+      updateData({ geoPermissionDenied: true });
+    }
+    cameraInputRef.current?.click();
+  }, [requestPermission, geoDenied, updateData]);
+
+  const handleGeoDeniedProceed = useCallback(() => {
+    setShowGeoGuard(false);
+    updateData({ geoPermissionDenied: true });
+    toast({
+      title: '⚠ Ohne GPS-Standort',
+      description: 'Ohne Standortdaten sinkt die Beweiskraft dieses Protokolls vor Gericht erheblich.',
+      variant: 'destructive',
+    });
+    cameraInputRef.current?.click();
+  }, [updateData, toast]);
 
   // ── Real AI analysis ───────────────────────────────────────────────────────
   const runAiAnalysis = useCallback(async () => {
