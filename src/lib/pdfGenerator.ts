@@ -61,6 +61,15 @@ function embedPhotos(
       doc.text(meta.join(' · '), x, y + imgH + 6.5, { maxWidth: imgW });
       doc.setFont('helvetica', 'normal');
     }
+    // Forensic certification line
+    if (validPhotos[i].gps || validPhotos[i].timestamp) {
+      doc.setFontSize(4.5);
+      doc.setTextColor(...GOLD_COLOR);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Forensisch gesichert durch EstateTurn Live-GPS-Validierung', x, y + imgH + 9.5, { maxWidth: imgW });
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...MUTED_COLOR);
+    }
   }
   y += imgH + 14;
   return y;
@@ -1166,8 +1175,12 @@ export function generateMasterProtocol(data: HandoverData): void {
     `4. Schönheitsreparaturen: Formularklauseln zu Renovierungspflichten des Mieters sind nach BGH-Rechtsprechung in der Regel unwirksam, sofern sie von § 307 BGB abweichen.`,
     `5. Protokollverbindlichkeit: Dieses Protokoll wurde digital mit einem SHA-256-Hash versiegelt und ist urkundlich zu verwahren.`,
     `6. Anerkennung: Dem Mieter wird eine Prüffrist von 14 Tagen eingeräumt. Erfolgt innerhalb dieser Frist kein begründeter Widerspruch gegen die Feststellungen in diesem Protokoll, gilt der dokumentierte Zustand als anerkannt.`,
-    `7. GPS-Validierung: Die Zählerstände wurden mittels Live-GPS-Validierung am Standort ${data.propertyAddress || 'des Objekts'} verifiziert. Die erfassten Koordinaten und Zeitstempel sind Bestandteil dieses Protokolls.`,
+    `7. GPS-Validierung: Die Beweisfotos (Zähler, Mängel, Schlüssel) wurden mittels Live-GPS-Validierung am Standort ${data.propertyAddress || 'des Objekts'} verifiziert (Geofencing-Radius: 100m). Die erfassten Koordinaten und Zeitstempel sind Bestandteil der SHA-256-Versiegelung dieses Protokolls.`,
   ];
+  // Add GPS denial clause if applicable
+  if (data.geoPermissionDenied) {
+    clauses.push(`8. HINWEIS – GPS-Zugriff verweigert: Der Ersteller dieses Protokolls hat den GPS-Standortzugriff während der Aufnahme abgelehnt. Die Beweisfotos enthalten daher KEINE verifizierten Standortdaten. Dies kann die Beweiskraft dieses Dokuments vor Gericht erheblich einschränken (fehlende Manipulationssicherheit gem. § 371a ZPO).`);
+  }
   const clauseLines = clauses.flatMap(c => doc.splitTextToSize(c, pageW - 36));
   const clauseH = clauseLines.length * 3.8 + 8;
   doc.roundedRect(14, y, pageW - 28, clauseH, 2, 2, 'F');

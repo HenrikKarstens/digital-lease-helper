@@ -9,6 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useGeoPhoto } from '@/hooks/useGeoPhoto';
+import { GeoPermissionGuard } from '@/components/GeoPermissionGuard';
 
 const METER_TYPES = [
   { value: 'Strom', label: 'Strom', icon: Zap, unit: 'kWh' },
@@ -124,7 +125,8 @@ const HkvRoomSection = ({ meter, onUpdate }: { meter: MeterReading; onUpdate: (r
 export const Step8MeterScan = () => {
   const { data, updateData, goToStepById } = useHandover();
   const { toast } = useToast();
-  const { requestPermission, captureGeo } = useGeoPhoto(data.propertyAddress);
+  const { requestPermission, captureGeo, geoDenied } = useGeoPhoto(data.propertyAddress);
+  const [showGeoGuard, setShowGeoGuard] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState('KI analysiert Zähler...');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -139,7 +141,6 @@ export const Step8MeterScan = () => {
     if (!file) return;
     e.target.value = '';
 
-    requestPermission();
     setScanning(true);
     setScanMessage('KI analysiert Zähler...');
 
@@ -205,8 +206,28 @@ export const Step8MeterScan = () => {
   }, [data.meterReadings, updateData, toast]);
 
   const triggerMeterCamera = () => {
-    meterCameraRef.current?.click();
+    setShowGeoGuard(true);
   };
+
+  const handleMeterGeoGranted = useCallback(async () => {
+    setShowGeoGuard(false);
+    await requestPermission();
+    if (geoDenied) {
+      updateData({ geoPermissionDenied: true });
+    }
+    meterCameraRef.current?.click();
+  }, [requestPermission, geoDenied, updateData]);
+
+  const handleMeterGeoDenied = useCallback(() => {
+    setShowGeoGuard(false);
+    updateData({ geoPermissionDenied: true });
+    toast({
+      title: '⚠ Ohne GPS-Standort',
+      description: 'Ohne Standortdaten sinkt die Beweiskraft dieses Protokolls vor Gericht erheblich.',
+      variant: 'destructive',
+    });
+    meterCameraRef.current?.click();
+  }, [updateData, toast]);
 
   const updateMeter = (id: string, field: keyof MeterReading, value: string) => {
     updateData({ meterReadings: data.meterReadings.map(m => m.id === id ? { ...m, [field]: value } : m) });
@@ -276,6 +297,14 @@ export const Step8MeterScan = () => {
         capture="environment"
         className="hidden"
         onChange={handleMeterPhoto}
+      />
+
+      {/* GPS Permission Guard */}
+      <GeoPermissionGuard
+        open={showGeoGuard}
+        propertyAddress={data.propertyAddress}
+        onGranted={handleMeterGeoGranted}
+        onDenied={handleMeterGeoDenied}
       />
 
       <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-2 text-center">

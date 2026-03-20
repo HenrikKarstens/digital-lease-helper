@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useGeoPhoto } from '@/hooks/useGeoPhoto';
+import { GeoPermissionGuard } from '@/components/GeoPermissionGuard';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,9 @@ export const Step7Evidence = () => {
   const { evidenceTitle, evidenceSubtitle, isMoveIn } = useTransactionLabels();
   const { data, updateData, goToStepById } = useHandover();
   const { toast } = useToast();
-  const { requestPermission, captureGeo } = useGeoPhoto(data.propertyAddress);
+  const { requestPermission, captureGeo, geoDenied } = useGeoPhoto(data.propertyAddress);
+  const [showGeoGuard, setShowGeoGuard] = useState(false);
+  const [pendingCameraAction, setPendingCameraAction] = useState(false);
 
   const [phase, setPhase] = useState<Phase>('list');
   const [selectedRoom, setSelectedRoom] = useState('');
@@ -95,13 +98,38 @@ export const Step7Evidence = () => {
     if (!file) return;
     e.target.value = '';
     setCapturedFile(file);
-    requestPermission();
     // Create preview URL
     const reader = new FileReader();
     reader.onload = (ev) => setCapturedPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
     setPhase('room-select');
   };
+
+  // Open camera with geo permission guard
+  const openCameraWithGeoGuard = useCallback(() => {
+    setShowGeoGuard(true);
+  }, []);
+
+  const handleGeoGranted = useCallback(async () => {
+    setShowGeoGuard(false);
+    await requestPermission();
+    // Track denial state
+    if (geoDenied) {
+      updateData({ geoPermissionDenied: true });
+    }
+    cameraInputRef.current?.click();
+  }, [requestPermission, geoDenied, updateData]);
+
+  const handleGeoDeniedProceed = useCallback(() => {
+    setShowGeoGuard(false);
+    updateData({ geoPermissionDenied: true });
+    toast({
+      title: '⚠ Ohne GPS-Standort',
+      description: 'Ohne Standortdaten sinkt die Beweiskraft dieses Protokolls vor Gericht erheblich.',
+      variant: 'destructive',
+    });
+    cameraInputRef.current?.click();
+  }, [updateData, toast]);
 
   // ── Real AI analysis ───────────────────────────────────────────────────────
   const runAiAnalysis = useCallback(async () => {
@@ -373,10 +401,9 @@ export const Step7Evidence = () => {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PHASE: CAMERA (Foto-First)
+  // PHASE: CAMERA (Foto-First) – now with GPS Permission Guard
   // ═══════════════════════════════════════════════════════════════════════════
   if (phase === 'camera') {
-    setTimeout(() => cameraInputRef.current?.click(), 100);
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8 gap-4">
         <input
@@ -386,6 +413,12 @@ export const Step7Evidence = () => {
           capture="environment"
           className="hidden"
           onChange={handleCameraCapture}
+        />
+        <GeoPermissionGuard
+          open={showGeoGuard}
+          propertyAddress={data.propertyAddress}
+          onGranted={handleGeoGranted}
+          onDenied={handleGeoDeniedProceed}
         />
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -403,7 +436,7 @@ export const Step7Evidence = () => {
             <Button variant="outline" onClick={resetFlow} className="flex-1 rounded-2xl">
               Abbrechen
             </Button>
-            <Button onClick={() => cameraInputRef.current?.click()} className="flex-1 rounded-2xl gap-2">
+            <Button onClick={openCameraWithGeoGuard} className="flex-1 rounded-2xl gap-2">
               <Camera className="w-4 h-4" />
               Kamera öffnen
             </Button>
