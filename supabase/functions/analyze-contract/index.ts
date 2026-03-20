@@ -144,9 +144,10 @@ ${extraFields}
 WICHTIG: 
 - Antworte NUR mit validem JSON, keine Erklärungen davor oder danach. KEIN Markdown-Codeblock.
 - Felder, die nicht gefunden werden, mit leerem String "" befüllen, nicht weglassen.
-- Zahlen ohne Währungssymbol, nur die Zahl (z.B. "1250" nicht "1.250 €").
-- Datumsformat immer TT.MM.JJJJ (z.B. "01.01.2024").
+- Zahlen ohne Währungssymbol, nur die Zahl (z.B. "280" nicht "280 €" oder "280,00").
+- Datumsformat immer TT.MM.JJJJ (z.B. "01.08.2019").
 - Halte die Antwort KOMPAKT. Bewertungen in max 1 Satz. Kein confidence-Objekt nötig.
+- KAUTIONSPRÜFUNG: Führe IMMER die Berechnung 3 × Kaltmiete durch und vergleiche mit depositAmount. Dokumentiere das Ergebnis in depositLegalCheck.
 - Beginne direkt mit { und ende mit }.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
