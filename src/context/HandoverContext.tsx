@@ -319,6 +319,7 @@ const defaultData: HandoverData = {
   cleaningKeller: false,
   smokeDetectorChecked: false,
   wallsNeutralColors: null,
+  geoPermissionDenied: false,
 };
 
 interface HandoverContextType {
