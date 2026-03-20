@@ -48,9 +48,12 @@ export const RoomTile = memo(({ room, findings, onClick, index }: RoomTileProps)
       </div>
 
       {/* Overview photo thumbnail or icon */}
-      {room.overviewPhotoUrl ? (
-        <div className="w-10 h-10 rounded-xl overflow-hidden mb-2 border border-border/30">
-          <img src={room.overviewPhotoUrl} alt={room.name} className="w-full h-full object-cover" />
+      {(room.overviewPhotos?.length || room.overviewPhotoUrl) ? (
+        <div className="relative w-10 h-10 rounded-xl overflow-hidden mb-2 border border-border/30">
+          <img src={room.overviewPhotos?.[0]?.url || room.overviewPhotoUrl} alt={room.name} className="w-full h-full object-cover" />
+          {(room.overviewPhotos?.length || 0) > 1 && (
+            <span className="absolute bottom-0 right-0 text-[8px] font-bold bg-background/80 px-1 rounded-tl-md">{room.overviewPhotos!.length}</span>
+          )}
         </div>
       ) : (
         <div className="w-10 h-10 rounded-xl bg-secondary/60 flex items-center justify-center mb-2">
