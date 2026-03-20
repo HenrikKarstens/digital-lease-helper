@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useGeoPhoto } from '@/hooks/useGeoPhoto';
+import { GeoPermissionGuard } from '@/components/GeoPermissionGuard';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
