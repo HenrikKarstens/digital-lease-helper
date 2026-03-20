@@ -412,7 +412,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
     } else {
       const MASTER_ORDER = [
         'hero', 'role', 'direction', 'data-check',
-        'participants', 'condition-check', 'evidence', 'keys', 'meters', 'forwarding-address', 'deposit-check', 'data-complete',
+        'participants', 'room-dashboard', 'keys', 'meters', 'forwarding-address', 'deposit-check', 'data-complete',
         'defect-analysis', 'utility', 'unlock'
       ];
       const masterIdx = MASTER_ORDER.indexOf(stepId);
