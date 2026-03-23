@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera, CheckCircle2, X, AlertTriangle, StickyNote,
   ShieldCheck, Trash, Paintbrush, MapPin, Pencil, Trash2,
-  Euro, ArrowLeft, Loader2, Plus, FileText, ImagePlus
+  Euro, ArrowLeft, Loader2, Plus, FileText, ImagePlus,
+  Wrench, Droplets, Plug, CookingPot, Bath
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
