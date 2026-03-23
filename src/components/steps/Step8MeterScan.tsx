@@ -533,7 +533,7 @@ export const Step8MeterScan = () => {
 
             <Button
               onClick={handleAddManual}
-              disabled={!manualForm.medium || !manualForm.reading}
+              disabled={!manualForm.medium || !manualForm.reading || (manualForm.medium === 'Zweirichtungszähler' && !manualForm.readingFeed)}
               className="w-full h-11 rounded-2xl font-semibold gap-2"
             >
               <Plus className="w-4 h-4" />
