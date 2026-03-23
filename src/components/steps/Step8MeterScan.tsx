@@ -226,11 +226,16 @@ export const Step8MeterScan = () => {
   }, [data.meterReadings, updateData, toast]);
 
   const triggerMeterCamera = () => {
+    if (data.geoPermissionGranted || data.geoPermissionDenied) {
+      meterCameraRef.current?.click();
+      return;
+    }
     setShowGeoGuard(true);
   };
 
   const handleMeterGeoGranted = useCallback(async () => {
     setShowGeoGuard(false);
+    updateData({ geoPermissionGranted: true });
     await requestPermission();
     if (geoDenied) {
       updateData({ geoPermissionDenied: true });
