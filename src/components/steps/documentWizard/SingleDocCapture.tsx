@@ -8,7 +8,7 @@ import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { DocumentAnalysisProgress } from './DocumentAnalysisProgress';
 import { DocumentScanner } from './DocumentScanner';
-import { ExtractionResultCard } from './ExtractionResultCard';
+
 import { useExtractionValidation } from './useExtractionValidation';
 import type { DocStep, PagePhoto, InputMode } from './types';
 
@@ -77,7 +77,7 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
   const [analysisStepIdx, setAnalysisStepIdx] = useState(0);
   const [currentAnalyzingPage, setCurrentAnalyzingPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
-  const [showResults, setShowResults] = useState(false);
+  
   const [manualValues, setManualValues] = useState<Record<string, string>>({});
 
   const runAnalysis = async (scannedPages: PagePhoto[]) => {
@@ -187,19 +187,8 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     onDone();
   };
 
-  // ── Extraction results view ──
-  if (showResults && docStep.id === 'main-contract') {
-    return (
-      <div className="min-h-[60vh] flex flex-col py-4">
-        <ExtractionResultCard
-          fields={validationFields}
-          warnings={validationWarnings}
-          onConfirm={onDone}
-          onRescan={() => setShowResults(false)}
-        />
-      </div>
-    );
-  }
+
+
 
   // ── Manual input form ──
   if (mode === 'manual') {
