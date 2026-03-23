@@ -93,8 +93,7 @@ export const StepRoomDashboard = () => {
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
         <div className="flex items-center justify-center gap-2 mb-1">
-          <LayoutGrid className="w-5 h-5 text-primary" />
-          <h1 className="text-2xl font-bold">Mission Control</h1>
+          <h1 className="text-2xl font-bold">Bestandsaufnahme</h1>
         </div>
         <p className="text-sm text-muted-foreground">
           {isMoveIn ? 'Dokumentieren Sie den Zustand jedes Raums.' : 'Begehung: Prüfen und dokumentieren Sie jeden Raum.'}
@@ -150,7 +149,7 @@ export const StepRoomDashboard = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: roomConfigs.length * 0.04 }}
           onClick={() => setShowAddMenu(true)}
-          className="glass-card rounded-2xl p-4 border-dashed border-2 border-border/60 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors h-[140px]"
+          className="glass-card rounded-2xl p-4 border-dashed border-2 border-border/60 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors aspect-square"
         >
           <Plus className="w-5 h-5" />
           <span className="text-xs font-medium">Raum hinzufügen</span>
