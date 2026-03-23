@@ -17,12 +17,16 @@ const SUB_STEPS = [
 
 export const StepDepositCheck = () => {
   const { data, goToStepById } = useHandover();
-  const { isSale } = useTransactionLabels();
+  const { isSale, isMoveIn } = useTransactionLabels();
   const [subStep, setSubStep] = useState(0);
   const [costOverrides, setCostOverrides] = useState<Record<string, number>>({});
 
   const handleFinish = () => {
-    goToStepById('utility');
+    if (isMoveIn) {
+      goToStepById('data-complete');
+    } else {
+      goToStepById('utility');
+    }
   };
 
   return (
