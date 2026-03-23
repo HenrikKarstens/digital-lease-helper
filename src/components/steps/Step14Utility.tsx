@@ -153,23 +153,45 @@ export const Step14Utility = () => {
   );
 
   // Meters that need self-cancellation (only Strom if heating/water via landlord)
+  // Deduplicate Zweirichtungszähler: group Bezug/Einspeisung into one entry
+  const deduplicatedMeters = useMemo(() => {
+    const seen = new Map<string, typeof data.meterReadings[0]>();
+    const result: typeof data.meterReadings = [];
+    for (const m of data.meterReadings) {
+      const medium = m.medium.toLowerCase();
+      // Check if this is part of a Zweirichtungszähler pair
+      if (medium.includes('bezug') || medium.includes('einspeisung') || medium.includes('1.8.0') || medium.includes('2.8.0')) {
+        const meterKey = m.meterNumber || 'zweirichtung';
+        if (!seen.has(meterKey)) {
+          // Use the Bezug entry as representative, label it as Zweirichtungszähler
+          seen.set(meterKey, { ...m, medium: `Strom (Zweirichtungszähler)` });
+          result.push(seen.get(meterKey)!);
+        }
+        // Skip duplicate (Einspeisung) entry
+      } else {
+        result.push(m);
+      }
+    }
+    return result;
+  }, [data.meterReadings]);
+
   const selfCancelMeters = useMemo(() => {
-    return data.meterReadings.filter(m => {
+    return deduplicatedMeters.filter(m => {
       const medium = m.medium.toLowerCase();
       if ((medium.includes('heiz') || medium.includes('gas') || medium.includes('fernwärme') || medium.includes('wärme')) && heatingViaLandlord) return false;
       if (medium.includes('wasser') && waterViaLandlord) return false;
       return true;
     });
-  }, [data.meterReadings, heatingViaLandlord, waterViaLandlord]);
+  }, [deduplicatedMeters, heatingViaLandlord, waterViaLandlord]);
 
   const landlordManagedMeters = useMemo(() => {
-    return data.meterReadings.filter(m => {
+    return deduplicatedMeters.filter(m => {
       const medium = m.medium.toLowerCase();
       if ((medium.includes('heiz') || medium.includes('gas') || medium.includes('fernwärme') || medium.includes('wärme')) && heatingViaLandlord) return true;
       if (medium.includes('wasser') && waterViaLandlord) return true;
       return false;
     });
-  }, [data.meterReadings, heatingViaLandlord, waterViaLandlord]);
+  }, [deduplicatedMeters, heatingViaLandlord, waterViaLandlord]);
 
   const recipientList = useMemo(() => {
     const list: { name: string; email: string }[] = [];
@@ -326,10 +348,10 @@ export const Step14Utility = () => {
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-xs font-semibold mb-3">
             <MapPin className="w-3.5 h-3.5" />
-            Versorger-Management
+            Zähler Abrechnung
           </div>
           <h2 className="text-2xl font-bold font-heading">
-            Versorger-Bewertung
+            Zähler Abrechnung
           </h2>
           <p className="text-muted-foreground text-sm mt-1">
             Zähler-Kündigung & neuer Tarif
@@ -354,7 +376,7 @@ export const Step14Utility = () => {
               </div>
 
               <div className="space-y-3">
-                {data.meterReadings.map(m => {
+                {deduplicatedMeters.map(m => {
                   const medium = m.medium.toLowerCase();
                   const isLandlordManaged =
                     ((medium.includes('heiz') || medium.includes('gas') || medium.includes('fernwärme') || medium.includes('wärme')) && heatingViaLandlord) ||
@@ -439,62 +461,6 @@ export const Step14Utility = () => {
                             </div>
                           )}
 
-                          {/* Reminder button */}
-                          {(() => {
-                            const existingReminder = data.cancellationReminders?.find(r => r.meterId === m.id);
-                            if (existingReminder) {
-                              return (
-                                <div className="bg-primary/5 rounded-lg p-2.5 flex items-center gap-2 text-[10px]">
-                                  <Bell className="w-3.5 h-3.5 text-primary" />
-                                  <div className="flex-1">
-                                    <span className="font-medium text-primary">Erinnerung vorgemerkt</span>
-                                    <p className="text-muted-foreground mt-0.5">
-                                      Sofort + nach 3 Tagen an {existingReminder.recipientEmail}
-                                    </p>
-                                  </div>
-                                  <Mail className="w-3.5 h-3.5 text-muted-foreground" />
-                                </div>
-                              );
-                            }
-                            return (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full rounded-xl gap-2 text-xs h-9 border-primary/30 text-primary hover:bg-primary/10"
-                                onClick={() => {
-                                  if (!data.tenantEmail) {
-                                    toast({
-                                      title: 'Keine E-Mail hinterlegt',
-                                      description: 'Bitte hinterlegen Sie die E-Mail-Adresse des Mieters in den Vertragsdaten.',
-                                      variant: 'destructive',
-                                    });
-                                    return;
-                                  }
-                                  const newReminder = {
-                                    meterId: m.id,
-                                    medium: m.medium,
-                                    recipientEmail: data.tenantEmail,
-                                    recipientName: data.tenantName || 'Mieter',
-                                    scheduledAt: new Date().toISOString(),
-                                    status: 'scheduled' as const,
-                                  };
-                                  updateData({
-                                    cancellationReminders: [
-                                      ...(data.cancellationReminders || []),
-                                      newReminder,
-                                    ],
-                                  });
-                                  toast({
-                                    title: '📧 Erinnerung vorgemerkt',
-                                    description: `${m.medium}: Sofortige Erinnerung + Nachfassung nach 3 Tagen an ${data.tenantEmail}. E-Mail-Versand wird aktiviert, sobald eine Absender-Domain eingerichtet ist.`,
-                                  });
-                                }}
-                              >
-                                <Bell className="w-3.5 h-3.5" />
-                                Erinnerung an Mieter senden
-                              </Button>
-                            );
-                          })()}
                         </div>
                       )}
                     </div>
@@ -516,12 +482,38 @@ export const Step14Utility = () => {
           {isMoveOut && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="pt-2">
               <Button
-                onClick={() => goToStepById('unlock')}
+                onClick={() => {
+                  // Schedule cancellation reminders for all unhandled self-cancel meters
+                  const unremindedMeters = selfCancelMeters.filter(m => 
+                    !providerInfoMap[m.id] && !data.cancellationReminders?.find(r => r.meterId === m.id)
+                  );
+                  if (unremindedMeters.length > 0 && data.tenantEmail) {
+                    const newReminders = unremindedMeters.map(m => ({
+                      meterId: m.id,
+                      medium: m.medium,
+                      recipientEmail: data.tenantEmail!,
+                      recipientName: data.tenantName || 'Mieter',
+                      scheduledAt: new Date().toISOString(),
+                      status: 'scheduled' as const,
+                    }));
+                    updateData({
+                      cancellationReminders: [
+                        ...(data.cancellationReminders || []),
+                        ...newReminders,
+                      ],
+                    });
+                    toast({
+                      title: '📧 Kündigungs-Erinnerung vorgemerkt',
+                      description: `Erinnerung wird an ${data.tenantEmail} gesendet.`,
+                    });
+                  }
+                  goToStepById('unlock');
+                }}
                 className="w-full h-12 rounded-2xl font-semibold gap-2"
                 size="lg"
               >
                 <ArrowRight className="w-4 h-4" />
-                Weiter zum Abschluss des Protokolls
+                Weiter zum Abschluss & Erinnerung zur Kündigung zusenden
               </Button>
             </motion.div>
           )}

@@ -47,6 +47,7 @@ export const ElectricityCancellationModal = ({
   });
   const [sending, setSending] = useState(false);
   const [pdfGenerated, setPdfGenerated] = useState(false);
+  const [maloIdLocal, setMaloIdLocal] = useState(meter.maloId || '');
 
   const propertyAddress = data.propertyAddress || 'Nicht angegeben';
   const tenantName = data.tenantName || 'Mieter';
@@ -85,6 +86,9 @@ export const ElectricityCancellationModal = ({
           customerNumber: extracted.customerNumber || prev.customerNumber,
           contractNumber: extracted.contractNumber || prev.contractNumber,
         }));
+        // Extract MaLo-ID from bill if available
+        const extractedMalo = d.maloId || d.marktlokation || d.malo || '';
+        if (extractedMalo) setMaloIdLocal(extractedMalo);
         toast({
           title: '📄 Versorger-Daten erkannt',
           description: extracted.providerName
@@ -127,7 +131,7 @@ Sehr geehrte Damen und Herren,
 
 hiermit kündige ich meinen Stromvertrag zur Kundennummer ${custNo}${providerData.contractNumber ? ` (Vertragskonto ${providerData.contractNumber})` : ''} für das Objekt ${propertyAddress} zum ${moveOutDate}.
 
-Der Zählerstand zum Zeitpunkt der Übergabe beträgt ${meterReading}.${meter.meterNumber ? `\nZählernummer: ${meter.meterNumber}` : ''}${meter.maloId ? `\nMaLo-ID: ${meter.maloId}` : ''}
+Der Zählerstand zum Zeitpunkt der Übergabe beträgt ${meterReading}.${meter.meterNumber ? `\nZählernummer: ${meter.meterNumber}` : ''}${maloIdLocal ? `\nMaLo-ID: ${maloIdLocal}` : ''}
 
 Bitte bestätigen Sie mir den Erhalt dieser Kündigung.
 
@@ -135,7 +139,7 @@ Bitte senden Sie mir die Schlussrechnung an die oben genannte Adresse.
 
 Mit freundlichen Grüßen
 ${tenantName}`;
-  }, [providerData, tenantName, propertyAddress, moveOutDate, meterReading, meter, data.nextAddress]);
+  }, [providerData, tenantName, propertyAddress, moveOutDate, meterReading, meter, data.nextAddress, maloIdLocal]);
 
   const handleGeneratePDF = useCallback(() => {
     const doc = new jsPDF();
@@ -236,12 +240,18 @@ ${tenantName}`;
                       </div>
                     )}
                   </div>
-                  {meter.maloId && (
-                    <div className="mt-1">
-                      <Label className="text-[10px] text-muted-foreground">MaLo-ID</Label>
-                      <Input value={meter.maloId} readOnly className="rounded-lg h-8 text-xs bg-muted/50 font-mono" />
-                    </div>
-                  )}
+                  <div className="mt-1">
+                    <Label className="text-[10px] text-muted-foreground">Marktlokations-ID (MaLo-ID)</Label>
+                    <Input
+                      value={maloIdLocal}
+                      onChange={e => setMaloIdLocal(e.target.value)}
+                      placeholder="z. B. DE000... – aus Stromrechnung entnehmen"
+                      className="rounded-lg h-8 text-xs font-mono"
+                    />
+                    <p className="text-[9px] text-muted-foreground mt-0.5">
+                      Die MaLo-ID finden Sie auf Ihrer Stromrechnung oder im Vertragsschreiben.
+                    </p>
+                  </div>
                   <div className="mt-1">
                     <Label className="text-[10px] text-muted-foreground">Objekt-Adresse</Label>
                     <Input value={propertyAddress} readOnly className="rounded-lg h-8 text-xs bg-muted/50" />
