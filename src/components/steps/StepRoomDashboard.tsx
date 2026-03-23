@@ -93,8 +93,7 @@ export const StepRoomDashboard = () => {
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
         <div className="flex items-center justify-center gap-2 mb-1">
-          <LayoutGrid className="w-5 h-5 text-primary" />
-          <h1 className="text-2xl font-bold">Mission Control</h1>
+          <h1 className="text-2xl font-bold">Bestandsaufnahme</h1>
         </div>
         <p className="text-sm text-muted-foreground">
           {isMoveIn ? 'Dokumentieren Sie den Zustand jedes Raums.' : 'Begehung: Prüfen und dokumentieren Sie jeden Raum.'}
