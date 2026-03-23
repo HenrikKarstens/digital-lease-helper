@@ -455,11 +455,16 @@ export const Step8MeterScan = () => {
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">MaLo-ID (optional)</Label>
               <Input
-                placeholder="DE00..."
+                placeholder="Wird aus Stromrechnung (Phase 10) übernommen"
                 value={manualForm.maloId}
                 onChange={e => setManualForm(p => ({ ...p, maloId: e.target.value }))}
                 className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
               />
+              {!manualForm.maloId && (
+                <p className="text-[10px] text-muted-foreground/70 italic">
+                  Die MaLo-ID wird automatisch aus der Stromrechnung in Phase 10 extrahiert.
+                </p>
+              )}
             </div>
 
             <Button
