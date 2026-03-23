@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Home, Info, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Home, Info, AlertTriangle, ArrowRight, CheckCircle2, Loader2, MapPin } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -8,7 +8,26 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+
+// German PLZ validation via openstreetmap Nominatim (free, no key needed)
+async function validateGermanAddress(street: string, plzCity: string): Promise<{ valid: boolean; suggestion?: string }> {
+  try {
+    const query = `${street}, ${plzCity}, Deutschland`;
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&countrycodes=de&limit=1&addressdetails=1`,
+      { headers: { 'Accept-Language': 'de' } }
+    );
+    if (!res.ok) return { valid: true }; // fail open
+    const results = await res.json();
+    if (results.length === 0) return { valid: false };
+    const addr = results[0].address;
+    const displayName = results[0].display_name;
+    return { valid: true, suggestion: displayName };
+  } catch {
+    return { valid: true }; // fail open on network error
+  }
+}
 
 export const StepForwardingAddress = () => {
   const { data, updateData, goToStepById } = useHandover();
@@ -18,6 +37,21 @@ export const StepForwardingAddress = () => {
   const [plzCityNew, setPlzCityNew] = useState(data.nextAddress?.split(',')[1]?.trim() || '');
   const [tenantRefusesAddress, setTenantRefusesAddress] = useState(data.tenantRefusesNewAddress ?? false);
   const [showAddressWarning, setShowAddressWarning] = useState(false);
+  const [addressValidation, setAddressValidation] = useState<{ status: 'idle' | 'checking' | 'valid' | 'invalid'; suggestion?: string }>({ status: 'idle' });
+
+  const checkAddress = useCallback(async () => {
+    if (!streetNew.trim() || !plzCityNew.trim()) {
+      setAddressValidation({ status: 'idle' });
+      return;
+    }
+    setAddressValidation({ status: 'checking' });
+    const result = await validateGermanAddress(streetNew, plzCityNew);
+    setAddressValidation(result.valid
+      ? { status: 'valid', suggestion: result.suggestion }
+      : { status: 'invalid' }
+    );
+  }, [streetNew, plzCityNew]);
+
 
   const nextAddress = [streetNew, plzCityNew].filter(Boolean).join(', ');
 

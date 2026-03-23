@@ -64,7 +64,7 @@ export const RoomTile = memo(({ room, findings, onClick, index }: RoomTileProps)
       <p className="text-sm font-semibold truncate">{room.name}</p>
 
       {/* Stats row */}
-      <div className="flex items-center gap-2 mt-1.5">
+      <div className="flex items-center gap-2 mt-auto pt-1.5">
         {defectCount > 0 && (
           <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
             <AlertTriangle className="w-2.5 h-2.5" /> {defectCount}
