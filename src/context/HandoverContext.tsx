@@ -123,6 +123,17 @@ export interface HkvRoomReading {
   reading: string;
 }
 
+export interface CancellationReminder {
+  meterId: string;
+  medium: string;
+  recipientEmail: string;
+  recipientName: string;
+  scheduledAt: string;
+  reminderSentAt?: string;
+  followUpSentAt?: string;
+  status: 'scheduled' | 'sent' | 'follow-up-sent';
+}
+
 export interface KeyEntry {
   id: string;
   type: string;
