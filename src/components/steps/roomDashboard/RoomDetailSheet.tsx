@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { RoomConfig, TechCheckValue, TechCheckStatus } from './types';
 import { Input } from '@/components/ui/input';
+import { processForensicPhoto } from '@/lib/photoForensics';
 
 const MAX_OVERVIEW_PHOTOS = 5;
 
