@@ -135,16 +135,15 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
     return true;
   };
 
-  // Validation: photos + all technical checks must be decided (move-out only)
+  // Validation: photos + all technical checks must be decided
   const hasPhotos = overviewPhotos.length > 0;
-  const technicalChecksComplete = isMoveIn ? true : (
+  const technicalChecksComplete = 
     isCheckComplete(room.windowsDoors) &&
     isCheckComplete(room.sanitary) &&
     isCheckComplete(room.electrical) &&
     isCheckComplete(room.smokeDetector) &&
     (!isKitchen || (isCheckComplete(room.oven) && isCheckComplete(room.sinkDrain))) &&
-    (!isBathroom || (isCheckComplete(room.tilesGrout) && isCheckComplete(room.flushFittings)))
-  );
+    (!isBathroom || (isCheckComplete(room.tilesGrout) && isCheckComplete(room.flushFittings)));
   const canComplete = hasPhotos && technicalChecksComplete;
 
   // ─── Camera handlers ───
@@ -607,8 +606,8 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
           )}
         </div>
 
-        {/* Condition checks (move-out only) */}
-        {!isMoveIn && (
+        {/* Condition checks */}
+        {(
           <div className="glass-card rounded-2xl p-4 space-y-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5" /> Zustandsprüfung
