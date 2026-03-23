@@ -326,10 +326,10 @@ export const Step14Utility = () => {
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-xs font-semibold mb-3">
             <MapPin className="w-3.5 h-3.5" />
-            Versorger-Management
+            Zähler Abrechnung
           </div>
           <h2 className="text-2xl font-bold font-heading">
-            Versorger-Bewertung
+            Zähler Abrechnung
           </h2>
           <p className="text-muted-foreground text-sm mt-1">
             Zähler-Kündigung & neuer Tarif
