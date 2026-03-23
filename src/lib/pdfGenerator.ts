@@ -1213,9 +1213,9 @@ export function generateMasterProtocol(data: HandoverData): void {
     doc.setFont('helvetica', 'bold');
     doc.text(party.name, party.x + 2, y + 9);
     doc.setFont('helvetica', 'normal');
-    if (party.sig) {
+    if (party.sig && party.sig.startsWith('data:')) {
       // Embed the actual signature image
-      doc.addImage(party.sig, 'PNG', party.x + 2, y + 11, sigBoxW - 4, 18, undefined, 'FAST');
+      try { doc.addImage(party.sig, 'PNG', party.x + 2, y + 11, sigBoxW - 4, 18, undefined, 'FAST'); } catch { /* skip invalid */ }
       doc.setTextColor(...SUCCESS_COLOR);
       doc.setFontSize(6.5);
       doc.text(party.isAppUser ? '✓ Digital geleistet (App-Nutzer)' : '✓ Digital geleistet (vor Ort)', party.x + 2, y + sigBoxH9 - 3);
