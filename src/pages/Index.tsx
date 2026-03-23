@@ -16,6 +16,7 @@ const Step6Participants = lazy(() => import('@/components/steps/Step6Participant
 const StepRoomDashboard = lazy(() => import('@/components/steps/StepRoomDashboard').then(m => ({ default: m.StepRoomDashboard })));
 const Step8MeterScan = lazy(() => import('@/components/steps/Step8MeterScan').then(m => ({ default: m.Step8MeterScan })));
 const Step9Keys = lazy(() => import('@/components/steps/Step9Keys').then(m => ({ default: m.Step9Keys })));
+const StepDepositCheck = lazy(() => import('@/components/steps/StepDepositCheck').then(m => ({ default: m.StepDepositCheck })));
 const Step10DefectAnalysis = lazy(() => import('@/components/steps/Step10DefectAnalysis').then(m => ({ default: m.Step10DefectAnalysis })));
 const Step12Deposit = lazy(() => import('@/components/steps/Step12Deposit').then(m => ({ default: m.Step12Deposit })));
 const Step13Certificate = lazy(() => import('@/components/steps/Step13Certificate').then(m => ({ default: m.Step13Certificate })));
@@ -31,6 +32,7 @@ const COMPONENT_MAP: Record<string, React.ComponentType> = {
   StepRoomDashboard,
   Step8MeterScan,
   Step9Keys,
+  StepDepositCheck,
   Step10DefectAnalysis,
   Step12Deposit,
   Step13Certificate,
