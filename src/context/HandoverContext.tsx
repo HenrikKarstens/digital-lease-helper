@@ -210,6 +210,7 @@ export interface HandoverData {
   keyEntries: KeyEntry[];
   keyBundlePhotoUrl: string | null;
   keyBundlePhotoGeo: PhotoGeoMeta | null;
+  keyBundlePhotoHash: string | null;
   // Step 9
   signatureLandlord: string | null;
   signatureTenant: string | null;
