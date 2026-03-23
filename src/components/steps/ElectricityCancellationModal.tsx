@@ -47,6 +47,7 @@ export const ElectricityCancellationModal = ({
   });
   const [sending, setSending] = useState(false);
   const [pdfGenerated, setPdfGenerated] = useState(false);
+  const [maloIdLocal, setMaloIdLocal] = useState(meter.maloId || '');
 
   const propertyAddress = data.propertyAddress || 'Nicht angegeben';
   const tenantName = data.tenantName || 'Mieter';
