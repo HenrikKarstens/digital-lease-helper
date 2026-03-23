@@ -4,7 +4,7 @@ import {
   Camera, CheckCircle2, X, AlertTriangle, StickyNote,
   ShieldCheck, Trash, Paintbrush, MapPin, Pencil, Trash2,
   Euro, ArrowLeft, Loader2, Plus, FileText, ImagePlus,
-  Wrench, Droplets, Plug, CookingPot, Bath
+  Wrench, Droplets, Plug, CookingPot, Bath, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -85,7 +85,7 @@ interface Props {
   onComplete: () => void;
 }
 
-type Phase = 'overview' | 'camera-overview' | 'camera-defect' | 'room-select' | 'analyzing' | 'result' | 'manual-entry' | 'edit' | 'wall-classify';
+type Phase = 'overview' | 'camera-overview' | 'camera-defect' | 'room-select' | 'analyzing' | 'result' | 'manual-entry' | 'edit' | 'wall-classify' | 'move-in-confirm';
 
 export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Props) => {
   const { data, updateData } = useHandover();
@@ -364,6 +364,41 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
     </>
   );
 
+  // ═══ PHASE: MOVE-IN CONFIRM ═══
+  if (phase === 'move-in-confirm') {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-6">
+        {hiddenInputs}
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+          className="glass-card rounded-3xl p-6 w-full max-w-md space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+              <Info className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">Raum ohne Befunde abschließen?</h3>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                Sie haben für <strong>{room.name}</strong> keine Mängel, Zustände oder Besonderheiten dokumentiert.
+              </p>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                Möchten Sie vorhandene Zustände jetzt noch festhalten? Bei einem späteren Auszug sind nur im Einzugsprotokoll dokumentierte Zustände als Vorschäden anerkannt.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" onClick={() => setPhase('overview')} className="flex-1 rounded-xl">
+              Zurück & dokumentieren
+            </Button>
+            <Button onClick={onComplete} className="flex-1 rounded-xl gap-1">
+              <CheckCircle2 className="w-4 h-4" />
+              Trotzdem abschließen
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   // ═══ PHASE: WALL CLASSIFY ═══
   if (phase === 'wall-classify') {
     return (
@@ -614,10 +649,19 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
             </p>
 
             {/* Reinigung */}
-            <label className="flex items-center gap-3 cursor-pointer">
-              <Checkbox checked={room.cleaningDone || false} onCheckedChange={v => onUpdate({ cleaningDone: !!v })} />
-              <span className="text-sm">Besenrein</span>
-            </label>
+            <div className="flex gap-2">
+              <Button size="sm" variant={room.cleaningDone === true ? 'default' : 'outline'} className="rounded-xl text-xs h-8 flex-1"
+                onClick={() => onUpdate({ cleaningDone: true })}>
+                ✓ Besenrein
+              </Button>
+              <Button size="sm" variant={room.cleaningDone === false ? 'destructive' : 'outline'} className="rounded-xl text-xs h-8 flex-1"
+                onClick={() => onUpdate({ cleaningDone: false })}>
+                ✗ Nicht besenrein
+              </Button>
+            </div>
+            {room.cleaningDone === false && (
+              <p className="text-xs text-destructive">Hinweis: Fehlende besenreine Übergabe kann Nachbesserungsansprüche begründen.</p>
+            )}
 
             {/* Wandfarben */}
             <div className="flex gap-2">
@@ -627,7 +671,7 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
               </Button>
               <Button size="sm" variant={room.wallsNeutral === false ? 'destructive' : 'outline'} className="rounded-xl text-xs h-8 flex-1"
                 onClick={() => onUpdate({ wallsNeutral: false })}>
-                Auffällig
+                ✗ Auffällige Farben
               </Button>
             </div>
             {room.wallsNeutral === false && (
@@ -770,7 +814,14 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
 
         {/* Complete button */}
         <Button
-          onClick={onComplete}
+          onClick={() => {
+            // Move-in: warn if no findings documented
+            if (isMoveIn && roomFindings.length === 0) {
+              setPhase('move-in-confirm');
+              return;
+            }
+            onComplete();
+          }}
           disabled={!canComplete}
           className="w-full h-12 rounded-2xl font-semibold gap-2" size="lg"
         >
