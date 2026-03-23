@@ -120,30 +120,6 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
         <h3 className="font-semibold text-sm">Zahlungsanweisung ({legalRef})</h3>
       </div>
 
-      {/* Defer toggle */}
-      <button
-        onClick={() => updateData({ ibanDeferred: !data.ibanDeferred })}
-        className={`w-full flex items-center gap-3 rounded-xl p-3 text-left transition-colors ${
-          data.ibanDeferred ? 'bg-accent/10 border border-accent/30' : 'bg-secondary/30 border border-border/20'
-        }`}
-      >
-        <Clock className={`w-4 h-4 shrink-0 ${data.ibanDeferred ? 'text-accent' : 'text-muted-foreground'}`} />
-        <div>
-          <p className="text-sm font-medium">Bankdaten werden nachgereicht</p>
-          <p className="text-xs text-muted-foreground">
-            Der {clientRole} reicht die Kontodaten zu einem späteren Zeitpunkt nach.
-          </p>
-        </div>
-      </button>
-
-      {data.ibanDeferred && (
-        <div className="rounded-xl p-3 text-xs leading-relaxed bg-accent/10 text-foreground/80">
-          <Info className="w-3.5 h-3.5 inline mr-1" />
-          Im Protokoll wird vermerkt: „Bankverbindung wird vom {clientRole} nachgereicht.
-          Die Auszahlung erfolgt nach Eingang der Kontodaten."
-        </div>
-      )}
-
       {!data.ibanDeferred && (
         <>
           <p className="text-xs text-muted-foreground">{label}</p>
@@ -196,6 +172,39 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
             </div>
           )}
         </>
+      )}
+
+      {/* Deferred checkbox – below bank inputs */}
+      <div className="flex items-start gap-3 bg-secondary/30 rounded-xl p-3 mt-1">
+        <Checkbox
+          id="iban-deferred"
+          checked={data.ibanDeferred || false}
+          onCheckedChange={(checked) => {
+            const val = checked === true;
+            updateData({ ibanDeferred: val });
+            if (val) {
+              updateData({ payeeIban: '', payeeBic: '', payeeBankName: '', payeeAccountHolder: '' });
+            }
+          }}
+          className="mt-0.5"
+        />
+        <label htmlFor="iban-deferred" className="cursor-pointer space-y-0.5">
+          <p className="text-xs font-medium flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+            Bankdaten werden nachgereicht
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            Der {clientRole} reicht die Kontodaten zu einem späteren Zeitpunkt nach. Dies wird im Protokoll vermerkt.
+          </p>
+        </label>
+      </div>
+
+      {data.ibanDeferred && (
+        <div className="rounded-xl p-3 text-xs leading-relaxed bg-accent/10 text-foreground/80">
+          <Info className="w-3.5 h-3.5 inline mr-1" />
+          Im Protokoll wird vermerkt: „Bankverbindung wird vom {clientRole} nachgereicht.
+          Die Auszahlung erfolgt nach Eingang der Kontodaten."
+        </div>
       )}
     </div>
   );
