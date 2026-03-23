@@ -333,6 +333,7 @@ const defaultData: HandoverData = {
   serviceCheckStatus: 'none',
   depositAgreementReached: false,
   depositAgreementTimestamp: '',
+  cancellationReminders: [],
   tenantRefusesNewAddress: false,
   cleaningBesenrein: false,
   cleaningBriefkasten: false,
