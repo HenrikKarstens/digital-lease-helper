@@ -1,3 +1,10 @@
+export type TechCheckStatus = 'ok' | 'nv' | 'ng' | null;
+
+export interface TechCheckValue {
+  status: TechCheckStatus;
+  comment?: string; // Required when status === 'ng'
+}
+
 export interface RoomConfig {
   id: string;
   name: string;
@@ -12,14 +19,24 @@ export interface RoomConfig {
   cleaningDone?: boolean;
   smokeDetectorOk?: boolean;
   wallsNeutral?: boolean | null;
-  // Technical function checks
+  // Technical function checks (3-status)
+  windowsDoors?: TechCheckValue;
+  sanitary?: TechCheckValue;
+  electrical?: TechCheckValue;
+  smokeDetector?: TechCheckValue;
+  // Kitchen-specific
+  oven?: TechCheckValue;
+  sinkDrain?: TechCheckValue;
+  // Bathroom-specific
+  tilesGrout?: TechCheckValue;
+  flushFittings?: TechCheckValue;
+
+  // Legacy boolean fields (deprecated, kept for migration)
   windowsDoorsFunctional?: boolean;
   sanitaryTight?: boolean;
   electricalOk?: boolean;
-  // Kitchen-specific
   ovenFunctional?: boolean;
   sinkDrainClear?: boolean;
-  // Bathroom-specific
   tilesGroutIntact?: boolean;
   flushFittingsOk?: boolean;
 }
