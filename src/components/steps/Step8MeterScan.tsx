@@ -43,6 +43,7 @@ interface ManualForm {
   medium: string;
   meterNumber: string;
   reading: string;
+  readingFeed: string; // For Zweirichtungszähler: Einspeisung (2.8.0)
   unit: string;
   maloId: string;
   date: string;
@@ -52,6 +53,7 @@ const emptyForm = (): ManualForm => ({
   medium: '',
   meterNumber: '',
   reading: '',
+  readingFeed: '',
   unit: '',
   maloId: '',
   date: TODAY,
