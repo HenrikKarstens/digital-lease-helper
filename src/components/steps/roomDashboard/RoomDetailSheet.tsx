@@ -72,15 +72,22 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
   const isKitchen = room.name.toLowerCase().includes('küche');
   const isBathroom = room.name.toLowerCase().includes('bad') || room.name.toLowerCase().includes('wc') || room.name.toLowerCase().includes('dusch');
 
-  // Validation: photos + all technical checks must be done (move-out only)
+  // Helper: check if a TechCheckValue is "decided" (not null) and valid (ng requires comment)
+  const isCheckComplete = (val?: TechCheckValue): boolean => {
+    if (!val || val.status === null) return false;
+    if (val.status === 'ng' && (!val.comment || !val.comment.trim())) return false;
+    return true;
+  };
+
+  // Validation: photos + all technical checks must be decided (move-out only)
   const hasPhotos = overviewPhotos.length > 0;
   const technicalChecksComplete = isMoveIn ? true : (
-    !!room.windowsDoorsFunctional &&
-    !!room.sanitaryTight &&
-    !!room.electricalOk &&
-    !!room.smokeDetectorOk &&
-    (!isKitchen || (!!room.ovenFunctional && !!room.sinkDrainClear)) &&
-    (!isBathroom || (!!room.tilesGroutIntact && !!room.flushFittingsOk))
+    isCheckComplete(room.windowsDoors) &&
+    isCheckComplete(room.sanitary) &&
+    isCheckComplete(room.electrical) &&
+    isCheckComplete(room.smokeDetector) &&
+    (!isKitchen || (isCheckComplete(room.oven) && isCheckComplete(room.sinkDrain))) &&
+    (!isBathroom || (isCheckComplete(room.tilesGrout) && isCheckComplete(room.flushFittings)))
   );
   const canComplete = hasPhotos && technicalChecksComplete;
 
