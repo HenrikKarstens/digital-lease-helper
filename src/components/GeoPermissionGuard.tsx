@@ -68,6 +68,9 @@ export const GeoPermissionGuard = ({ open, propertyAddress, onGranted, onDenied 
                 </div>
 
                 <div className="flex flex-col gap-2 pt-2">
+                  <p className="text-xs text-center text-muted-foreground italic">
+                    Einstellungen werden für alle weiteren Fotos übernommen.
+                  </p>
                   <Button onClick={onGranted} className="w-full h-12 rounded-2xl font-semibold gap-2 text-sm">
                     <MapPin className="w-4 h-4" />
                     Standort freigeben
