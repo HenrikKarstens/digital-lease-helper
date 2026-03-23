@@ -57,6 +57,7 @@ export interface MeterReading {
   maloId: string;
   photoUrl?: string;
   photoGeo?: PhotoGeoMeta;
+  sha256Hash?: string;
   source?: 'ai' | 'manual';
   aiConfidence?: 'high' | 'medium' | 'low';
   hkvRoomReadings?: HkvRoomReading[];
