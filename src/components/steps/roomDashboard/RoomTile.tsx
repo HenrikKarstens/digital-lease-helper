@@ -32,7 +32,7 @@ export const RoomTile = memo(({ room, findings, onClick, index }: RoomTileProps)
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
       onClick={onClick}
-      className={`relative glass-card rounded-2xl p-4 text-left transition-all hover:shadow-md active:scale-[0.98] min-h-[120px] ${
+      className={`relative glass-card rounded-2xl p-4 text-left transition-all hover:shadow-md active:scale-[0.98] h-[140px] flex flex-col ${
         room.completed
           ? 'border-success/40 bg-success/5'
           : 'border-border/50'
@@ -64,7 +64,7 @@ export const RoomTile = memo(({ room, findings, onClick, index }: RoomTileProps)
       <p className="text-sm font-semibold truncate">{room.name}</p>
 
       {/* Stats row */}
-      <div className="flex items-center gap-2 mt-1.5">
+      <div className="flex items-center gap-2 mt-auto pt-1.5">
         {defectCount > 0 && (
           <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
             <AlertTriangle className="w-2.5 h-2.5" /> {defectCount}

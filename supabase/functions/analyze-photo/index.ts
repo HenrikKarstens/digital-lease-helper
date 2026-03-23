@@ -59,14 +59,33 @@ Analysiere dieses Foto/Dokument und extrahiere folgende Informationen als JSON:
 WICHTIG: Antworte NUR mit validem JSON. Falls Werte nicht lesbar sind, verwende "".`;
     } else if (context === 'meter') {
       prompt = `Du bist ein Experte für Zählerablesung in deutschen Immobilien.
-Analysiere dieses Foto eines Zählers und extrahiere folgende Informationen als JSON:
+Analysiere dieses Foto eines oder mehrerer Zähler und extrahiere die Informationen als JSON.
 
-- "medium": Art des Zählers ("Strom", "Wasser", "Gas", "Wärmemengenzähler" oder "Sonstiges")
-- "meterNumber": Die Zählernummer (oft auf einem Typenschild)
-- "reading": Der aktuelle Zählerstand als String (mit Komma für Dezimalstellen, z.B. "14.502,4")
-- "unit": Die Einheit ("kWh", "m³" etc.)
-- "maloId": MaLo-ID falls sichtbar, sonst ""
-- "confidence": "high", "medium" oder "low"
+WICHTIG: Auf einem Foto können MEHRERE Zähler sichtbar sein (z.B. Warm- und Kaltwasserzähler nebeneinander, oder Zähler an verschiedenen Stellen). Prüfe das Bild sorgfältig.
+
+Falls NUR EIN Zähler erkennbar ist, antworte mit einem einzelnen JSON-Objekt:
+{
+  "medium": "Strom" | "Wasser" | "Gas" | "Wärmemengenzähler" | "Sonstiges",
+  "meterNumber": "Zählernummer",
+  "reading": "Zählerstand (z.B. 14.502,4)",
+  "unit": "kWh" | "m³" etc.,
+  "maloId": "MaLo-ID falls sichtbar, sonst leer",
+  "confidence": "high" | "medium" | "low"
+}
+
+Falls MEHRERE Zähler erkennbar sind (z.B. Warmwasser + Kaltwasser, oder zwei Stromzähler), antworte mit:
+{
+  "multiple": true,
+  "meters": [
+    { "medium": "Wasser (kalt)", "meterNumber": "...", "reading": "...", "unit": "m³", "maloId": "", "confidence": "high" },
+    { "medium": "Wasser (warm)", "meterNumber": "...", "reading": "...", "unit": "m³", "maloId": "", "confidence": "high" }
+  ]
+}
+
+Bei Wasserzählern unterscheide IMMER zwischen:
+- "Wasser (kalt)" – Kaltwasserzähler (oft blau markiert)
+- "Wasser (warm)" – Warmwasserzähler (oft rot markiert)
+Falls die Unterscheidung nicht möglich ist, verwende "Wasser".
 
 WICHTIG: Antworte NUR mit validem JSON. Falls Werte nicht lesbar sind, verwende "".`;
     } else {

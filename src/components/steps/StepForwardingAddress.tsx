@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Home, Info, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Home, Info, AlertTriangle, ArrowRight, CheckCircle2, Loader2, MapPin } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -8,7 +8,26 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+
+// German PLZ validation via openstreetmap Nominatim (free, no key needed)
+async function validateGermanAddress(street: string, plzCity: string): Promise<{ valid: boolean; suggestion?: string }> {
+  try {
+    const query = `${street}, ${plzCity}, Deutschland`;
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&countrycodes=de&limit=1&addressdetails=1`,
+      { headers: { 'Accept-Language': 'de' } }
+    );
+    if (!res.ok) return { valid: true }; // fail open
+    const results = await res.json();
+    if (results.length === 0) return { valid: false };
+    const addr = results[0].address;
+    const displayName = results[0].display_name;
+    return { valid: true, suggestion: displayName };
+  } catch {
+    return { valid: true }; // fail open on network error
+  }
+}
 
 export const StepForwardingAddress = () => {
   const { data, updateData, goToStepById } = useHandover();
@@ -18,6 +37,21 @@ export const StepForwardingAddress = () => {
   const [plzCityNew, setPlzCityNew] = useState(data.nextAddress?.split(',')[1]?.trim() || '');
   const [tenantRefusesAddress, setTenantRefusesAddress] = useState(data.tenantRefusesNewAddress ?? false);
   const [showAddressWarning, setShowAddressWarning] = useState(false);
+  const [addressValidation, setAddressValidation] = useState<{ status: 'idle' | 'checking' | 'valid' | 'invalid'; suggestion?: string }>({ status: 'idle' });
+
+  const checkAddress = useCallback(async () => {
+    if (!streetNew.trim() || !plzCityNew.trim()) {
+      setAddressValidation({ status: 'idle' });
+      return;
+    }
+    setAddressValidation({ status: 'checking' });
+    const result = await validateGermanAddress(streetNew, plzCityNew);
+    setAddressValidation(result.valid
+      ? { status: 'valid', suggestion: result.suggestion }
+      : { status: 'invalid' }
+    );
+  }, [streetNew, plzCityNew]);
+
 
   const nextAddress = [streetNew, plzCityNew].filter(Boolean).join(', ');
 
@@ -104,7 +138,8 @@ export const StepForwardingAddress = () => {
                 <label className="text-[11px] font-medium text-foreground mb-1 block">Neue Straße & Hausnummer</label>
                 <Input
                   value={streetNew}
-                  onChange={e => setStreetNew(e.target.value)}
+                  onChange={e => { setStreetNew(e.target.value); setAddressValidation({ status: 'idle' }); }}
+                  onBlur={checkAddress}
                   placeholder="z. B. Musterstraße 12"
                   className="rounded-xl h-9 text-xs"
                 />
@@ -113,11 +148,40 @@ export const StepForwardingAddress = () => {
                 <label className="text-[11px] font-medium text-foreground mb-1 block">PLZ & Ort</label>
                 <Input
                   value={plzCityNew}
-                  onChange={e => setPlzCityNew(e.target.value)}
+                  onChange={e => { setPlzCityNew(e.target.value); setAddressValidation({ status: 'idle' }); }}
+                  onBlur={checkAddress}
                   placeholder="z. B. 10115 Berlin"
                   className="rounded-xl h-9 text-xs"
                 />
               </div>
+
+              {/* Address validation feedback */}
+              {addressValidation.status === 'checking' && (
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-secondary/30 rounded-lg px-3 py-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Adresse wird geprüft…
+                </div>
+              )}
+              {addressValidation.status === 'valid' && (
+                <div className="flex items-start gap-2 text-[10px] text-success bg-success/10 rounded-lg px-3 py-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-medium">Adresse in Deutschland verifiziert</span>
+                    {addressValidation.suggestion && (
+                      <p className="text-muted-foreground mt-0.5 truncate">{addressValidation.suggestion}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {addressValidation.status === 'invalid' && (
+                <div className="flex items-start gap-2 text-[10px] text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-medium">Adresse nicht in Deutschland gefunden</span>
+                    <p className="text-muted-foreground mt-0.5">Bitte prüfen Sie PLZ, Ort und Straße auf Tippfehler.</p>
+                  </div>
+                </div>
+              )}
 
               {/* Refusal option */}
               <div className="flex items-start gap-3 bg-secondary/30 rounded-xl p-3 mt-2">
