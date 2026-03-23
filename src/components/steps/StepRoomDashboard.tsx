@@ -149,7 +149,7 @@ export const StepRoomDashboard = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: roomConfigs.length * 0.04 }}
           onClick={() => setShowAddMenu(true)}
-          className="glass-card rounded-2xl p-4 border-dashed border-2 border-border/60 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors h-[140px]"
+          className="glass-card rounded-2xl p-4 border-dashed border-2 border-border/60 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors aspect-square"
         >
           <Plus className="w-5 h-5" />
           <span className="text-xs font-medium">Raum hinzufügen</span>
