@@ -128,7 +128,7 @@ Sehr geehrte Damen und Herren,
 
 hiermit kündige ich meinen Stromvertrag zur Kundennummer ${custNo}${providerData.contractNumber ? ` (Vertragskonto ${providerData.contractNumber})` : ''} für das Objekt ${propertyAddress} zum ${moveOutDate}.
 
-Der Zählerstand zum Zeitpunkt der Übergabe beträgt ${meterReading}.${meter.meterNumber ? `\nZählernummer: ${meter.meterNumber}` : ''}${meter.maloId ? `\nMaLo-ID: ${meter.maloId}` : ''}
+Der Zählerstand zum Zeitpunkt der Übergabe beträgt ${meterReading}.${meter.meterNumber ? `\nZählernummer: ${meter.meterNumber}` : ''}${maloIdLocal ? `\nMaLo-ID: ${maloIdLocal}` : ''}
 
 Bitte bestätigen Sie mir den Erhalt dieser Kündigung.
 
