@@ -1819,7 +1819,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     // Embed defect photos (blob)
     const defectPhotos2 = defectFindings2
       .filter(f => f.photoUrl)
-      .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
+      .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo), sha256: f.sha256Hash }));
     y = embedPhotos(doc, defectPhotos2, y, pageW, pageH, col1);
   } else {
     doc.setTextColor(...SUCCESS_COLOR); doc.setFontSize(8);
