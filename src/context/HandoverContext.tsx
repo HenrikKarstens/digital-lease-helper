@@ -237,6 +237,7 @@ export interface HandoverData {
   smokeDetectorChecked: boolean;
   wallsNeutralColors: boolean | null;
   geoPermissionDenied: boolean;
+  geoPermissionGranted: boolean;
 }
 
 const STORAGE_KEY = 'estateturn_draft';
