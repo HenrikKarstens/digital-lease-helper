@@ -919,7 +919,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       // Embed defect photos (move-out)
       const defectPhotos = defectFindings
         .filter(f => f.photoUrl)
-        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
+        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo), sha256: f.sha256Hash }));
       y = embedPhotos(doc, defectPhotos, y, pageW, pageH, col1);
     } else {
       doc.setTextColor(...SUCCESS_COLOR);
