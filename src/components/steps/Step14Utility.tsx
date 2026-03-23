@@ -3,7 +3,7 @@ import {
   Zap, ArrowRight, FileText, CheckCircle2,
   Info, Building2, ShieldCheck,
   MapPin, Printer, X,
-  AlertTriangle, Flame, Droplets
+  AlertTriangle, Flame, Droplets, Bell, Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
