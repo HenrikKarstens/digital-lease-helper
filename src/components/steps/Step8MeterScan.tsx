@@ -278,6 +278,7 @@ export const Step8MeterScan = () => {
 
   const handleAddManual = () => {
     if (!manualForm.medium || !manualForm.reading) return;
+    if (manualForm.medium === 'Zweirichtungszähler' && !manualForm.readingFeed) return;
     
     if (manualForm.medium === 'Zweirichtungszähler') {
       // Create two separate meters for Bezug and Einspeisung
