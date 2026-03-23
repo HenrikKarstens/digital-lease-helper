@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, Euro, AlertTriangle, CheckCircle2, ArrowRight,
-  Info, CreditCard, Handshake, ChevronDown, ChevronUp,
+  Info, CreditCard, ChevronDown, ChevronUp, Clock, Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,9 +17,25 @@ interface Props {
   onFinish: () => void;
 }
 
+/* ── BIC-Lookup via openiban.com ── */
+async function lookupBic(iban: string): Promise<{ bic: string; bankName: string } | null> {
+  const clean = iban.replace(/\s/g, '');
+  if (clean.length < 15) return null;
+  try {
+    const res = await fetch(`https://openiban.com/validate/${clean}?getBIC=true&validateBankCode=true`);
+    const json = await res.json();
+    if (json.valid && json.bankData) {
+      return { bic: json.bankData.bic || '', bankName: json.bankData.name || '' };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
   const { data, updateData } = useHandover();
-  const { ownerRole, clientRole, isSale } = useTransactionLabels();
+  const { ownerRole, clientRole } = useTransactionLabels();
 
   const deposit = parseFloat(data.depositAmount) || 0;
   const tenantDefects = data.findings.filter(f => f.entryType !== 'note');
@@ -52,18 +68,35 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
   const tenantName = data.tenantName || clientRole;
   const landlordName = data.landlordName || ownerRole;
 
-  const [agreementReached, setAgreementReached] = useState(data.depositAgreementReached);
+  const [showLegalReasoning, setShowLegalReasoning] = useState(false);
   const [showLegalHint, setShowLegalHint] = useState(false);
+  const [bicLoading, setBicLoading] = useState(false);
+  const [bicError, setBicError] = useState('');
 
-  const handleAgreement = () => {
-    const now = new Date().toISOString();
-    setAgreementReached(true);
-    const updatedFindings = data.findings.map(f => {
-      if (costOverrides[f.id] !== undefined) return { ...f, recommendedWithholding: costOverrides[f.id] };
-      return f;
-    });
-    updateData({ findings: updatedFindings, depositAgreementReached: true, depositAgreementTimestamp: now });
-  };
+  // BIC auto-lookup when IBAN changes
+  useEffect(() => {
+    const clean = (data.payeeIban || '').replace(/\s/g, '');
+    if (clean.length >= 18 && clean.startsWith('DE')) {
+      setBicLoading(true);
+      setBicError('');
+      const timeout = setTimeout(() => {
+        lookupBic(clean).then(result => {
+          setBicLoading(false);
+          if (result) {
+            updateData({ payeeBic: result.bic, payeeBankName: result.bankName });
+            setBicError('');
+          } else {
+            updateData({ payeeBic: '', payeeBankName: '' });
+            setBicError('IBAN konnte nicht validiert werden');
+          }
+        });
+      }, 600);
+      return () => clearTimeout(timeout);
+    } else {
+      updateData({ payeeBic: '', payeeBankName: '' });
+      setBicError('');
+    }
+  }, [data.payeeIban]);
 
   const handleContinue = () => {
     const updatedFindings = data.findings.map(f => {
@@ -74,9 +107,97 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
     onFinish();
   };
 
-  // ── Determine scenario ──
   const scenarioType: 'payout' | 'guarantee-return' | 'demand' =
     isGuarantee ? 'guarantee-return' : restforderung > 0 ? 'demand' : 'payout';
+
+  const ibanSection = (
+    label: string, placeholder: string, legalRef: string, amountLabel: string, amount: number
+  ) => (
+    <div className="glass-card rounded-2xl p-5 space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <CreditCard className="w-4 h-4 text-primary" />
+        <h3 className="font-semibold text-sm">Zahlungsanweisung ({legalRef})</h3>
+      </div>
+
+      {/* Defer toggle */}
+      <button
+        onClick={() => updateData({ ibanDeferred: !data.ibanDeferred })}
+        className={`w-full flex items-center gap-3 rounded-xl p-3 text-left transition-colors ${
+          data.ibanDeferred ? 'bg-accent/10 border border-accent/30' : 'bg-secondary/30 border border-border/20'
+        }`}
+      >
+        <Clock className={`w-4 h-4 shrink-0 ${data.ibanDeferred ? 'text-accent' : 'text-muted-foreground'}`} />
+        <div>
+          <p className="text-sm font-medium">Bankdaten werden nachgereicht</p>
+          <p className="text-xs text-muted-foreground">
+            Der {clientRole} reicht die Kontodaten zu einem späteren Zeitpunkt nach.
+          </p>
+        </div>
+      </button>
+
+      {data.ibanDeferred && (
+        <div className="rounded-xl p-3 text-xs leading-relaxed bg-accent/10 text-foreground/80">
+          <Info className="w-3.5 h-3.5 inline mr-1" />
+          Im Protokoll wird vermerkt: „Bankverbindung wird vom {clientRole} nachgereicht.
+          Die Auszahlung erfolgt nach Eingang der Kontodaten."
+        </div>
+      )}
+
+      {!data.ibanDeferred && (
+        <>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <div className="space-y-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Kontoinhaber</label>
+              <Input
+                value={data.payeeAccountHolder}
+                onChange={e => updateData({ payeeAccountHolder: e.target.value })}
+                placeholder={placeholder}
+                className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">IBAN</label>
+              <Input
+                value={data.payeeIban}
+                onChange={e => updateData({ payeeIban: e.target.value.toUpperCase() })}
+                placeholder="DE00 0000 0000 0000 0000 00"
+                className="rounded-xl bg-secondary/50 border-0 h-9 text-sm font-mono"
+                maxLength={34}
+              />
+            </div>
+
+            {/* BIC auto-display */}
+            {bicLoading && (
+              <p className="text-xs text-muted-foreground animate-pulse">BIC wird ermittelt…</p>
+            )}
+            {bicError && !bicLoading && (
+              <p className="text-xs text-destructive">{bicError}</p>
+            )}
+            {data.payeeBic && !bicLoading && (
+              <div className="flex items-center gap-2 rounded-xl bg-accent/10 p-2.5">
+                <Building2 className="w-4 h-4 text-accent shrink-0" />
+                <div className="text-xs">
+                  <p className="font-medium text-accent">{data.payeeBankName || 'Kreditinstitut'}</p>
+                  <p className="text-muted-foreground font-mono">BIC: {data.payeeBic}</p>
+                </div>
+                <CheckCircle2 className="w-4 h-4 text-accent ml-auto shrink-0" />
+              </div>
+            )}
+          </div>
+
+          {data.payeeIban && data.payeeAccountHolder && (
+            <div className="rounded-xl p-3 text-xs leading-relaxed bg-secondary/40 text-foreground/80">
+              Der Betrag in Höhe von <strong>{amount.toFixed(2)} €</strong> ist bis zum{' '}
+              <strong>{paymentDeadline}</strong> auf das folgende Konto zu überweisen:{' '}
+              <strong>{data.payeeAccountHolder}</strong>, IBAN: <strong>{data.payeeIban}</strong>
+              {data.payeeBic && <>, BIC: <strong>{data.payeeBic}</strong></>}.
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 
   return (
     <motion.div
@@ -86,7 +207,7 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
       transition={{ duration: 0.25 }}
       className="space-y-4"
     >
-      {/* ── Scenario A: Auszahlung (Saldo positiv) ── */}
+      {/* ── Scenario A: Auszahlung ── */}
       {scenarioType === 'payout' && (
         <>
           <div className="glass-card rounded-2xl p-5 space-y-3">
@@ -94,7 +215,7 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
               <Euro className="w-5 h-5 text-accent" />
               <h3 className="font-semibold">Auszahlung an {tenantName}</h3>
             </div>
-            <div className={`flex justify-between items-center py-3 rounded-xl px-3 bg-accent/10`}>
+            <div className="flex justify-between items-center py-3 rounded-xl px-3 bg-accent/10">
               <span className="font-bold text-base">Endbetrag</span>
               <span className="font-bold text-xl text-accent">{payout.toFixed(2)} €</span>
             </div>
@@ -107,49 +228,17 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
               )}
             </p>
           </div>
-
-          {/* IBAN */}
-          <div className="glass-card rounded-2xl p-5 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <CreditCard className="w-4 h-4 text-primary" />
-              <h3 className="font-semibold text-sm">Zahlungsanweisung (§ 7c)</h3>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Bankdaten des Empfängers für das Protokoll erfassen.
-            </p>
-            <div className="space-y-2">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Kontoinhaber</label>
-                <Input
-                  value={data.payeeAccountHolder}
-                  onChange={e => updateData({ payeeAccountHolder: e.target.value })}
-                  placeholder={data.tenantName || 'Vor- und Nachname'}
-                  className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">IBAN</label>
-                <Input
-                  value={data.payeeIban}
-                  onChange={e => updateData({ payeeIban: e.target.value.toUpperCase() })}
-                  placeholder="DE00 0000 0000 0000 0000 00"
-                  className="rounded-xl bg-secondary/50 border-0 h-9 text-sm font-mono"
-                  maxLength={34}
-                />
-              </div>
-            </div>
-            {data.payeeIban && data.payeeAccountHolder && (
-              <div className="rounded-xl p-3 text-xs leading-relaxed bg-secondary/40 text-foreground/80">
-                Der Betrag in Höhe von <strong>{payout.toFixed(2)} €</strong> ist bis zum{' '}
-                <strong>{paymentDeadline}</strong> auf das folgende Konto zu überweisen:{' '}
-                <strong>{data.payeeAccountHolder}</strong>, IBAN: <strong>{data.payeeIban}</strong>.
-              </div>
-            )}
-          </div>
+          {ibanSection(
+            'Bankdaten des Empfängers für das Protokoll erfassen.',
+            data.tenantName || 'Vor- und Nachname',
+            '§ 7c',
+            'Auszahlung',
+            payout
+          )}
         </>
       )}
 
-      {/* ── Scenario B: Urkunden-Rückgabe ── */}
+      {/* ── Scenario B: Bürgschafts-Rückgabe ── */}
       {scenarioType === 'guarantee-return' && (
         <div className="glass-card rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-3">
@@ -171,7 +260,7 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
         </div>
       )}
 
-      {/* ── Scenario C: Nachforderung (Saldo negativ) ── */}
+      {/* ── Scenario C: Nachforderung ── */}
       {scenarioType === 'demand' && (
         <>
           <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-5 flex items-start gap-3">
@@ -184,134 +273,93 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
               </p>
             </div>
           </div>
-
-          <div className="glass-card rounded-2xl p-5 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <CreditCard className="w-4 h-4 text-primary" />
-              <h3 className="font-semibold text-sm">Zahlungsaufforderung (§ 7d)</h3>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Bankdaten des {ownerRole}s für die Zahlungsaufforderung an den Mieter.
-            </p>
-            <div className="space-y-2">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Kontoinhaber</label>
-                <Input
-                  value={data.payeeAccountHolder}
-                  onChange={e => updateData({ payeeAccountHolder: e.target.value })}
-                  placeholder={data.landlordName || ownerRole}
-                  className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">IBAN</label>
-                <Input
-                  value={data.payeeIban}
-                  onChange={e => updateData({ payeeIban: e.target.value.toUpperCase() })}
-                  placeholder="DE00 0000 0000 0000 0000 00"
-                  className="rounded-xl bg-secondary/50 border-0 h-9 text-sm font-mono"
-                  maxLength={34}
-                />
-              </div>
-            </div>
-            {data.payeeIban && data.payeeAccountHolder && (
-              <div className="rounded-xl p-3 text-xs leading-relaxed bg-destructive/10 text-foreground/80">
-                Der Differenzbetrag von <strong>{restforderung.toFixed(2)} €</strong> ist bis zum{' '}
-                <strong>{paymentDeadline}</strong> auf das Konto des {ownerRole}s zu überweisen:{' '}
-                <strong>{data.payeeAccountHolder}</strong>, IBAN: <strong>{data.payeeIban}</strong>.
-                <span className="block mt-1 text-muted-foreground">Rechtsgrundlage: § 280 Abs. 1 BGB</span>
-              </div>
-            )}
-          </div>
+          {ibanSection(
+            `Bankdaten des ${ownerRole}s für die Zahlungsaufforderung an den Mieter.`,
+            data.landlordName || ownerRole,
+            '§ 7d',
+            'Nachforderung',
+            restforderung
+          )}
         </>
       )}
 
-      {/* ── Einigung (§ 781 BGB) ── */}
-      <div className={`glass-card rounded-2xl p-5 border-2 ${agreementReached ? 'border-accent/50 bg-accent/5' : 'border-border/30'}`}>
-        {agreementReached ? (
-          <div className="text-center space-y-2">
-            <Handshake className="w-8 h-8 text-accent mx-auto" />
-            <p className="font-semibold text-accent">Beiderseitiges Anerkenntnis</p>
-            <p className="text-xs text-muted-foreground">
-              {landlordName} und {tenantName} haben die Kautionsabrechnung als verbindlich anerkannt (§ 781 BGB).
-            </p>
-            {data.depositAgreementTimestamp && (
-              <p className="text-xs text-muted-foreground/60 mt-1">
-                {new Date(data.depositAgreementTimestamp).toLocaleString('de-DE')}
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Handshake className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold text-sm">Einigung erzielen</h3>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Wenn beide Parteien den Schiedsrichter-Spruch akzeptieren, wird dies als
-              beiderseitiges Anerkenntnis im Protokoll vermerkt (§ 781 BGB).
-            </p>
-            <Button
-              onClick={handleAgreement}
-              variant="outline"
-              className="w-full rounded-xl gap-2 border-accent text-accent hover:bg-accent/10"
-            >
-              <Handshake className="w-4 h-4" />
-              Einigung bestätigen
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* ── Rechtssichere Begründung ── */}
+      {/* ── Rechtssichere Begründung (collapsible) ── */}
       {!isGuarantee && (
-        <div className="glass-card rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Shield className="w-5 h-5 text-accent" />
-            <h3 className="font-semibold text-sm">Rechtssichere Begründung</h3>
-          </div>
-          <div className="bg-secondary/30 rounded-xl p-4 text-sm leading-relaxed">
-            <p>
-              Einbehalt von <strong>{withheld.toFixed(2)} €</strong> empfohlen gemäß BGH-Rechtsprechung
-              zur Absicherung künftiger Betriebskostennachzahlungen (BGH VIII ZR 71/05) sowie
-              zur Deckung dokumentierter Mängel nach dem Grundsatz „Neu für Alt"
-              (§ 538 BGB, BGH VIII ZR 222/15).
-            </p>
-            {isCash && interest > 0 && (
-              <p className="mt-2">
-                Zinsgutschrift von <strong>{interest.toFixed(2)} €</strong> für {days} Tage
-                steht dem Mieter gemäß § 551 Abs. 3 BGB zu.
-              </p>
+        <div>
+          <button
+            onClick={() => setShowLegalReasoning(!showLegalReasoning)}
+            className="w-full flex items-center justify-between glass-card rounded-2xl p-4 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-accent" />
+              <span className="text-sm font-medium">Rechtssichere Begründung</span>
+            </div>
+            {showLegalReasoning
+              ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+              : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </button>
+          <AnimatePresence>
+            {showLegalReasoning && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="bg-secondary/30 rounded-b-2xl p-4 -mt-2 pt-5 text-sm leading-relaxed">
+                  <p>
+                    Einbehalt von <strong>{withheld.toFixed(2)} €</strong> empfohlen gemäß BGH-Rechtsprechung
+                    zur Absicherung künftiger Betriebskostennachzahlungen (BGH VIII ZR 71/05) sowie
+                    zur Deckung dokumentierter Mängel nach dem Grundsatz „Neu für Alt"
+                    (§ 538 BGB, BGH VIII ZR 222/15).
+                  </p>
+                  {isCash && interest > 0 && (
+                    <p className="mt-2">
+                      Zinsgutschrift von <strong>{interest.toFixed(2)} €</strong> für {days} Tage
+                      steht dem Mieter gemäß § 551 Abs. 3 BGB zu.
+                    </p>
+                  )}
+                  {isPledged && (
+                    <p className="mt-2">
+                      Kontostand inkl. bankseitiger Zinsen: <strong>{pledgedBalance.toFixed(2)} €</strong> (laut Sparbuch).
+                    </p>
+                  )}
+                  <p className="mt-2 text-muted-foreground text-xs">
+                    Berücksichtigt: {tenantDefects.length} Mängel, NK-Risikostufe „{data.nkRisiko}".
+                  </p>
+                </div>
+              </motion.div>
             )}
-            {isPledged && (
-              <p className="mt-2">
-                Kontostand inkl. bankseitiger Zinsen: <strong>{pledgedBalance.toFixed(2)} €</strong> (laut Sparbuch).
-              </p>
-            )}
-            <p className="mt-2 text-muted-foreground text-xs">
-              Berücksichtigt: {tenantDefects.length} Mängel, NK-Risikostufe „{data.nkRisiko}".
-            </p>
-          </div>
+          </AnimatePresence>
         </div>
       )}
 
-      {/* ── Rechtliche Hinweise (BGH) ── */}
+      {/* ── Rechtliche Hinweise (BGH) (collapsible) ── */}
       <div>
-        <button onClick={() => setShowLegalHint(!showLegalHint)} className="w-full flex items-center justify-between glass-card rounded-2xl p-4 text-left">
+        <button
+          onClick={() => setShowLegalHint(!showLegalHint)}
+          className="w-full flex items-center justify-between glass-card rounded-2xl p-4 text-left"
+        >
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium">Rechtliche Hinweise (BGH)</span>
           </div>
-          {showLegalHint ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          {showLegalHint
+            ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+            : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </button>
         <AnimatePresence>
           {showLegalHint && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
               <div className="bg-secondary/30 rounded-b-2xl p-4 -mt-2 pt-5 text-xs leading-relaxed text-foreground/80 space-y-2">
                 <p><strong>§ 551 Abs. 4 BGB:</strong> Die Kaution ist nach Beendigung des Mietverhältnisses zurückzugeben, sobald keine Ansprüche mehr geltend gemacht werden.</p>
                 <p><strong>BGH VIII ZR 71/05:</strong> Der {ownerRole} darf einen angemessenen Teilbetrag für noch ausstehende Betriebskostenabrechnungen einbehalten.</p>
                 <p><strong>§ 538 BGB:</strong> Normale Abnutzung ist vom Mieter nicht zu ersetzen.</p>
-                <p><strong>§ 781 BGB:</strong> Ein beiderseitiges Anerkenntnis hat Wirkung eines abstrakten Schuldanerkenntnisses.</p>
               </div>
             </motion.div>
           )}
