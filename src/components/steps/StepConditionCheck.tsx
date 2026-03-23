@@ -21,10 +21,27 @@ export const StepConditionCheck = () => {
             <Trash className="w-3.5 h-3.5" />
             Reinigungszustand
           </p>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <Checkbox checked={data.cleaningBesenrein} onCheckedChange={(v) => updateData({ cleaningBesenrein: !!v })} />
-            <span className="text-sm">Wohnung besenrein übergeben?</span>
-          </label>
+          <div className="flex gap-2">
+            <Button
+              variant={data.cleaningBesenrein === true ? 'default' : 'outline'}
+              size="sm"
+              className="rounded-xl text-xs h-9 flex-1"
+              onClick={() => updateData({ cleaningBesenrein: true })}
+            >
+              ✓ Besenrein
+            </Button>
+            <Button
+              variant={data.cleaningBesenrein === false ? 'destructive' : 'outline'}
+              size="sm"
+              className="rounded-xl text-xs h-9 flex-1"
+              onClick={() => updateData({ cleaningBesenrein: false })}
+            >
+              ✗ Nicht besenrein
+            </Button>
+          </div>
+          {data.cleaningBesenrein === false && (
+            <p className="text-xs text-destructive">Hinweis: Fehlende besenreine Übergabe kann zu Nachbesserungsansprüchen führen.</p>
+          )}
           <label className="flex items-center gap-3 cursor-pointer">
             <Checkbox checked={data.cleaningBriefkasten} onCheckedChange={(v) => updateData({ cleaningBriefkasten: !!v })} />
             <span className="text-sm">Briefkasten geleert?</span>
@@ -60,18 +77,18 @@ export const StepConditionCheck = () => {
             <Button
               variant={data.wallsNeutralColors === true ? 'default' : 'outline'}
               size="sm"
-              className="rounded-xl text-xs h-9"
+              className="rounded-xl text-xs h-9 flex-1"
               onClick={() => updateData({ wallsNeutralColors: true })}
             >
-              ✓ Wände in neutralen Farben
+              ✓ Neutrale Farben
             </Button>
             <Button
               variant={data.wallsNeutralColors === false ? 'destructive' : 'outline'}
               size="sm"
-              className="rounded-xl text-xs h-9"
+              className="rounded-xl text-xs h-9 flex-1"
               onClick={() => updateData({ wallsNeutralColors: false })}
             >
-              ✗ Auffällige Farben / Mängel
+              ✗ Auffällige Farben
             </Button>
           </div>
           {data.wallsNeutralColors === false && (
