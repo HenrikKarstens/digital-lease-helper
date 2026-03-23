@@ -12,6 +12,16 @@ export interface RoomConfig {
   cleaningDone?: boolean;
   smokeDetectorOk?: boolean;
   wallsNeutral?: boolean | null;
+  // Technical function checks
+  windowsDoorsFunctional?: boolean;
+  sanitaryTight?: boolean;
+  electricalOk?: boolean;
+  // Kitchen-specific
+  ovenFunctional?: boolean;
+  sinkDrainClear?: boolean;
+  // Bathroom-specific
+  tilesGroutIntact?: boolean;
+  flushFittingsOk?: boolean;
 }
 
 export const DEFAULT_INDOOR_ROOMS = [

@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera, CheckCircle2, X, AlertTriangle, StickyNote,
   ShieldCheck, Trash, Paintbrush, MapPin, Pencil, Trash2,
-  Euro, ArrowLeft, Loader2, Plus, FileText, ImagePlus
+  Euro, ArrowLeft, Loader2, Plus, FileText, ImagePlus,
+  Wrench, Droplets, Plug, CookingPot, Bath
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -64,8 +65,23 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
 
   // Multi-photo support
   const overviewPhotos = room.overviewPhotos || (room.overviewPhotoUrl ? [{ url: room.overviewPhotoUrl, timestamp: room.overviewPhotoTimestamp || '' }] : []);
-  const canComplete = overviewPhotos.length > 0;
   const canAddMorePhotos = overviewPhotos.length < MAX_OVERVIEW_PHOTOS;
+
+  // Room-type detection
+  const isKitchen = room.name.toLowerCase().includes('küche');
+  const isBathroom = room.name.toLowerCase().includes('bad') || room.name.toLowerCase().includes('wc') || room.name.toLowerCase().includes('dusch');
+
+  // Validation: photos + all technical checks must be done (move-out only)
+  const hasPhotos = overviewPhotos.length > 0;
+  const technicalChecksComplete = isMoveIn ? true : (
+    !!room.windowsDoorsFunctional &&
+    !!room.sanitaryTight &&
+    !!room.electricalOk &&
+    !!room.smokeDetectorOk &&
+    (!isKitchen || (!!room.ovenFunctional && !!room.sinkDrainClear)) &&
+    (!isBathroom || (!!room.tilesGroutIntact && !!room.flushFittingsOk))
+  );
+  const canComplete = hasPhotos && technicalChecksComplete;
 
   // ─── Camera handlers ───
   const openCameraWithGeo = useCallback((mode: 'overview' | 'defect') => {
@@ -499,18 +515,24 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
 
         {/* Condition checks (move-out only) */}
         {!isMoveIn && (
-          <div className="glass-card rounded-2xl p-4 space-y-3">
+          <div className="glass-card rounded-2xl p-4 space-y-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5" /> Zustandsprüfung
             </p>
+
+            {/* Reinigung */}
             <label className="flex items-center gap-3 cursor-pointer">
               <Checkbox checked={room.cleaningDone || false} onCheckedChange={v => onUpdate({ cleaningDone: !!v })} />
               <span className="text-sm">Besenrein</span>
             </label>
+
+            {/* Rauchwarnmelder */}
             <label className="flex items-center gap-3 cursor-pointer">
               <Checkbox checked={room.smokeDetectorOk || false} onCheckedChange={v => onUpdate({ smokeDetectorOk: !!v })} />
-              <span className="text-sm">Rauchwarnmelder geprüft</span>
+              <span className="text-sm">Rauchwarnmelder geprüft – Testknopf-Aktivierung erfolgreich (LBO SH §49)</span>
             </label>
+
+            {/* Wandfarben */}
             <div className="flex gap-2">
               <Button size="sm" variant={room.wallsNeutral === true ? 'default' : 'outline'} className="rounded-xl text-xs h-8 flex-1"
                 onClick={() => onUpdate({ wallsNeutral: true })}>
@@ -523,6 +545,59 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
             </div>
             {room.wallsNeutral === false && (
               <p className="text-xs text-destructive">BGH VIII ZR 224/07 – Schadensersatzanspruch möglich.</p>
+            )}
+
+            {/* ── Technische Funktionen ── */}
+            <div className="border-t border-border/40 pt-3 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <Wrench className="w-3.5 h-3.5" /> Technische Funktionen
+              </p>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox checked={room.windowsDoorsFunctional || false} onCheckedChange={v => onUpdate({ windowsDoorsFunctional: !!v })} />
+                <span className="text-sm">Fenster & Türen gängig <span className="text-muted-foreground text-xs">(§ 538 BGB)</span></span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox checked={room.sanitaryTight || false} onCheckedChange={v => onUpdate({ sanitaryTight: !!v })} />
+                <span className="text-sm flex items-center gap-1"><Droplets className="w-3 h-3 text-muted-foreground" /> Sanitär-/Wasseranschlüsse dicht</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox checked={room.electricalOk || false} onCheckedChange={v => onUpdate({ electricalOk: !!v })} />
+                <span className="text-sm flex items-center gap-1"><Plug className="w-3 h-3 text-muted-foreground" /> Steckdosen/Lichtschalter unbeschädigt</span>
+              </label>
+            </div>
+
+            {/* ── Küche-spezifisch ── */}
+            {isKitchen && (
+              <div className="border-t border-border/40 pt-3 space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <CookingPot className="w-3.5 h-3.5" /> Küchen-Check
+                </p>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <Checkbox checked={room.ovenFunctional || false} onCheckedChange={v => onUpdate({ ovenFunctional: !!v })} />
+                  <span className="text-sm">Herd/Backofen funktionsfähig & sauber</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <Checkbox checked={room.sinkDrainClear || false} onCheckedChange={v => onUpdate({ sinkDrainClear: !!v })} />
+                  <span className="text-sm">Spüle/Abfluss frei</span>
+                </label>
+              </div>
+            )}
+
+            {/* ── Bad-spezifisch ── */}
+            {isBathroom && (
+              <div className="border-t border-border/40 pt-3 space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <Bath className="w-3.5 h-3.5" /> Bad-Check
+                </p>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <Checkbox checked={room.tilesGroutIntact || false} onCheckedChange={v => onUpdate({ tilesGroutIntact: !!v })} />
+                  <span className="text-sm">Fliesen/Fugen intakt</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <Checkbox checked={room.flushFittingsOk || false} onCheckedChange={v => onUpdate({ flushFittingsOk: !!v })} />
+                  <span className="text-sm">Spülung/Armaturen funktionsfähig</span>
+                </label>
+              </div>
             )}
           </div>
         )}
@@ -601,7 +676,9 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
           {room.completed ? 'Raum aktualisiert' : 'Raum abschließen'}
         </Button>
         {!canComplete && (
-          <p className="text-xs text-center text-muted-foreground">Mindestens ein Übersichtsfoto erforderlich.</p>
+          <p className="text-xs text-center text-muted-foreground">
+            {!hasPhotos ? 'Mindestens ein Übersichtsfoto erforderlich.' : 'Alle technischen Prüfungen müssen abgehakt werden.'}
+          </p>
         )}
       </motion.div>
     </div>
