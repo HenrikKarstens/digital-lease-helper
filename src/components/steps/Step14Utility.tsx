@@ -185,13 +185,13 @@ export const Step14Utility = () => {
   }, [deduplicatedMeters, heatingViaLandlord, waterViaLandlord]);
 
   const landlordManagedMeters = useMemo(() => {
-    return data.meterReadings.filter(m => {
+    return deduplicatedMeters.filter(m => {
       const medium = m.medium.toLowerCase();
       if ((medium.includes('heiz') || medium.includes('gas') || medium.includes('fernwärme') || medium.includes('wärme')) && heatingViaLandlord) return true;
       if (medium.includes('wasser') && waterViaLandlord) return true;
       return false;
     });
-  }, [data.meterReadings, heatingViaLandlord, waterViaLandlord]);
+  }, [deduplicatedMeters, heatingViaLandlord, waterViaLandlord]);
 
   const recipientList = useMemo(() => {
     const list: { name: string; email: string }[] = [];
