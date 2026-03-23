@@ -25,8 +25,8 @@ type WallDamageClass = 'verschmutzung' | 'abnutzung';
 // ─── 3-Status Selector (OK / N.V. / N.G.) ───
 const STATUS_OPTIONS: { value: TechCheckStatus; label: string; color: string; activeColor: string }[] = [
   { value: 'ok', label: 'OK', color: 'border-border text-muted-foreground', activeColor: 'border-accent bg-accent/15 text-accent font-bold' },
-  { value: 'nv', label: 'N.V.', color: 'border-border text-muted-foreground', activeColor: 'border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold' },
-  { value: 'ng', label: 'N.G.', color: 'border-border text-muted-foreground', activeColor: 'border-destructive bg-destructive/15 text-destructive font-bold' },
+  { value: 'nv', label: 'Nicht vorhanden', color: 'border-border text-muted-foreground', activeColor: 'border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold' },
+  { value: 'ng', label: 'Nicht geprüft', color: 'border-border text-muted-foreground', activeColor: 'border-destructive bg-destructive/15 text-destructive font-bold' },
 ];
 
 interface TechCheckRowProps {
