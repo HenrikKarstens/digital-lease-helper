@@ -551,7 +551,14 @@ export const Step8MeterScan = () => {
                       <Input value={editForm.reading} onChange={e => setEditForm(p => p ? { ...p, reading: e.target.value } : p)} placeholder="Zählerstand" inputMode="decimal" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
                       <Input value={editForm.unit} onChange={e => setEditForm(p => p ? { ...p, unit: e.target.value } : p)} placeholder="Einheit" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
                     </div>
-                    <Input value={editForm.maloId} onChange={e => setEditForm(p => p ? { ...p, maloId: e.target.value } : p)} placeholder="MaLo-ID" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
+                    <div className="space-y-1">
+                      <Input value={editForm.maloId} onChange={e => setEditForm(p => p ? { ...p, maloId: e.target.value } : p)} placeholder="Wird aus Stromrechnung (Phase 10) übernommen" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
+                      {!editForm.maloId && (
+                        <p className="text-[10px] text-muted-foreground/70 italic">
+                          Die MaLo-ID wird automatisch aus der Stromrechnung in Phase 10 extrahiert.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 text-sm">
