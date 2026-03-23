@@ -32,7 +32,7 @@ export const RoomTile = memo(({ room, findings, onClick, index }: RoomTileProps)
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
       onClick={onClick}
-      className={`relative glass-card rounded-2xl p-4 text-left transition-all hover:shadow-md active:scale-[0.98] aspect-square flex flex-col ${
+      className={`relative w-full glass-card rounded-2xl p-4 text-left transition-all hover:shadow-md active:scale-[0.98] aspect-square flex flex-col ${
         room.completed
           ? 'border-success/40 bg-success/5'
           : 'border-border/50'
