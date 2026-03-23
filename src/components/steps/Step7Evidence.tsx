@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useGeoPhoto } from '@/hooks/useGeoPhoto';
 import { GeoPermissionGuard } from '@/components/GeoPermissionGuard';
+import { processForensicPhoto } from '@/lib/photoForensics';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -280,13 +281,31 @@ export const Step7Evidence = () => {
   const saveFinding = async () => {
     if (!selectedRoom) return;
     const geo = await captureGeo();
+
+    // Forensic watermark + SHA-256 hash
+    let finalPhotoUrl = capturedPreview || undefined;
+    let sha256Hash: string | undefined;
+    if (capturedPreview) {
+      try {
+        const protocolId = Date.now().toString(36).toUpperCase();
+        const { processedUrl, forensic } = await processForensicPhoto(
+          capturedPreview, protocolId, geo.latitude, geo.longitude,
+        );
+        finalPhotoUrl = processedUrl;
+        sha256Hash = forensic.sha256;
+      } catch (err) {
+        console.warn('Forensic processing failed, using original:', err);
+      }
+    }
+
     const finding: Finding = {
       id: Date.now().toString(),
       room: selectedRoom,
       pinX: 50,
       pinY: 50,
-      photoUrl: capturedPreview || undefined,
+      photoUrl: finalPhotoUrl,
       photoGeo: geo,
+      sha256Hash,
       material: editMaterial,
       damageType: editDamageType,
       bghReference: currentResult?.bghReference || '',

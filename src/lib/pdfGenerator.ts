@@ -14,10 +14,10 @@ const MUTED_COLOR: [number, number, number] = [100, 116, 139];   // Slate-500
 const GOLD_COLOR: [number, number, number] = [197, 160, 89];     // Muted Gold #C5A059
 const GOLD_LIGHT: [number, number, number] = [254, 249, 235];    // Gold background
 
-// Helper: embed photos with timestamp/GPS metadata below a section
+// Helper: embed photos with timestamp/GPS metadata + SHA-256 hash below a section
 function embedPhotos(
   doc: jsPDF,
-  photos: { url: string; label: string; timestamp?: string; gps?: string }[],
+  photos: { url: string; label: string; timestamp?: string; gps?: string; sha256?: string }[],
   y: number,
   pageW: number,
   pageH: number,
@@ -34,8 +34,8 @@ function embedPhotos(
   for (let i = 0; i < validPhotos.length; i++) {
     const colIdx = i % cols;
     const x = col1 + colIdx * (imgW + gap);
-    if (colIdx === 0 && i > 0) y += imgH + 14;
-    if (y + imgH + 14 > pageH - 20) { doc.addPage(); y = 36; }
+    if (colIdx === 0 && i > 0) y += imgH + 18;
+    if (y + imgH + 18 > pageH - 20) { doc.addPage(); y = 36; }
     
     try {
       doc.addImage(validPhotos[i].url, 'JPEG', x, y, imgW, imgH);
@@ -61,17 +61,25 @@ function embedPhotos(
       doc.text(meta.join(' · '), x, y + imgH + 6.5, { maxWidth: imgW });
       doc.setFont('helvetica', 'normal');
     }
+    // SHA-256 Hash
+    if (validPhotos[i].sha256) {
+      doc.setFontSize(4);
+      doc.setTextColor(100, 100, 120);
+      doc.setFont('helvetica', 'normal');
+      const shortHash = validPhotos[i].sha256!.substring(0, 16) + '…';
+      doc.text(`SHA-256: ${shortHash}`, x, y + imgH + 9.5, { maxWidth: imgW });
+    }
     // Forensic certification line
     if (validPhotos[i].gps || validPhotos[i].timestamp) {
       doc.setFontSize(4.5);
       doc.setTextColor(...GOLD_COLOR);
       doc.setFont('helvetica', 'bold');
-      doc.text('Forensisch gesichert durch EstateTurn Live-GPS-Validierung', x, y + imgH + 9.5, { maxWidth: imgW });
+      doc.text('Forensisch gesichert durch EstateTurn Live-GPS-Validierung', x, y + imgH + 12, { maxWidth: imgW });
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...MUTED_COLOR);
     }
   }
-  y += imgH + 14;
+  y += imgH + 18;
   return y;
 }
 
@@ -643,6 +651,7 @@ export function generateMasterProtocol(data: HandoverData): void {
         label: `${m.medium} – Zähler ${m.meterNumber || '–'}`,
         timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date,
         gps: formatGeoForPdf(m.photoGeo),
+        sha256: m.sha256Hash,
       }));
     y = embedPhotos(doc, meterPhotos, y, pageW, pageH, col1);
   } else {
@@ -858,7 +867,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       // Embed finding photos (move-in)
       const findingPhotos = data.findings
         .filter(f => f.photoUrl)
-        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
+        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo), sha256: f.sha256Hash }));
       y = embedPhotos(doc, findingPhotos, y, pageW, pageH, col1);
     } else {
       doc.setTextColor(...SUCCESS_COLOR);
@@ -910,7 +919,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       // Embed defect photos (move-out)
       const defectPhotos = defectFindings
         .filter(f => f.photoUrl)
-        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
+        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo), sha256: f.sha256Hash }));
       y = embedPhotos(doc, defectPhotos, y, pageW, pageH, col1);
     } else {
       doc.setTextColor(...SUCCESS_COLOR);
@@ -1352,6 +1361,7 @@ export function generateMasterProtocol(data: HandoverData): void {
         label: `${m.medium} – Zähler ${m.meterNumber || '–'}`,
         timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date,
         gps: formatGeoForPdf(m.photoGeo),
+        sha256: m.sha256Hash,
       }));
     y = embedPhotos(doc, meterPhotosAppendix, y, pageW, pageH, col1);
 
@@ -1437,7 +1447,7 @@ export function generateMasterProtocol(data: HandoverData): void {
   // ── Foto-Anhang (alle Mängelfotos) ─────────────────────────────────────────
   const allPhotos = data.findings
     .filter(f => f.photoUrl && f.photoUrl.startsWith('data:'))
-    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
+    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo), sha256: f.sha256Hash }));
   if (allPhotos.length > 0) {
     doc.addPage();
     y = 36;
@@ -1680,7 +1690,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     // Embed meter photos (blob)
     const meterPhotos2 = data.meterReadings
       .filter(m => m.photoUrl)
-      .map(m => ({ url: m.photoUrl!, label: `${m.medium} – Zähler ${m.meterNumber || '–'}`, timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date, gps: formatGeoForPdf(m.photoGeo) }));
+      .map(m => ({ url: m.photoUrl!, label: `${m.medium} – Zähler ${m.meterNumber || '–'}`, timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date, gps: formatGeoForPdf(m.photoGeo), sha256: m.sha256Hash }));
     y = embedPhotos(doc, meterPhotos2, y, pageW, pageH, col1);
   } else {
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(8);
@@ -1809,7 +1819,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     // Embed defect photos (blob)
     const defectPhotos2 = defectFindings2
       .filter(f => f.photoUrl)
-      .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
+      .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo), sha256: f.sha256Hash }));
     y = embedPhotos(doc, defectPhotos2, y, pageW, pageH, col1);
   } else {
     doc.setTextColor(...SUCCESS_COLOR); doc.setFontSize(8);
@@ -2095,7 +2105,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   // ── Foto-Anhang (blob) ─────────────────────────────────────────────────────
   const allPhotos2 = data.findings
     .filter(f => f.photoUrl && f.photoUrl.startsWith('data:'))
-    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
+    .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo), sha256: f.sha256Hash }));
   if (allPhotos2.length > 0) {
     doc.addPage();
     let yAppendix = 36;

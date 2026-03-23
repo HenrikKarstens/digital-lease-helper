@@ -31,6 +31,7 @@ export interface Finding {
   pinY: number;
   photoUrl?: string;
   photoGeo?: PhotoGeoMeta;
+  sha256Hash?: string;
   material: string;
   damageType: string;
   bghReference: string;
@@ -56,6 +57,7 @@ export interface MeterReading {
   maloId: string;
   photoUrl?: string;
   photoGeo?: PhotoGeoMeta;
+  sha256Hash?: string;
   source?: 'ai' | 'manual';
   aiConfidence?: 'high' | 'medium' | 'low';
   hkvRoomReadings?: HkvRoomReading[];
@@ -200,6 +202,7 @@ export interface HandoverData {
   participants: Participant[];
   attendancePhotoUrl: string | null;
   attendancePhotoGeo: PhotoGeoMeta | null;
+  attendancePhotoHash: string | null;
   // Step 7
   findings: Finding[];
   // Step 8
@@ -208,6 +211,7 @@ export interface HandoverData {
   keyEntries: KeyEntry[];
   keyBundlePhotoUrl: string | null;
   keyBundlePhotoGeo: PhotoGeoMeta | null;
+  keyBundlePhotoHash: string | null;
   // Step 9
   signatureLandlord: string | null;
   signatureTenant: string | null;
@@ -303,11 +307,13 @@ const defaultData: HandoverData = {
   participants: [],
   attendancePhotoUrl: null,
   attendancePhotoGeo: null,
+  attendancePhotoHash: null,
   findings: [],
   meterReadings: [],
   keyEntries: [],
   keyBundlePhotoUrl: null,
   keyBundlePhotoGeo: null,
+  keyBundlePhotoHash: null,
   signatureLandlord: null,
   signatureTenant: null,
   nkVorauszahlung: 150,

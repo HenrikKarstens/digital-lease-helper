@@ -80,6 +80,65 @@ export type Database = {
         }
         Relationships: []
       }
+      protocol_photos: {
+        Row: {
+          accuracy: number | null
+          captured_at: string
+          created_at: string
+          distance_meters: number | null
+          geo_verified: boolean | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          photo_context: string
+          project_id: string | null
+          protocol_id: string
+          room: string | null
+          sha256_hash: string
+          watermark_text: string | null
+        }
+        Insert: {
+          accuracy?: number | null
+          captured_at?: string
+          created_at?: string
+          distance_meters?: number | null
+          geo_verified?: boolean | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          photo_context: string
+          project_id?: string | null
+          protocol_id: string
+          room?: string | null
+          sha256_hash: string
+          watermark_text?: string | null
+        }
+        Update: {
+          accuracy?: number | null
+          captured_at?: string
+          created_at?: string
+          distance_meters?: number | null
+          geo_verified?: boolean | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          photo_context?: string
+          project_id?: string | null
+          protocol_id?: string
+          room?: string | null
+          sha256_hash?: string
+          watermark_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocol_photos_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
