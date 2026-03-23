@@ -4,7 +4,7 @@ import {
   Camera, CheckCircle2, X, AlertTriangle, StickyNote,
   ShieldCheck, Trash, Paintbrush, MapPin, Pencil, Trash2,
   Euro, ArrowLeft, Loader2, Plus, FileText, ImagePlus,
-  Wrench, Droplets, Plug, CookingPot, Bath
+  Wrench, Droplets, Plug, CookingPot, Bath, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -85,7 +85,7 @@ interface Props {
   onComplete: () => void;
 }
 
-type Phase = 'overview' | 'camera-overview' | 'camera-defect' | 'room-select' | 'analyzing' | 'result' | 'manual-entry' | 'edit' | 'wall-classify';
+type Phase = 'overview' | 'camera-overview' | 'camera-defect' | 'room-select' | 'analyzing' | 'result' | 'manual-entry' | 'edit' | 'wall-classify' | 'move-in-confirm';
 
 export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Props) => {
   const { data, updateData } = useHandover();
@@ -614,10 +614,19 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
             </p>
 
             {/* Reinigung */}
-            <label className="flex items-center gap-3 cursor-pointer">
-              <Checkbox checked={room.cleaningDone || false} onCheckedChange={v => onUpdate({ cleaningDone: !!v })} />
-              <span className="text-sm">Besenrein</span>
-            </label>
+            <div className="flex gap-2">
+              <Button size="sm" variant={room.cleaningDone === true ? 'default' : 'outline'} className="rounded-xl text-xs h-8 flex-1"
+                onClick={() => onUpdate({ cleaningDone: true })}>
+                ✓ Besenrein
+              </Button>
+              <Button size="sm" variant={room.cleaningDone === false ? 'destructive' : 'outline'} className="rounded-xl text-xs h-8 flex-1"
+                onClick={() => onUpdate({ cleaningDone: false })}>
+                ✗ Nicht besenrein
+              </Button>
+            </div>
+            {room.cleaningDone === false && (
+              <p className="text-xs text-destructive">Hinweis: Fehlende besenreine Übergabe kann Nachbesserungsansprüche begründen.</p>
+            )}
 
             {/* Wandfarben */}
             <div className="flex gap-2">
@@ -627,7 +636,7 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
               </Button>
               <Button size="sm" variant={room.wallsNeutral === false ? 'destructive' : 'outline'} className="rounded-xl text-xs h-8 flex-1"
                 onClick={() => onUpdate({ wallsNeutral: false })}>
-                Auffällig
+                ✗ Auffällige Farben
               </Button>
             </div>
             {room.wallsNeutral === false && (
