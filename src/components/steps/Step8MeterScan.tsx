@@ -210,10 +210,6 @@ export const Step8MeterScan = () => {
         title: metersToAdd.length > 1 ? `${metersToAdd.length} Zähler erkannt` : 'Zähler erkannt',
         description: metersToAdd.map(m => `${m.medium}: ${m.reading} ${m.unit}`).join(' · '),
       });
-      toast({
-        title: 'Zähler erkannt',
-        description: `${newMeter.medium} – Stand: ${newMeter.reading} ${newMeter.unit}`,
-      });
     } catch (err: any) {
       console.error('Meter AI analysis failed:', err);
       toast({
