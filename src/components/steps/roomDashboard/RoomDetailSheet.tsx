@@ -185,14 +185,26 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
     }
   }, [updateData, toast, cameraMode]);
 
-  const handleOverviewCapture = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleOverviewCapture = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const url = ev.target?.result as string;
-      const newPhoto = { url, timestamp: new Date().toISOString() };
+    reader.onload = async (ev) => {
+      let url = ev.target?.result as string;
+      let hash: string | undefined;
+      try {
+        const geo = await captureGeo();
+        const protocolId = Date.now().toString(36).toUpperCase();
+        const { processedUrl, forensic } = await processForensicPhoto(
+          url, protocolId, geo.latitude, geo.longitude,
+        );
+        url = processedUrl;
+        hash = forensic.sha256;
+      } catch (err) {
+        console.warn('Forensic processing failed for overview:', err);
+      }
+      const newPhoto = { url, timestamp: new Date().toISOString(), sha256Hash: hash };
       const updated = [...overviewPhotos, newPhoto];
       onUpdate({
         overviewPhotos: updated,
@@ -201,7 +213,7 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
       });
     };
     reader.readAsDataURL(file);
-  }, [onUpdate, overviewPhotos]);
+  }, [onUpdate, overviewPhotos, captureGeo]);
 
   const removeOverviewPhoto = useCallback((index: number) => {
     const updated = overviewPhotos.filter((_, i) => i !== index);
