@@ -570,10 +570,14 @@ export const Step8MeterScan = () => {
                       <span className="text-muted-foreground text-xs">Stand</span>
                       <p className="font-mono font-medium">{meter.reading} {meter.unit}</p>
                     </div>
-                    {meter.maloId && (
+                    {meter.maloId ? (
                       <div className="col-span-2">
                         <span className="text-muted-foreground text-xs">MaLo-ID</span>
                         <p className="font-mono text-xs truncate">{meter.maloId}</p>
+                      </div>
+                    ) : (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground text-xs italic">MaLo-ID: Wird aus Stromrechnung (Phase 10) übernommen</span>
                       </div>
                     )}
                   </div>
