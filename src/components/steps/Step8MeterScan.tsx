@@ -322,6 +322,7 @@ export const Step8MeterScan = () => {
       medium: meter.medium,
       meterNumber: meter.meterNumber,
       reading: meter.reading,
+      readingFeed: '',
       unit: meter.unit,
       maloId: meter.maloId,
       date: TODAY,
