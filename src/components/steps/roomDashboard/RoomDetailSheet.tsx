@@ -22,6 +22,61 @@ const MAX_OVERVIEW_PHOTOS = 5;
 // Wall defect classification types
 type WallDamageClass = 'verschmutzung' | 'abnutzung';
 
+// ─── 3-Status Selector (OK / N.V. / N.G.) ───
+const STATUS_OPTIONS: { value: TechCheckStatus; label: string; color: string; activeColor: string }[] = [
+  { value: 'ok', label: 'OK', color: 'border-border text-muted-foreground', activeColor: 'border-accent bg-accent/15 text-accent font-bold' },
+  { value: 'nv', label: 'N.V.', color: 'border-border text-muted-foreground', activeColor: 'border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold' },
+  { value: 'ng', label: 'N.G.', color: 'border-border text-muted-foreground', activeColor: 'border-destructive bg-destructive/15 text-destructive font-bold' },
+];
+
+interface TechCheckRowProps {
+  label: string;
+  icon?: React.ReactNode;
+  value?: TechCheckValue;
+  onChange: (val: TechCheckValue) => void;
+}
+
+const TechCheckRow = ({ label, icon, value, onChange }: TechCheckRowProps) => {
+  const current = value?.status ?? null;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-start gap-2">
+        {icon}
+        <span className="text-sm flex-1 leading-tight">{label}</span>
+      </div>
+      <div className="flex gap-1.5 ml-0">
+        {STATUS_OPTIONS.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => onChange({ status: opt.value, comment: opt.value === 'ng' ? (value?.comment || '') : undefined })}
+            className={`flex-1 h-8 rounded-xl text-xs border-2 transition-all ${
+              current === opt.value ? opt.activeColor : opt.color
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      {/* N.G. requires mandatory comment */}
+      <AnimatePresence>
+        {current === 'ng' && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <Input
+              placeholder="Grund angeben (Pflicht) z.B. Wasser abgestellt"
+              value={value?.comment || ''}
+              onChange={e => onChange({ status: 'ng', comment: e.target.value })}
+              className="h-8 text-xs rounded-lg border-destructive/40 focus-visible:ring-destructive/30"
+            />
+            {(!value?.comment || !value.comment.trim()) && (
+              <p className="text-[10px] text-destructive mt-0.5">Pflichtfeld: Bitte Grund für „Nicht geprüft" angeben.</p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 interface Props {
   room: RoomConfig;
   onClose: () => void;
