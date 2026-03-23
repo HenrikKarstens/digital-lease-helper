@@ -482,12 +482,38 @@ export const Step14Utility = () => {
           {isMoveOut && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="pt-2">
               <Button
-                onClick={() => goToStepById('unlock')}
+                onClick={() => {
+                  // Schedule cancellation reminders for all unhandled self-cancel meters
+                  const unremindedMeters = selfCancelMeters.filter(m => 
+                    !providerInfoMap[m.id] && !data.cancellationReminders?.find(r => r.meterId === m.id)
+                  );
+                  if (unremindedMeters.length > 0 && data.tenantEmail) {
+                    const newReminders = unremindedMeters.map(m => ({
+                      meterId: m.id,
+                      medium: m.medium,
+                      recipientEmail: data.tenantEmail!,
+                      recipientName: data.tenantName || 'Mieter',
+                      scheduledAt: new Date().toISOString(),
+                      status: 'scheduled' as const,
+                    }));
+                    updateData({
+                      cancellationReminders: [
+                        ...(data.cancellationReminders || []),
+                        ...newReminders,
+                      ],
+                    });
+                    toast({
+                      title: '📧 Kündigungs-Erinnerung vorgemerkt',
+                      description: `Erinnerung wird an ${data.tenantEmail} gesendet.`,
+                    });
+                  }
+                  goToStepById('unlock');
+                }}
                 className="w-full h-12 rounded-2xl font-semibold gap-2"
                 size="lg"
               >
                 <ArrowRight className="w-4 h-4" />
-                Weiter zum Abschluss des Protokolls
+                Weiter zum Abschluss & Erinnerung zur Kündigung zusenden
               </Button>
             </motion.div>
           )}

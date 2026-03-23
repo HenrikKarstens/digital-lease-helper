@@ -136,7 +136,7 @@ Bitte senden Sie mir die Schlussrechnung an die oben genannte Adresse.
 
 Mit freundlichen Grüßen
 ${tenantName}`;
-  }, [providerData, tenantName, propertyAddress, moveOutDate, meterReading, meter, data.nextAddress]);
+  }, [providerData, tenantName, propertyAddress, moveOutDate, meterReading, meter, data.nextAddress, maloIdLocal]);
 
   const handleGeneratePDF = useCallback(() => {
     const doc = new jsPDF();
