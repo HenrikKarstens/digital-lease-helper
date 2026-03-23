@@ -14,10 +14,10 @@ const MUTED_COLOR: [number, number, number] = [100, 116, 139];   // Slate-500
 const GOLD_COLOR: [number, number, number] = [197, 160, 89];     // Muted Gold #C5A059
 const GOLD_LIGHT: [number, number, number] = [254, 249, 235];    // Gold background
 
-// Helper: embed photos with timestamp/GPS metadata below a section
+// Helper: embed photos with timestamp/GPS metadata + SHA-256 hash below a section
 function embedPhotos(
   doc: jsPDF,
-  photos: { url: string; label: string; timestamp?: string; gps?: string }[],
+  photos: { url: string; label: string; timestamp?: string; gps?: string; sha256?: string }[],
   y: number,
   pageW: number,
   pageH: number,
@@ -34,8 +34,8 @@ function embedPhotos(
   for (let i = 0; i < validPhotos.length; i++) {
     const colIdx = i % cols;
     const x = col1 + colIdx * (imgW + gap);
-    if (colIdx === 0 && i > 0) y += imgH + 14;
-    if (y + imgH + 14 > pageH - 20) { doc.addPage(); y = 36; }
+    if (colIdx === 0 && i > 0) y += imgH + 18;
+    if (y + imgH + 18 > pageH - 20) { doc.addPage(); y = 36; }
     
     try {
       doc.addImage(validPhotos[i].url, 'JPEG', x, y, imgW, imgH);
@@ -61,17 +61,25 @@ function embedPhotos(
       doc.text(meta.join(' · '), x, y + imgH + 6.5, { maxWidth: imgW });
       doc.setFont('helvetica', 'normal');
     }
+    // SHA-256 Hash
+    if (validPhotos[i].sha256) {
+      doc.setFontSize(4);
+      doc.setTextColor(100, 100, 120);
+      doc.setFont('helvetica', 'normal');
+      const shortHash = validPhotos[i].sha256!.substring(0, 16) + '…';
+      doc.text(`SHA-256: ${shortHash}`, x, y + imgH + 9.5, { maxWidth: imgW });
+    }
     // Forensic certification line
     if (validPhotos[i].gps || validPhotos[i].timestamp) {
       doc.setFontSize(4.5);
       doc.setTextColor(...GOLD_COLOR);
       doc.setFont('helvetica', 'bold');
-      doc.text('Forensisch gesichert durch EstateTurn Live-GPS-Validierung', x, y + imgH + 9.5, { maxWidth: imgW });
+      doc.text('Forensisch gesichert durch EstateTurn Live-GPS-Validierung', x, y + imgH + 12, { maxWidth: imgW });
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...MUTED_COLOR);
     }
   }
-  y += imgH + 14;
+  y += imgH + 18;
   return y;
 }
 
