@@ -293,83 +293,73 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
         </>
       )}
 
-      {/* ── Rechtssichere Begründung (collapsible) ── */}
-      {!isGuarantee && (
-        <div>
-          <button
-            onClick={() => setShowLegalReasoning(!showLegalReasoning)}
-            className="w-full flex items-center justify-between glass-card rounded-2xl p-4 text-left"
-          >
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-accent" />
-              <span className="text-sm font-medium">Rechtssichere Begründung</span>
-            </div>
-            {showLegalReasoning
-              ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
-              : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-          </button>
-          <AnimatePresence>
-            {showLegalReasoning && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="bg-secondary/30 rounded-b-2xl p-4 -mt-2 pt-5 text-sm leading-relaxed">
-                  <p>
-                    Einbehalt von <strong>{withheld.toFixed(2)} €</strong> empfohlen gemäß BGH-Rechtsprechung
-                    zur Absicherung künftiger Betriebskostennachzahlungen (BGH VIII ZR 71/05) sowie
-                    zur Deckung dokumentierter Mängel nach dem Grundsatz „Neu für Alt"
-                    (§ 538 BGB, BGH VIII ZR 222/15).
-                  </p>
-                  {isCash && interest > 0 && (
-                    <p className="mt-2">
-                      Zinsgutschrift von <strong>{interest.toFixed(2)} €</strong> für {days} Tage
-                      steht dem Mieter gemäß § 551 Abs. 3 BGB zu.
-                    </p>
-                  )}
-                  {isPledged && (
-                    <p className="mt-2">
-                      Kontostand inkl. bankseitiger Zinsen: <strong>{pledgedBalance.toFixed(2)} €</strong> (laut Sparbuch).
-                    </p>
-                  )}
-                  <p className="mt-2 text-muted-foreground text-xs">
-                    Berücksichtigt: {tenantDefects.length} Mängel, NK-Risikostufe „{data.nkRisiko}".
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
-
-      {/* ── Rechtliche Hinweise (BGH) (collapsible) ── */}
+      {/* ── Rechtliche Grundlagen (combined collapsible) ── */}
       <div>
         <button
-          onClick={() => setShowLegalHint(!showLegalHint)}
+          onClick={() => setShowLegalReasoning(!showLegalReasoning)}
           className="w-full flex items-center justify-between glass-card rounded-2xl p-4 text-left"
         >
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">Rechtliche Hinweise (BGH)</span>
+            <Scale className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">Rechtliche Grundlagen</span>
           </div>
-          {showLegalHint
+          {showLegalReasoning
             ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
             : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
         </button>
         <AnimatePresence>
-          {showLegalHint && (
+          {showLegalReasoning && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="bg-secondary/30 rounded-b-2xl p-4 -mt-2 pt-5 text-xs leading-relaxed text-foreground/80 space-y-2">
-                <p><strong>§ 551 Abs. 4 BGB:</strong> Die Kaution ist nach Beendigung des Mietverhältnisses zurückzugeben, sobald keine Ansprüche mehr geltend gemacht werden.</p>
-                <p><strong>BGH VIII ZR 71/05:</strong> Der {ownerRole} darf einen angemessenen Teilbetrag für noch ausstehende Betriebskostenabrechnungen einbehalten.</p>
-                <p><strong>§ 538 BGB:</strong> Normale Abnutzung ist vom Mieter nicht zu ersetzen.</p>
+              <div className="bg-secondary/30 rounded-b-2xl p-4 -mt-2 pt-5 space-y-4">
+                {/* Begründung */}
+                {!isGuarantee && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-accent" />
+                      Rechtssichere Begründung
+                    </p>
+                    <div className="text-sm leading-relaxed">
+                      <p>
+                        Einbehalt von <strong>{withheld.toFixed(2)} €</strong> empfohlen gemäß BGH-Rechtsprechung
+                        zur Absicherung künftiger Betriebskostennachzahlungen (BGH VIII ZR 71/05) sowie
+                        zur Deckung dokumentierter Mängel nach dem Grundsatz „Neu für Alt"
+                        (§ 538 BGB, BGH VIII ZR 222/15).
+                      </p>
+                      {isCash && interest > 0 && (
+                        <p className="mt-2">
+                          Zinsgutschrift von <strong>{interest.toFixed(2)} €</strong> für {days} Tage
+                          steht dem Mieter gemäß § 551 Abs. 3 BGB zu.
+                        </p>
+                      )}
+                      {isPledged && (
+                        <p className="mt-2">
+                          Kontostand inkl. bankseitiger Zinsen: <strong>{pledgedBalance.toFixed(2)} €</strong> (laut Sparbuch).
+                        </p>
+                      )}
+                      <p className="mt-2 text-muted-foreground text-xs">
+                        Berücksichtigt: {tenantDefects.length} Mängel, NK-Risikostufe „{data.nkRisiko}".
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hinweise */}
+                <div className="space-y-2 border-t border-border/30 pt-3">
+                  <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-primary" />
+                    Rechtliche Hinweise (BGH)
+                  </p>
+                  <div className="text-xs leading-relaxed text-foreground/80 space-y-2">
+                    <p><strong>§ 551 Abs. 4 BGB:</strong> Die Kaution ist nach Beendigung des Mietverhältnisses zurückzugeben, sobald keine Ansprüche mehr geltend gemacht werden.</p>
+                    <p><strong>BGH VIII ZR 71/05:</strong> Der {ownerRole} darf einen angemessenen Teilbetrag für noch ausstehende Betriebskostenabrechnungen einbehalten.</p>
+                    <p><strong>§ 538 BGB:</strong> Normale Abnutzung ist vom Mieter nicht zu ersetzen.</p>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
