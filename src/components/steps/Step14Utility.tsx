@@ -461,62 +461,6 @@ export const Step14Utility = () => {
                             </div>
                           )}
 
-                          {/* Reminder button */}
-                          {(() => {
-                            const existingReminder = data.cancellationReminders?.find(r => r.meterId === m.id);
-                            if (existingReminder) {
-                              return (
-                                <div className="bg-primary/5 rounded-lg p-2.5 flex items-center gap-2 text-[10px]">
-                                  <Bell className="w-3.5 h-3.5 text-primary" />
-                                  <div className="flex-1">
-                                    <span className="font-medium text-primary">Erinnerung vorgemerkt</span>
-                                    <p className="text-muted-foreground mt-0.5">
-                                      Sofort + nach 3 Tagen an {existingReminder.recipientEmail}
-                                    </p>
-                                  </div>
-                                  <Mail className="w-3.5 h-3.5 text-muted-foreground" />
-                                </div>
-                              );
-                            }
-                            return (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full rounded-xl gap-2 text-xs h-9 border-primary/30 text-primary hover:bg-primary/10"
-                                onClick={() => {
-                                  if (!data.tenantEmail) {
-                                    toast({
-                                      title: 'Keine E-Mail hinterlegt',
-                                      description: 'Bitte hinterlegen Sie die E-Mail-Adresse des Mieters in den Vertragsdaten.',
-                                      variant: 'destructive',
-                                    });
-                                    return;
-                                  }
-                                  const newReminder = {
-                                    meterId: m.id,
-                                    medium: m.medium,
-                                    recipientEmail: data.tenantEmail,
-                                    recipientName: data.tenantName || 'Mieter',
-                                    scheduledAt: new Date().toISOString(),
-                                    status: 'scheduled' as const,
-                                  };
-                                  updateData({
-                                    cancellationReminders: [
-                                      ...(data.cancellationReminders || []),
-                                      newReminder,
-                                    ],
-                                  });
-                                  toast({
-                                    title: '📧 Erinnerung vorgemerkt',
-                                    description: `${m.medium}: Sofortige Erinnerung + Nachfassung nach 3 Tagen an ${data.tenantEmail}. E-Mail-Versand wird aktiviert, sobald eine Absender-Domain eingerichtet ist.`,
-                                  });
-                                }}
-                              >
-                                <Bell className="w-3.5 h-3.5" />
-                                Erinnerung an Mieter senden
-                              </Button>
-                            );
-                          })()}
                         </div>
                       )}
                     </div>
