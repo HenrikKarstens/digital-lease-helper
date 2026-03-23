@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield, Euro, AlertTriangle, CheckCircle2, ArrowRight,
-  Info, CreditCard, ChevronDown, ChevronUp, Clock, Building2,
+  Info, CreditCard, ChevronDown, ChevronUp, Clock, Building2, Scale,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
