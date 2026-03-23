@@ -213,7 +213,10 @@ export interface HandoverData {
   depositPaymentDate: string;
   depositInterestRate: number;
   payeeIban: string;
+  payeeBic: string;
+  payeeBankName: string;
   payeeAccountHolder: string;
+  ibanDeferred: boolean;
   // Step 10 – Anschlussvermietung
   immediateReletting: boolean;
   relettingDate: string;
