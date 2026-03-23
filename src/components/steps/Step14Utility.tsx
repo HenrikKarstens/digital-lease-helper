@@ -153,14 +153,36 @@ export const Step14Utility = () => {
   );
 
   // Meters that need self-cancellation (only Strom if heating/water via landlord)
+  // Deduplicate Zweirichtungszähler: group Bezug/Einspeisung into one entry
+  const deduplicatedMeters = useMemo(() => {
+    const seen = new Map<string, typeof data.meterReadings[0]>();
+    const result: typeof data.meterReadings = [];
+    for (const m of data.meterReadings) {
+      const medium = m.medium.toLowerCase();
+      // Check if this is part of a Zweirichtungszähler pair
+      if (medium.includes('bezug') || medium.includes('einspeisung') || medium.includes('1.8.0') || medium.includes('2.8.0')) {
+        const meterKey = m.meterNumber || 'zweirichtung';
+        if (!seen.has(meterKey)) {
+          // Use the Bezug entry as representative, label it as Zweirichtungszähler
+          seen.set(meterKey, { ...m, medium: `Strom (Zweirichtungszähler)` });
+          result.push(seen.get(meterKey)!);
+        }
+        // Skip duplicate (Einspeisung) entry
+      } else {
+        result.push(m);
+      }
+    }
+    return result;
+  }, [data.meterReadings]);
+
   const selfCancelMeters = useMemo(() => {
-    return data.meterReadings.filter(m => {
+    return deduplicatedMeters.filter(m => {
       const medium = m.medium.toLowerCase();
       if ((medium.includes('heiz') || medium.includes('gas') || medium.includes('fernwärme') || medium.includes('wärme')) && heatingViaLandlord) return false;
       if (medium.includes('wasser') && waterViaLandlord) return false;
       return true;
     });
-  }, [data.meterReadings, heatingViaLandlord, waterViaLandlord]);
+  }, [deduplicatedMeters, heatingViaLandlord, waterViaLandlord]);
 
   const landlordManagedMeters = useMemo(() => {
     return data.meterReadings.filter(m => {
