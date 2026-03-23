@@ -149,13 +149,8 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       updateData(patch as any);
       console.log('[EstateTurn] Daten in globalen State geschrieben:', Object.keys(patch));
 
-      // For main contract, show extraction results with validation
-      if (docStep.id === 'main-contract') {
-        setMode('idle');
-        setShowResults(true);
-      } else {
-        setTimeout(() => onDone(), 300);
-      }
+      // Skip extraction results card – go directly to data-check
+      setTimeout(() => onDone(), 300);
     } catch (err: any) {
       clearInterval(interval);
       console.error('[EstateTurn] Analyse-Fehler:', err);
