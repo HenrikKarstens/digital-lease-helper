@@ -236,12 +236,18 @@ ${tenantName}`;
                       </div>
                     )}
                   </div>
-                  {meter.maloId && (
-                    <div className="mt-1">
-                      <Label className="text-[10px] text-muted-foreground">MaLo-ID</Label>
-                      <Input value={meter.maloId} readOnly className="rounded-lg h-8 text-xs bg-muted/50 font-mono" />
-                    </div>
-                  )}
+                  <div className="mt-1">
+                    <Label className="text-[10px] text-muted-foreground">Marktlokations-ID (MaLo-ID)</Label>
+                    <Input
+                      value={maloIdLocal}
+                      onChange={e => setMaloIdLocal(e.target.value)}
+                      placeholder="z. B. DE000... – aus Stromrechnung entnehmen"
+                      className="rounded-lg h-8 text-xs font-mono"
+                    />
+                    <p className="text-[9px] text-muted-foreground mt-0.5">
+                      Die MaLo-ID finden Sie auf Ihrer Stromrechnung oder im Vertragsschreiben.
+                    </p>
+                  </div>
                   <div className="mt-1">
                     <Label className="text-[10px] text-muted-foreground">Objekt-Adresse</Label>
                     <Input value={propertyAddress} readOnly className="rounded-lg h-8 text-xs bg-muted/50" />
