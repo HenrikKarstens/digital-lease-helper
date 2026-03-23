@@ -676,7 +676,9 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
           {room.completed ? 'Raum aktualisiert' : 'Raum abschließen'}
         </Button>
         {!canComplete && (
-          <p className="text-xs text-center text-muted-foreground">Mindestens ein Übersichtsfoto erforderlich.</p>
+          <p className="text-xs text-center text-muted-foreground">
+            {!hasPhotos ? 'Mindestens ein Übersichtsfoto erforderlich.' : 'Alle technischen Prüfungen müssen abgehakt werden.'}
+          </p>
         )}
       </motion.div>
     </div>
