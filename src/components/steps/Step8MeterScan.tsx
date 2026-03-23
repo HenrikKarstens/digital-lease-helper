@@ -13,6 +13,7 @@ import { GeoPermissionGuard } from '@/components/GeoPermissionGuard';
 
 const METER_TYPES = [
   { value: 'Strom', label: 'Strom', icon: Zap, unit: 'kWh' },
+  { value: 'Zweirichtungszähler', label: 'Zweirichtungszähler (Bezug/Einspeisung)', icon: Zap, unit: 'kWh' },
   { value: 'Wasser', label: 'Wasser', icon: Droplets, unit: 'm³' },
   { value: 'Gas', label: 'Gas', icon: Flame, unit: 'm³' },
   { value: 'Wärmemengenzähler', label: 'Wärmemengenzähler', icon: Thermometer, unit: 'kWh' },
