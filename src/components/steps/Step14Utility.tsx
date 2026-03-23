@@ -376,7 +376,7 @@ export const Step14Utility = () => {
               </div>
 
               <div className="space-y-3">
-                {data.meterReadings.map(m => {
+                {deduplicatedMeters.map(m => {
                   const medium = m.medium.toLowerCase();
                   const isLandlordManaged =
                     ((medium.includes('heiz') || medium.includes('gas') || medium.includes('fernwärme') || medium.includes('wärme')) && heatingViaLandlord) ||
