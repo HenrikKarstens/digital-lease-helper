@@ -125,17 +125,17 @@ export const StepRoomDashboard = () => {
       {/* Room grid */}
       <div className="w-full max-w-md grid grid-cols-2 gap-3 mb-6">
         {roomConfigs.map((room, i) => (
-          <div key={room.id} className="relative group">
+          <div key={room.id} className="relative">
             <RoomTile
               room={room}
               findings={data.findings}
               onClick={() => setActiveRoomId(room.id)}
               index={i}
             />
-            {/* Delete button */}
+            {/* Delete button – always visible for mobile touch */}
             <button
               onClick={(e) => { e.stopPropagation(); removeRoom(room.id); }}
-              className="absolute top-1.5 left-1.5 p-1 rounded-lg bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              className="absolute -top-2 -left-2 w-7 h-7 rounded-full bg-destructive/90 text-destructive-foreground flex items-center justify-center shadow-md active:scale-90 transition-transform z-10"
               title="Raum entfernen"
             >
               <X className="w-3.5 h-3.5" />
