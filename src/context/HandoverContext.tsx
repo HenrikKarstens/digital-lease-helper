@@ -123,6 +123,17 @@ export interface HkvRoomReading {
   reading: string;
 }
 
+export interface CancellationReminder {
+  meterId: string;
+  medium: string;
+  recipientEmail: string;
+  recipientName: string;
+  scheduledAt: string;
+  reminderSentAt?: string;
+  followUpSentAt?: string;
+  status: 'scheduled' | 'sent' | 'follow-up-sent';
+}
+
 export interface KeyEntry {
   id: string;
   type: string;
@@ -230,6 +241,8 @@ export interface HandoverData {
   depositAgreementReached: boolean;
   depositAgreementTimestamp: string;
   tenantRefusesNewAddress: boolean;
+  // Cancellation reminders (Phase 11)
+  cancellationReminders: CancellationReminder[];
   // Condition checks (Phase 8 extension)
   cleaningBesenrein: boolean;
   cleaningBriefkasten: boolean;
@@ -320,6 +333,7 @@ const defaultData: HandoverData = {
   serviceCheckStatus: 'none',
   depositAgreementReached: false,
   depositAgreementTimestamp: '',
+  cancellationReminders: [],
   tenantRefusesNewAddress: false,
   cleaningBesenrein: false,
   cleaningBriefkasten: false,
