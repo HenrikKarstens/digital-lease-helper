@@ -125,8 +125,21 @@ export const Step9Keys = () => {
     await requestPermission();
     const geo = await captureGeo();
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      updateData({ keyBundlePhotoUrl: ev.target?.result as string, keyBundlePhotoGeo: geo });
+    reader.onload = async (ev) => {
+      const rawUrl = ev.target?.result as string;
+      let finalUrl = rawUrl;
+      let hash: string | null = null;
+      try {
+        const protocolId = Date.now().toString(36).toUpperCase();
+        const { processedUrl, forensic } = await processForensicPhoto(
+          rawUrl, protocolId, geo.latitude, geo.longitude,
+        );
+        finalUrl = processedUrl;
+        hash = forensic.sha256;
+      } catch (err) {
+        console.warn('Forensic processing failed:', err);
+      }
+      updateData({ keyBundlePhotoUrl: finalUrl, keyBundlePhotoGeo: geo, keyBundlePhotoHash: hash });
     };
     reader.readAsDataURL(file);
     // Run AI verification

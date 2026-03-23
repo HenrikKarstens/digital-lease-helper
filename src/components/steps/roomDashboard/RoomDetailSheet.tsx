@@ -283,12 +283,30 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
     }
 
     const geo = await captureGeo();
+
+    // Forensic watermark + SHA-256
+    let finalPhotoUrl = capturedPreview || undefined;
+    let sha256Hash: string | undefined;
+    if (capturedPreview) {
+      try {
+        const protocolId = Date.now().toString(36).toUpperCase();
+        const { processedUrl, forensic } = await processForensicPhoto(
+          capturedPreview, protocolId, geo.latitude, geo.longitude,
+        );
+        finalPhotoUrl = processedUrl;
+        sha256Hash = forensic.sha256;
+      } catch (err) {
+        console.warn('Forensic processing failed:', err);
+      }
+    }
+
     const finding: Finding = {
       id: Date.now().toString(),
       room: room.name,
       pinX: 50, pinY: 50,
-      photoUrl: capturedPreview || undefined,
+      photoUrl: finalPhotoUrl,
       photoGeo: geo,
+      sha256Hash,
       material: editMaterial,
       damageType: editDamageType,
       bghReference: currentResult?.bghReference || '',
