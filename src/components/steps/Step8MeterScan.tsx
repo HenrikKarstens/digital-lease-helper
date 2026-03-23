@@ -449,28 +449,58 @@ export const Step8MeterScan = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Zählerstand *</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  inputMode="decimal"
-                  value={manualForm.reading}
-                  onChange={e => setManualForm(p => ({ ...p, reading: e.target.value }))}
-                  className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
-                />
+            {manualForm.medium === 'Zweirichtungszähler' ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Zählerstand Bezug (1.8.0) *</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    inputMode="decimal"
+                    value={manualForm.reading}
+                    onChange={e => setManualForm(p => ({ ...p, reading: e.target.value }))}
+                    className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Zählerstand Einspeisung (2.8.0) *</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    inputMode="decimal"
+                    value={manualForm.readingFeed}
+                    onChange={e => setManualForm(p => ({ ...p, readingFeed: e.target.value }))}
+                    className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground/70 italic">
+                  Bitte machen Sie zwei Fotos – eines pro Register (Bezug & Einspeisung).
+                </p>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Zählerstand *</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    inputMode="decimal"
+                    value={manualForm.reading}
+                    onChange={e => setManualForm(p => ({ ...p, reading: e.target.value }))}
+                    className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Einheit</Label>
+                  <Input
+                    placeholder="kWh / m³"
+                    value={manualForm.unit}
+                    onChange={e => setManualForm(p => ({ ...p, unit: e.target.value }))}
+                    className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Einheit</Label>
-                <Input
-                  placeholder="kWh / m³"
-                  value={manualForm.unit}
-                  onChange={e => setManualForm(p => ({ ...p, unit: e.target.value }))}
-                  className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
-                />
-              </div>
-            </div>
+            )}
 
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground flex items-center gap-1">
