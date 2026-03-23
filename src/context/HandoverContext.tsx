@@ -31,6 +31,7 @@ export interface Finding {
   pinY: number;
   photoUrl?: string;
   photoGeo?: PhotoGeoMeta;
+  sha256Hash?: string;
   material: string;
   damageType: string;
   bghReference: string;
