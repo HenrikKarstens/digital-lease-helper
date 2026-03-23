@@ -14,7 +14,8 @@ import { useGeoPhoto } from '@/hooks/useGeoPhoto';
 import { GeoPermissionGuard } from '@/components/GeoPermissionGuard';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { RoomConfig } from './types';
+import type { RoomConfig, TechCheckValue, TechCheckStatus } from './types';
+import { Input } from '@/components/ui/input';
 
 const MAX_OVERVIEW_PHOTOS = 5;
 
