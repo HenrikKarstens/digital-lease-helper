@@ -278,16 +278,40 @@ export const Step8MeterScan = () => {
 
   const handleAddManual = () => {
     if (!manualForm.medium || !manualForm.reading) return;
-    const newMeter: MeterReading = {
-      id: Date.now().toString(),
-      medium: manualForm.medium,
-      meterNumber: manualForm.meterNumber,
-      reading: manualForm.reading,
-      unit: manualForm.unit,
-      maloId: manualForm.maloId,
-      source: 'manual',
-    };
-    updateData({ meterReadings: [...data.meterReadings, newMeter] });
+    
+    if (manualForm.medium === 'Zweirichtungszähler') {
+      // Create two separate meters for Bezug and Einspeisung
+      const bezug: MeterReading = {
+        id: `${Date.now()}-bezug`,
+        medium: 'Strom (Bezug 1.8.0)',
+        meterNumber: manualForm.meterNumber,
+        reading: manualForm.reading,
+        unit: manualForm.unit || 'kWh',
+        maloId: manualForm.maloId,
+        source: 'manual',
+      };
+      const einspeisung: MeterReading = {
+        id: `${Date.now()}-einsp`,
+        medium: 'Strom (Einspeisung 2.8.0)',
+        meterNumber: manualForm.meterNumber,
+        reading: manualForm.readingFeed,
+        unit: manualForm.unit || 'kWh',
+        maloId: manualForm.maloId,
+        source: 'manual',
+      };
+      updateData({ meterReadings: [...data.meterReadings, bezug, einspeisung] });
+    } else {
+      const newMeter: MeterReading = {
+        id: Date.now().toString(),
+        medium: manualForm.medium,
+        meterNumber: manualForm.meterNumber,
+        reading: manualForm.reading,
+        unit: manualForm.unit,
+        maloId: manualForm.maloId,
+        source: 'manual',
+      };
+      updateData({ meterReadings: [...data.meterReadings, newMeter] });
+    }
     setManualForm(emptyForm());
     setShowManualForm(false);
   };
