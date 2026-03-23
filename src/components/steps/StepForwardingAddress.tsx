@@ -138,7 +138,8 @@ export const StepForwardingAddress = () => {
                 <label className="text-[11px] font-medium text-foreground mb-1 block">Neue Straße & Hausnummer</label>
                 <Input
                   value={streetNew}
-                  onChange={e => setStreetNew(e.target.value)}
+                  onChange={e => { setStreetNew(e.target.value); setAddressValidation({ status: 'idle' }); }}
+                  onBlur={checkAddress}
                   placeholder="z. B. Musterstraße 12"
                   className="rounded-xl h-9 text-xs"
                 />
@@ -147,11 +148,40 @@ export const StepForwardingAddress = () => {
                 <label className="text-[11px] font-medium text-foreground mb-1 block">PLZ & Ort</label>
                 <Input
                   value={plzCityNew}
-                  onChange={e => setPlzCityNew(e.target.value)}
+                  onChange={e => { setPlzCityNew(e.target.value); setAddressValidation({ status: 'idle' }); }}
+                  onBlur={checkAddress}
                   placeholder="z. B. 10115 Berlin"
                   className="rounded-xl h-9 text-xs"
                 />
               </div>
+
+              {/* Address validation feedback */}
+              {addressValidation.status === 'checking' && (
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-secondary/30 rounded-lg px-3 py-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Adresse wird geprüft…
+                </div>
+              )}
+              {addressValidation.status === 'valid' && (
+                <div className="flex items-start gap-2 text-[10px] text-success bg-success/10 rounded-lg px-3 py-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-medium">Adresse in Deutschland verifiziert</span>
+                    {addressValidation.suggestion && (
+                      <p className="text-muted-foreground mt-0.5 truncate">{addressValidation.suggestion}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {addressValidation.status === 'invalid' && (
+                <div className="flex items-start gap-2 text-[10px] text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-medium">Adresse nicht in Deutschland gefunden</span>
+                    <p className="text-muted-foreground mt-0.5">Bitte prüfen Sie PLZ, Ort und Straße auf Tippfehler.</p>
+                  </div>
+                </div>
+              )}
 
               {/* Refusal option */}
               <div className="flex items-start gap-3 bg-secondary/30 rounded-xl p-3 mt-2">

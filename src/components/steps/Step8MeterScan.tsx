@@ -174,18 +174,42 @@ export const Step8MeterScan = () => {
 
       const aiData = result.data;
       const geo = await captureGeo();
-      const newMeter: MeterReading = {
-        id: Date.now().toString(),
-        medium: aiData.medium || 'Sonstiges',
-        meterNumber: aiData.meterNumber || '',
-        reading: aiData.reading || '',
-        unit: aiData.unit || '',
-        maloId: aiData.maloId || '',
-        source: 'ai',
-        aiConfidence: aiData.confidence || 'medium',
-        photoGeo: geo,
-      };
-      updateData({ meterReadings: [...data.meterReadings, newMeter] });
+
+      // Support multiple meters from a single photo
+      const metersToAdd: MeterReading[] = [];
+      if (aiData.multiple && Array.isArray(aiData.meters)) {
+        for (const m of aiData.meters) {
+          metersToAdd.push({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            medium: m.medium || 'Sonstiges',
+            meterNumber: m.meterNumber || '',
+            reading: m.reading || '',
+            unit: m.unit || '',
+            maloId: m.maloId || '',
+            source: 'ai',
+            aiConfidence: m.confidence || 'medium',
+            photoGeo: geo,
+          });
+        }
+      } else {
+        metersToAdd.push({
+          id: Date.now().toString(),
+          medium: aiData.medium || 'Sonstiges',
+          meterNumber: aiData.meterNumber || '',
+          reading: aiData.reading || '',
+          unit: aiData.unit || '',
+          maloId: aiData.maloId || '',
+          source: 'ai',
+          aiConfidence: aiData.confidence || 'medium',
+          photoGeo: geo,
+        });
+      }
+
+      updateData({ meterReadings: [...data.meterReadings, ...metersToAdd] });
+      toast({
+        title: metersToAdd.length > 1 ? `${metersToAdd.length} Zähler erkannt` : 'Zähler erkannt',
+        description: metersToAdd.map(m => `${m.medium}: ${m.reading} ${m.unit}`).join(' · '),
+      });
       toast({
         title: 'Zähler erkannt',
         description: `${newMeter.medium} – Stand: ${newMeter.reading} ${newMeter.unit}`,
