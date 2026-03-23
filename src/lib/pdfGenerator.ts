@@ -755,6 +755,74 @@ export function generateMasterProtocol(data: HandoverData): void {
     }
   }
 
+  // ── §5c Technische Funktionsprüfung je Raum ───────────────────────────────
+  {
+    const roomConfigs = (data as any).__roomConfigs as any[] | undefined;
+    const techCheckLabel = (val: any): string => {
+      if (!val || val.status === null || val.status === undefined) return '–';
+      if (val.status === 'ok') return '☑ OK';
+      if (val.status === 'nv') return '⊘ Nicht vorhanden';
+      if (val.status === 'ng') return `⚠ Nicht geprüft${val.comment ? ': ' + val.comment : ''}`;
+      return '–';
+    };
+    if (roomConfigs && roomConfigs.length > 0) {
+      const hasAnyTechCheck = roomConfigs.some((r: any) => r.windowsDoors || r.sanitary || r.electrical || r.smokeDetector);
+      if (hasAnyTechCheck) {
+        if (y > pageH - 60) { doc.addPage(); y = 36; }
+        y = sectionTitle(doc, '§5c  Technische Funktionsprüfung je Raum', y, pageW);
+        const techRows: string[][] = [];
+        for (const room of roomConfigs) {
+          const checks: [string, any][] = [
+            ['Rauchwarnmelder (LBO SH §49)', room.smokeDetector],
+            ['Fenster & Türen (§ 538 BGB)', room.windowsDoors],
+            ['Sanitär/Wasseranschlüsse', room.sanitary],
+            ['Steckdosen/Lichtschalter', room.electrical],
+          ];
+          // Room-specific
+          const nameL = (room.name || '').toLowerCase();
+          if (nameL.includes('küche')) {
+            checks.push(['Herd/Backofen', room.oven]);
+            checks.push(['Spüle/Abfluss', room.sinkDrain]);
+          }
+          if (nameL.includes('bad') || nameL.includes('wc') || nameL.includes('dusch')) {
+            checks.push(['Fliesen/Fugen', room.tilesGrout]);
+            checks.push(['Spülung/Armaturen', room.flushFittings]);
+          }
+          for (const [label, val] of checks) {
+            if (val) {
+              techRows.push([room.name, label, techCheckLabel(val)]);
+            }
+          }
+        }
+        if (techRows.length > 0) {
+          autoTable(doc, {
+            startY: y,
+            margin: { left: 14, right: 14 },
+            head: [['Raum', 'Prüfpunkt', 'Ergebnis']],
+            body: techRows,
+            headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7.5 },
+            bodyStyles: { fontSize: 7.5, textColor: TEXT_COLOR },
+            alternateRowStyles: { fillColor: [248, 249, 255] },
+            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 35 }, 1: { cellWidth: 55 } },
+            didParseCell: (hookData: any) => {
+              if (hookData.section === 'body' && hookData.column.index === 2) {
+                const text = hookData.cell.text?.[0] || '';
+                if (text.startsWith('⊘')) {
+                  hookData.cell.styles.textColor = [180, 120, 20];
+                  hookData.cell.styles.fontStyle = 'bold';
+                } else if (text.startsWith('⚠')) {
+                  hookData.cell.styles.textColor = DANGER_COLOR;
+                  hookData.cell.styles.fontStyle = 'bold';
+                }
+              }
+            },
+          });
+          y = (doc as any).lastAutoTable.finalY + 4;
+        }
+      }
+    }
+  }
+
   // ── §6a  Mängel / Zustandsdokumentation ────────────────────────────────────
   const defectFindings = data.findings.filter(f => f.entryType !== 'note');
   const noteFindings = data.findings.filter(f => f.entryType === 'note');

@@ -14,12 +14,68 @@ import { useGeoPhoto } from '@/hooks/useGeoPhoto';
 import { GeoPermissionGuard } from '@/components/GeoPermissionGuard';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { RoomConfig } from './types';
+import type { RoomConfig, TechCheckValue, TechCheckStatus } from './types';
+import { Input } from '@/components/ui/input';
 
 const MAX_OVERVIEW_PHOTOS = 5;
 
 // Wall defect classification types
 type WallDamageClass = 'verschmutzung' | 'abnutzung';
+
+// ─── 3-Status Selector (OK / N.V. / N.G.) ───
+const STATUS_OPTIONS: { value: TechCheckStatus; label: string; color: string; activeColor: string }[] = [
+  { value: 'ok', label: 'OK', color: 'border-border text-muted-foreground', activeColor: 'border-accent bg-accent/15 text-accent font-bold' },
+  { value: 'nv', label: 'N.V.', color: 'border-border text-muted-foreground', activeColor: 'border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold' },
+  { value: 'ng', label: 'N.G.', color: 'border-border text-muted-foreground', activeColor: 'border-destructive bg-destructive/15 text-destructive font-bold' },
+];
+
+interface TechCheckRowProps {
+  label: string;
+  icon?: React.ReactNode;
+  value?: TechCheckValue;
+  onChange: (val: TechCheckValue) => void;
+}
+
+const TechCheckRow = ({ label, icon, value, onChange }: TechCheckRowProps) => {
+  const current = value?.status ?? null;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-start gap-2">
+        {icon}
+        <span className="text-sm flex-1 leading-tight">{label}</span>
+      </div>
+      <div className="flex gap-1.5 ml-0">
+        {STATUS_OPTIONS.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => onChange({ status: opt.value, comment: opt.value === 'ng' ? (value?.comment || '') : undefined })}
+            className={`flex-1 h-8 rounded-xl text-xs border-2 transition-all ${
+              current === opt.value ? opt.activeColor : opt.color
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      {/* N.G. requires mandatory comment */}
+      <AnimatePresence>
+        {current === 'ng' && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <Input
+              placeholder="Grund angeben (Pflicht) z.B. Wasser abgestellt"
+              value={value?.comment || ''}
+              onChange={e => onChange({ status: 'ng', comment: e.target.value })}
+              className="h-8 text-xs rounded-lg border-destructive/40 focus-visible:ring-destructive/30"
+            />
+            {(!value?.comment || !value.comment.trim()) && (
+              <p className="text-[10px] text-destructive mt-0.5">Pflichtfeld: Bitte Grund für „Nicht geprüft" angeben.</p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 interface Props {
   room: RoomConfig;
@@ -71,15 +127,22 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
   const isKitchen = room.name.toLowerCase().includes('küche');
   const isBathroom = room.name.toLowerCase().includes('bad') || room.name.toLowerCase().includes('wc') || room.name.toLowerCase().includes('dusch');
 
-  // Validation: photos + all technical checks must be done (move-out only)
+  // Helper: check if a TechCheckValue is "decided" (not null) and valid (ng requires comment)
+  const isCheckComplete = (val?: TechCheckValue): boolean => {
+    if (!val || val.status === null) return false;
+    if (val.status === 'ng' && (!val.comment || !val.comment.trim())) return false;
+    return true;
+  };
+
+  // Validation: photos + all technical checks must be decided (move-out only)
   const hasPhotos = overviewPhotos.length > 0;
   const technicalChecksComplete = isMoveIn ? true : (
-    !!room.windowsDoorsFunctional &&
-    !!room.sanitaryTight &&
-    !!room.electricalOk &&
-    !!room.smokeDetectorOk &&
-    (!isKitchen || (!!room.ovenFunctional && !!room.sinkDrainClear)) &&
-    (!isBathroom || (!!room.tilesGroutIntact && !!room.flushFittingsOk))
+    isCheckComplete(room.windowsDoors) &&
+    isCheckComplete(room.sanitary) &&
+    isCheckComplete(room.electrical) &&
+    isCheckComplete(room.smokeDetector) &&
+    (!isKitchen || (isCheckComplete(room.oven) && isCheckComplete(room.sinkDrain))) &&
+    (!isBathroom || (isCheckComplete(room.tilesGrout) && isCheckComplete(room.flushFittings)))
   );
   const canComplete = hasPhotos && technicalChecksComplete;
 
@@ -526,12 +589,6 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
               <span className="text-sm">Besenrein</span>
             </label>
 
-            {/* Rauchwarnmelder */}
-            <label className="flex items-center gap-3 cursor-pointer">
-              <Checkbox checked={room.smokeDetectorOk || false} onCheckedChange={v => onUpdate({ smokeDetectorOk: !!v })} />
-              <span className="text-sm">Rauchwarnmelder geprüft – Testknopf-Aktivierung erfolgreich (LBO SH §49)</span>
-            </label>
-
             {/* Wandfarben */}
             <div className="flex gap-2">
               <Button size="sm" variant={room.wallsNeutral === true ? 'default' : 'outline'} className="rounded-xl text-xs h-8 flex-1"
@@ -547,56 +604,71 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
               <p className="text-xs text-destructive">BGH VIII ZR 224/07 – Schadensersatzanspruch möglich.</p>
             )}
 
-            {/* ── Technische Funktionen ── */}
-            <div className="border-t border-border/40 pt-3 space-y-2">
+            {/* ── Technische Funktionen (3-Status) ── */}
+            <div className="border-t border-border/40 pt-3 space-y-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                 <Wrench className="w-3.5 h-3.5" /> Technische Funktionen
               </p>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <Checkbox checked={room.windowsDoorsFunctional || false} onCheckedChange={v => onUpdate({ windowsDoorsFunctional: !!v })} />
-                <span className="text-sm">Fenster & Türen gängig <span className="text-muted-foreground text-xs">(§ 538 BGB)</span></span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <Checkbox checked={room.sanitaryTight || false} onCheckedChange={v => onUpdate({ sanitaryTight: !!v })} />
-                <span className="text-sm flex items-center gap-1"><Droplets className="w-3 h-3 text-muted-foreground" /> Sanitär-/Wasseranschlüsse dicht</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <Checkbox checked={room.electricalOk || false} onCheckedChange={v => onUpdate({ electricalOk: !!v })} />
-                <span className="text-sm flex items-center gap-1"><Plug className="w-3 h-3 text-muted-foreground" /> Steckdosen/Lichtschalter unbeschädigt</span>
-              </label>
+
+              <TechCheckRow
+                label="Rauchwarnmelder – Testknopf-Aktivierung erfolgreich (LBO SH §49)"
+                value={room.smokeDetector}
+                onChange={v => onUpdate({ smokeDetector: v })}
+              />
+              <TechCheckRow
+                label="Fenster & Türen gängig (§ 538 BGB)"
+                value={room.windowsDoors}
+                onChange={v => onUpdate({ windowsDoors: v })}
+              />
+              <TechCheckRow
+                label="Sanitär-/Wasseranschlüsse dicht"
+                icon={<Droplets className="w-3 h-3 text-muted-foreground shrink-0" />}
+                value={room.sanitary}
+                onChange={v => onUpdate({ sanitary: v })}
+              />
+              <TechCheckRow
+                label="Steckdosen/Lichtschalter unbeschädigt"
+                icon={<Plug className="w-3 h-3 text-muted-foreground shrink-0" />}
+                value={room.electrical}
+                onChange={v => onUpdate({ electrical: v })}
+              />
             </div>
 
             {/* ── Küche-spezifisch ── */}
             {isKitchen && (
-              <div className="border-t border-border/40 pt-3 space-y-2">
+              <div className="border-t border-border/40 pt-3 space-y-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                   <CookingPot className="w-3.5 h-3.5" /> Küchen-Check
                 </p>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <Checkbox checked={room.ovenFunctional || false} onCheckedChange={v => onUpdate({ ovenFunctional: !!v })} />
-                  <span className="text-sm">Herd/Backofen funktionsfähig & sauber</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <Checkbox checked={room.sinkDrainClear || false} onCheckedChange={v => onUpdate({ sinkDrainClear: !!v })} />
-                  <span className="text-sm">Spüle/Abfluss frei</span>
-                </label>
+                <TechCheckRow
+                  label="Herd/Backofen funktionsfähig & sauber"
+                  value={room.oven}
+                  onChange={v => onUpdate({ oven: v })}
+                />
+                <TechCheckRow
+                  label="Spüle/Abfluss frei"
+                  value={room.sinkDrain}
+                  onChange={v => onUpdate({ sinkDrain: v })}
+                />
               </div>
             )}
 
             {/* ── Bad-spezifisch ── */}
             {isBathroom && (
-              <div className="border-t border-border/40 pt-3 space-y-2">
+              <div className="border-t border-border/40 pt-3 space-y-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                   <Bath className="w-3.5 h-3.5" /> Bad-Check
                 </p>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <Checkbox checked={room.tilesGroutIntact || false} onCheckedChange={v => onUpdate({ tilesGroutIntact: !!v })} />
-                  <span className="text-sm">Fliesen/Fugen intakt</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <Checkbox checked={room.flushFittingsOk || false} onCheckedChange={v => onUpdate({ flushFittingsOk: !!v })} />
-                  <span className="text-sm">Spülung/Armaturen funktionsfähig</span>
-                </label>
+                <TechCheckRow
+                  label="Fliesen/Fugen intakt"
+                  value={room.tilesGrout}
+                  onChange={v => onUpdate({ tilesGrout: v })}
+                />
+                <TechCheckRow
+                  label="Spülung/Armaturen funktionsfähig"
+                  value={room.flushFittings}
+                  onChange={v => onUpdate({ flushFittings: v })}
+                />
               </div>
             )}
           </div>
