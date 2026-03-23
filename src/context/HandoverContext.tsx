@@ -230,6 +230,8 @@ export interface HandoverData {
   depositAgreementReached: boolean;
   depositAgreementTimestamp: string;
   tenantRefusesNewAddress: boolean;
+  // Cancellation reminders (Phase 11)
+  cancellationReminders: CancellationReminder[];
   // Condition checks (Phase 8 extension)
   cleaningBesenrein: boolean;
   cleaningBriefkasten: boolean;
