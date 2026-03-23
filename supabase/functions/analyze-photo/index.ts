@@ -63,17 +63,34 @@ Analysiere dieses Foto eines oder mehrerer Zähler und extrahiere die Informatio
 
 WICHTIG: Auf einem Foto können MEHRERE Zähler sichtbar sein (z.B. Warm- und Kaltwasserzähler nebeneinander, oder Zähler an verschiedenen Stellen). Prüfe das Bild sorgfältig.
 
-Falls NUR EIN Zähler erkennbar ist, antworte mit einem einzelnen JSON-Objekt:
+KRITISCH – MaLo-ID: Erfinde oder rate NIEMALS eine Marktlokations-ID (MaLo-ID). MaLo-IDs beginnen mit "DE00" und sind nur auf Stromrechnungen zu finden, NICHT auf Zählern selbst. Setze "maloId" IMMER auf "" (leerer String).
+
+OPTIMIERUNG für Zählertyp EFR mME-ET 2E:
+- Zählernummer ist 16-stellig (z.B. 7049130071564697)
+- Bei Zweirichtungszählern (erkennbar an OBIS-Kennziffern 1.8.0 und 2.8.0): Gib BEIDE Register als separate Meter zurück
+
+Falls NUR EIN Zähler mit EINEM Register erkennbar ist, antworte mit einem einzelnen JSON-Objekt:
 {
-  "medium": "Strom" | "Wasser" | "Gas" | "Wärmemengenzähler" | "Sonstiges",
+  "medium": "Strom" | "Wasser" | "Wärmemengenzähler" | "Sonstiges",
   "meterNumber": "Zählernummer",
   "reading": "Zählerstand (z.B. 14.502,4)",
   "unit": "kWh" | "m³" etc.,
-  "maloId": "MaLo-ID falls sichtbar, sonst leer",
-  "confidence": "high" | "medium" | "low"
+  "maloId": "",
+  "confidence": "high" | "medium" | "low",
+  "isBidirectional": false
 }
 
-Falls MEHRERE Zähler erkennbar sind (z.B. Warmwasser + Kaltwasser, oder zwei Stromzähler), antworte mit:
+Falls ein ZWEIRICHTUNGSZÄHLER erkannt wird (OBIS 1.8.0 und 2.8.0), antworte mit:
+{
+  "multiple": true,
+  "isBidirectional": true,
+  "meters": [
+    { "medium": "Strom (Bezug 1.8.0)", "meterNumber": "...", "reading": "...", "unit": "kWh", "maloId": "", "confidence": "high" },
+    { "medium": "Strom (Einspeisung 2.8.0)", "meterNumber": "...", "reading": "...", "unit": "kWh", "maloId": "", "confidence": "high" }
+  ]
+}
+
+Falls MEHRERE verschiedene Zähler erkennbar sind, antworte mit:
 {
   "multiple": true,
   "meters": [

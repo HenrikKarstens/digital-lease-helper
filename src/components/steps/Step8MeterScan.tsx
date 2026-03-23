@@ -13,6 +13,7 @@ import { GeoPermissionGuard } from '@/components/GeoPermissionGuard';
 
 const METER_TYPES = [
   { value: 'Strom', label: 'Strom', icon: Zap, unit: 'kWh' },
+  { value: 'Zweirichtungszähler', label: 'Zweirichtungszähler (Bezug/Einspeisung)', icon: Zap, unit: 'kWh' },
   { value: 'Wasser', label: 'Wasser', icon: Droplets, unit: 'm³' },
   { value: 'Gas', label: 'Gas', icon: Flame, unit: 'm³' },
   { value: 'Wärmemengenzähler', label: 'Wärmemengenzähler', icon: Thermometer, unit: 'kWh' },
@@ -22,7 +23,12 @@ const METER_TYPES = [
 
 const MEDIUM_ICONS: Record<string, React.ElementType> = {
   Strom: Zap,
+  Zweirichtungszähler: Zap,
+  'Strom (Bezug 1.8.0)': Zap,
+  'Strom (Einspeisung 2.8.0)': Zap,
   Wasser: Droplets,
+  'Wasser (kalt)': Droplets,
+  'Wasser (warm)': Droplets,
   Gas: Flame,
   Wärmemengenzähler: Thermometer,
   Heizkostenverteiler: Thermometer,
@@ -37,6 +43,7 @@ interface ManualForm {
   medium: string;
   meterNumber: string;
   reading: string;
+  readingFeed: string; // For Zweirichtungszähler: Einspeisung (2.8.0)
   unit: string;
   maloId: string;
   date: string;
@@ -46,6 +53,7 @@ const emptyForm = (): ManualForm => ({
   medium: '',
   meterNumber: '',
   reading: '',
+  readingFeed: '',
   unit: '',
   maloId: '',
   date: TODAY,
@@ -270,16 +278,41 @@ export const Step8MeterScan = () => {
 
   const handleAddManual = () => {
     if (!manualForm.medium || !manualForm.reading) return;
-    const newMeter: MeterReading = {
-      id: Date.now().toString(),
-      medium: manualForm.medium,
-      meterNumber: manualForm.meterNumber,
-      reading: manualForm.reading,
-      unit: manualForm.unit,
-      maloId: manualForm.maloId,
-      source: 'manual',
-    };
-    updateData({ meterReadings: [...data.meterReadings, newMeter] });
+    if (manualForm.medium === 'Zweirichtungszähler' && !manualForm.readingFeed) return;
+    
+    if (manualForm.medium === 'Zweirichtungszähler') {
+      // Create two separate meters for Bezug and Einspeisung
+      const bezug: MeterReading = {
+        id: `${Date.now()}-bezug`,
+        medium: 'Strom (Bezug 1.8.0)',
+        meterNumber: manualForm.meterNumber,
+        reading: manualForm.reading,
+        unit: manualForm.unit || 'kWh',
+        maloId: manualForm.maloId,
+        source: 'manual',
+      };
+      const einspeisung: MeterReading = {
+        id: `${Date.now()}-einsp`,
+        medium: 'Strom (Einspeisung 2.8.0)',
+        meterNumber: manualForm.meterNumber,
+        reading: manualForm.readingFeed,
+        unit: manualForm.unit || 'kWh',
+        maloId: manualForm.maloId,
+        source: 'manual',
+      };
+      updateData({ meterReadings: [...data.meterReadings, bezug, einspeisung] });
+    } else {
+      const newMeter: MeterReading = {
+        id: Date.now().toString(),
+        medium: manualForm.medium,
+        meterNumber: manualForm.meterNumber,
+        reading: manualForm.reading,
+        unit: manualForm.unit,
+        maloId: manualForm.maloId,
+        source: 'manual',
+      };
+      updateData({ meterReadings: [...data.meterReadings, newMeter] });
+    }
     setManualForm(emptyForm());
     setShowManualForm(false);
   };
@@ -290,6 +323,7 @@ export const Step8MeterScan = () => {
       medium: meter.medium,
       meterNumber: meter.meterNumber,
       reading: meter.reading,
+      readingFeed: '',
       unit: meter.unit,
       maloId: meter.maloId,
       date: TODAY,
@@ -416,28 +450,58 @@ export const Step8MeterScan = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Zählerstand *</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  inputMode="decimal"
-                  value={manualForm.reading}
-                  onChange={e => setManualForm(p => ({ ...p, reading: e.target.value }))}
-                  className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
-                />
+            {manualForm.medium === 'Zweirichtungszähler' ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Zählerstand Bezug (1.8.0) *</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    inputMode="decimal"
+                    value={manualForm.reading}
+                    onChange={e => setManualForm(p => ({ ...p, reading: e.target.value }))}
+                    className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Zählerstand Einspeisung (2.8.0) *</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    inputMode="decimal"
+                    value={manualForm.readingFeed}
+                    onChange={e => setManualForm(p => ({ ...p, readingFeed: e.target.value }))}
+                    className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground/70 italic">
+                  Bitte machen Sie zwei Fotos – eines pro Register (Bezug & Einspeisung).
+                </p>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Zählerstand *</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    inputMode="decimal"
+                    value={manualForm.reading}
+                    onChange={e => setManualForm(p => ({ ...p, reading: e.target.value }))}
+                    className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Einheit</Label>
+                  <Input
+                    placeholder="kWh / m³"
+                    value={manualForm.unit}
+                    onChange={e => setManualForm(p => ({ ...p, unit: e.target.value }))}
+                    className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Einheit</Label>
-                <Input
-                  placeholder="kWh / m³"
-                  value={manualForm.unit}
-                  onChange={e => setManualForm(p => ({ ...p, unit: e.target.value }))}
-                  className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
-                />
-              </div>
-            </div>
+            )}
 
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -455,16 +519,21 @@ export const Step8MeterScan = () => {
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">MaLo-ID (optional)</Label>
               <Input
-                placeholder="DE00..."
+                placeholder="Wird aus Stromrechnung (Phase 10) übernommen"
                 value={manualForm.maloId}
                 onChange={e => setManualForm(p => ({ ...p, maloId: e.target.value }))}
                 className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
               />
+              {!manualForm.maloId && (
+                <p className="text-[10px] text-muted-foreground/70 italic">
+                  Die MaLo-ID wird automatisch aus der Stromrechnung in Phase 10 extrahiert.
+                </p>
+              )}
             </div>
 
             <Button
               onClick={handleAddManual}
-              disabled={!manualForm.medium || !manualForm.reading}
+              disabled={!manualForm.medium || !manualForm.reading || (manualForm.medium === 'Zweirichtungszähler' && !manualForm.readingFeed)}
               className="w-full h-11 rounded-2xl font-semibold gap-2"
             >
               <Plus className="w-4 h-4" />
@@ -546,7 +615,14 @@ export const Step8MeterScan = () => {
                       <Input value={editForm.reading} onChange={e => setEditForm(p => p ? { ...p, reading: e.target.value } : p)} placeholder="Zählerstand" inputMode="decimal" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
                       <Input value={editForm.unit} onChange={e => setEditForm(p => p ? { ...p, unit: e.target.value } : p)} placeholder="Einheit" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
                     </div>
-                    <Input value={editForm.maloId} onChange={e => setEditForm(p => p ? { ...p, maloId: e.target.value } : p)} placeholder="MaLo-ID" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
+                    <div className="space-y-1">
+                      <Input value={editForm.maloId} onChange={e => setEditForm(p => p ? { ...p, maloId: e.target.value } : p)} placeholder="Wird aus Stromrechnung (Phase 10) übernommen" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
+                      {!editForm.maloId && (
+                        <p className="text-[10px] text-muted-foreground/70 italic">
+                          Die MaLo-ID wird automatisch aus der Stromrechnung in Phase 10 extrahiert.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 text-sm">
@@ -558,10 +634,14 @@ export const Step8MeterScan = () => {
                       <span className="text-muted-foreground text-xs">Stand</span>
                       <p className="font-mono font-medium">{meter.reading} {meter.unit}</p>
                     </div>
-                    {meter.maloId && (
+                    {meter.maloId ? (
                       <div className="col-span-2">
                         <span className="text-muted-foreground text-xs">MaLo-ID</span>
                         <p className="font-mono text-xs truncate">{meter.maloId}</p>
+                      </div>
+                    ) : (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground text-xs italic">MaLo-ID: Wird aus Stromrechnung (Phase 10) übernommen</span>
                       </div>
                     )}
                   </div>
