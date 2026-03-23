@@ -8,7 +8,7 @@ import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { DocumentAnalysisProgress } from './DocumentAnalysisProgress';
 import { DocumentScanner } from './DocumentScanner';
-import { ExtractionResultCard } from './ExtractionResultCard';
+
 import { useExtractionValidation } from './useExtractionValidation';
 import type { DocStep, PagePhoto, InputMode } from './types';
 
@@ -77,7 +77,7 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
   const [analysisStepIdx, setAnalysisStepIdx] = useState(0);
   const [currentAnalyzingPage, setCurrentAnalyzingPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
-  const [showResults, setShowResults] = useState(false);
+  
   const [manualValues, setManualValues] = useState<Record<string, string>>({});
 
   const runAnalysis = async (scannedPages: PagePhoto[]) => {
@@ -149,13 +149,8 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       updateData(patch as any);
       console.log('[EstateTurn] Daten in globalen State geschrieben:', Object.keys(patch));
 
-      // For main contract, show extraction results with validation
-      if (docStep.id === 'main-contract') {
-        setMode('idle');
-        setShowResults(true);
-      } else {
-        setTimeout(() => onDone(), 300);
-      }
+      // Skip extraction results card – go directly to data-check
+      setTimeout(() => onDone(), 300);
     } catch (err: any) {
       clearInterval(interval);
       console.error('[EstateTurn] Analyse-Fehler:', err);
@@ -192,19 +187,8 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     onDone();
   };
 
-  // ── Extraction results view ──
-  if (showResults && docStep.id === 'main-contract') {
-    return (
-      <div className="min-h-[60vh] flex flex-col py-4">
-        <ExtractionResultCard
-          fields={validationFields}
-          warnings={validationWarnings}
-          onConfirm={onDone}
-          onRescan={() => setShowResults(false)}
-        />
-      </div>
-    );
-  }
+
+
 
   // ── Manual input form ──
   if (mode === 'manual') {
