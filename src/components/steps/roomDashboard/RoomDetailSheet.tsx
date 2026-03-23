@@ -70,11 +70,21 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
   // ─── Camera handlers ───
   const openCameraWithGeo = useCallback((mode: 'overview' | 'defect') => {
     setCameraMode(mode);
+    // Skip guard if already granted globally
+    if (data.geoPermissionGranted || data.geoPermissionDenied) {
+      if (mode === 'overview') {
+        overviewCameraRef.current?.click();
+      } else {
+        cameraRef.current?.click();
+      }
+      return;
+    }
     setShowGeoGuard(true);
-  }, []);
+  }, [data.geoPermissionGranted, data.geoPermissionDenied]);
 
   const handleGeoGranted = useCallback(async () => {
     setShowGeoGuard(false);
+    updateData({ geoPermissionGranted: true });
     await requestPermission();
     if (geoDenied) updateData({ geoPermissionDenied: true });
     if (cameraMode === 'overview') {

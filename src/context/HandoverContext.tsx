@@ -237,6 +237,7 @@ export interface HandoverData {
   smokeDetectorChecked: boolean;
   wallsNeutralColors: boolean | null;
   geoPermissionDenied: boolean;
+  geoPermissionGranted: boolean;
 }
 
 const STORAGE_KEY = 'estateturn_draft';
@@ -326,6 +327,7 @@ const defaultData: HandoverData = {
   smokeDetectorChecked: false,
   wallsNeutralColors: null,
   geoPermissionDenied: false,
+  geoPermissionGranted: false,
 };
 
 interface HandoverContextType {

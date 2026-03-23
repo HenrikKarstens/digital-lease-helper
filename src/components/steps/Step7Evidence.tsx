@@ -107,13 +107,17 @@ export const Step7Evidence = () => {
 
   // Open camera with geo permission guard
   const openCameraWithGeoGuard = useCallback(() => {
+    if (data.geoPermissionGranted || data.geoPermissionDenied) {
+      cameraInputRef.current?.click();
+      return;
+    }
     setShowGeoGuard(true);
-  }, []);
+  }, [data.geoPermissionGranted, data.geoPermissionDenied]);
 
   const handleGeoGranted = useCallback(async () => {
     setShowGeoGuard(false);
+    updateData({ geoPermissionGranted: true });
     await requestPermission();
-    // Track denial state
     if (geoDenied) {
       updateData({ geoPermissionDenied: true });
     }
