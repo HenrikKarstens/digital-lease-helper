@@ -28,7 +28,7 @@ const ALL_STEPS: StepDef[] = [
 /**
  * Returns the filtered list of steps based on transactionType and handoverDirection.
  *
- * Rental Move-In:  No defect-analysis, no deposit → ~10 steps
+ * Rental Move-In:  No defect-analysis, no utility, no forwarding-address; includes deposit-check after meters
  * Rental Move-Out: Full flow → 14 steps
  * Sale (both):     No deposit, no direction step → ~11 steps
  */
