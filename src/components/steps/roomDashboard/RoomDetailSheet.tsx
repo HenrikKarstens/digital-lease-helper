@@ -65,8 +65,23 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
 
   // Multi-photo support
   const overviewPhotos = room.overviewPhotos || (room.overviewPhotoUrl ? [{ url: room.overviewPhotoUrl, timestamp: room.overviewPhotoTimestamp || '' }] : []);
-  const canComplete = overviewPhotos.length > 0;
   const canAddMorePhotos = overviewPhotos.length < MAX_OVERVIEW_PHOTOS;
+
+  // Room-type detection
+  const isKitchen = room.name.toLowerCase().includes('küche');
+  const isBathroom = room.name.toLowerCase().includes('bad') || room.name.toLowerCase().includes('wc') || room.name.toLowerCase().includes('dusch');
+
+  // Validation: photos + all technical checks must be done (move-out only)
+  const hasPhotos = overviewPhotos.length > 0;
+  const technicalChecksComplete = isMoveIn ? true : (
+    !!room.windowsDoorsFunctional &&
+    !!room.sanitaryTight &&
+    !!room.electricalOk &&
+    !!room.smokeDetectorOk &&
+    (!isKitchen || (!!room.ovenFunctional && !!room.sinkDrainClear)) &&
+    (!isBathroom || (!!room.tilesGroutIntact && !!room.flushFittingsOk))
+  );
+  const canComplete = hasPhotos && technicalChecksComplete;
 
   // ─── Camera handlers ───
   const openCameraWithGeo = useCallback((mode: 'overview' | 'defect') => {
