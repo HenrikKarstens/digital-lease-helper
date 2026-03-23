@@ -867,7 +867,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       // Embed finding photos (move-in)
       const findingPhotos = data.findings
         .filter(f => f.photoUrl)
-        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo) }));
+        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo), sha256: f.sha256Hash }));
       y = embedPhotos(doc, findingPhotos, y, pageW, pageH, col1);
     } else {
       doc.setTextColor(...SUCCESS_COLOR);
