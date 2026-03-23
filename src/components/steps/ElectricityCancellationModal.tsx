@@ -86,6 +86,9 @@ export const ElectricityCancellationModal = ({
           customerNumber: extracted.customerNumber || prev.customerNumber,
           contractNumber: extracted.contractNumber || prev.contractNumber,
         }));
+        // Extract MaLo-ID from bill if available
+        const extractedMalo = d.maloId || d.marktlokation || d.malo || '';
+        if (extractedMalo) setMaloIdLocal(extractedMalo);
         toast({
           title: '📄 Versorger-Daten erkannt',
           description: extracted.providerName
