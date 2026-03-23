@@ -202,6 +202,7 @@ export interface HandoverData {
   participants: Participant[];
   attendancePhotoUrl: string | null;
   attendancePhotoGeo: PhotoGeoMeta | null;
+  attendancePhotoHash: string | null;
   // Step 7
   findings: Finding[];
   // Step 8
