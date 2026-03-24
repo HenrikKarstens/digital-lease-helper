@@ -19,10 +19,39 @@ import {
 } from '@/components/ui/tooltip';
 
 const CHECK24_AFFILIATE_ID = 'ESTATETURN_PARTNER';
+const CHECK24_BEST_PRICE_PER_KWH = 0.2890;
+const CHECK24_BEST_GRUNDPREIS = 95;
+
+const GRUNDVERSORGER_DB: Record<string, { name: string; pricePerKwh: number; grundpreis: number }> = {
+  '10': { name: 'Vattenfall Berlin', pricePerKwh: 0.3890, grundpreis: 148 },
+  '20': { name: 'Vattenfall Hamburg', pricePerKwh: 0.3750, grundpreis: 142 },
+  '22': { name: 'Vattenfall Hamburg', pricePerKwh: 0.3750, grundpreis: 142 },
+  '30': { name: 'enercity Hannover', pricePerKwh: 0.3680, grundpreis: 139 },
+  '40': { name: 'Stadtwerke Düsseldorf', pricePerKwh: 0.3720, grundpreis: 141 },
+  '50': { name: 'RheinEnergie Köln', pricePerKwh: 0.3650, grundpreis: 138 },
+  '60': { name: 'Mainova Frankfurt', pricePerKwh: 0.3810, grundpreis: 145 },
+  '70': { name: 'EnBW Stuttgart', pricePerKwh: 0.3790, grundpreis: 144 },
+  '80': { name: 'SWM München', pricePerKwh: 0.3850, grundpreis: 147 },
+  '90': { name: 'N-ERGIE Nürnberg', pricePerKwh: 0.3710, grundpreis: 140 },
+  '25': { name: 'Stadtwerke Heide', pricePerKwh: 0.3620, grundpreis: 136 },
+  '01': { name: 'DREWAG Dresden', pricePerKwh: 0.3580, grundpreis: 135 },
+  '04': { name: 'Stadtwerke Leipzig', pricePerKwh: 0.3640, grundpreis: 137 },
+};
 
 function extractPlz(address: string): string {
   const match = address.match(/\b(\d{5})\b/);
   return match ? match[1] : '';
+}
+
+function lookupGrundversorger(plz: string) {
+  if (!plz) return { name: 'Lokaler Grundversorger', pricePerKwh: 0.3700, grundpreis: 140 };
+  const prefix2 = plz.substring(0, 2);
+  return GRUNDVERSORGER_DB[prefix2] || { name: 'Lokaler Grundversorger', pricePerKwh: 0.3700, grundpreis: 140 };
+}
+
+function estimateKwh(rooms: number): number {
+  const map: Record<number, number> = { 1: 1500, 2: 2000, 3: 2500, 4: 3500, 5: 4000 };
+  return map[Math.min(rooms, 5)] ?? 3500;
 }
 
 export const Step12Unlock = () => {
