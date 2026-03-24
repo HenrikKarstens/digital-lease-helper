@@ -314,74 +314,115 @@ export const Step12Unlock = () => {
           {/* ── Unlock Options (only after preview) ── */}
           <div className={`space-y-3 transition-opacity ${previewViewed ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
 
-            {/* Option 1: Handwerker Leads (kostenlos mit DSGVO) */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="rounded-2xl border-2 border-accent/30 hover:border-accent/60 bg-accent/5 p-4 transition-all"
-            >
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                  <Wrench className="w-5 h-5 text-accent-foreground" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-sm">Kostenlos freischalten</p>
-                    <span className="text-sm font-bold text-accent-foreground">0 €</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                    {defectsCount > 0
-                      ? `${defectsCount} Mängel erkannt – erhalte unverbindliche Handwerkerangebote zur Behebung und schalte das Protokoll sofort kostenlos frei.`
-                      : 'Erhalte unverbindliche Handwerkerangebote und schalte das Protokoll sofort kostenlos frei.'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Data that will be shared */}
-              {defectsCount > 0 && (
-                <div className="bg-secondary/30 rounded-xl p-3 mb-3 space-y-2">
-                  <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-                    Folgende Daten werden übermittelt:
-                  </p>
-                  <ul className="text-[11px] text-muted-foreground space-y-1 pl-5 list-disc">
-                    <li>Kontaktdaten: <span className="font-medium text-foreground">{data.tenantName || 'Name'}</span>, <span className="font-medium text-foreground">{data.tenantEmail || 'E-Mail'}</span>{data.tenantPhone ? <>, <span className="font-medium text-foreground">{data.tenantPhone}</span></> : ''}</li>
-                    <li>Objektadresse: <span className="font-medium text-foreground">{data.propertyAddress || '–'}</span></li>
-                    <li>{defectsCount} dokumentierte Mängel inkl. Beschreibung, Raum &amp; Schadensart</li>
-                    {defectPhotos > 0 && (
-                      <li className="flex items-center gap-1">
-                        <Camera className="w-3 h-3 shrink-0" />
-                        <span>{defectPhotos} Beweisfoto{defectPhotos > 1 ? 's' : ''} aus der Mängelerfassung</span>
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              )}
-
-              {/* DSGVO Consent */}
-              <div className="flex items-start gap-2.5 mb-3 bg-background/60 rounded-xl p-3">
-                <Checkbox
-                  id="dsgvo-handwerker"
-                  checked={dsgvoConsent}
-                  onCheckedChange={(v) => setDsgvoConsent(v === true)}
-                  className="mt-0.5"
-                />
-                <label htmlFor="dsgvo-handwerker" className="text-[11px] text-muted-foreground leading-tight cursor-pointer">
-                  Ich stimme gemäß Art. 6 Abs. 1 lit. a DSGVO zu, dass meine Kontaktdaten ({data.tenantName || 'Name'}, {data.tenantEmail || 'E-Mail'}), die Objektadresse, die dokumentierten Mängel sowie die zugehörigen Beweisfotos an ausgewählte Handwerksbetriebe zur unverbindlichen Angebotserstellung weitergegeben werden. Die Einwilligung kann jederzeit widerrufen werden.{' '}
-                  <a href="/datenschutz" className="underline text-primary">Datenschutzerklärung</a>.
-                </label>
-              </div>
-
-              <Button
-                onClick={handleHandwerkerLeads}
-                disabled={!dsgvoConsent || processing}
-                className="w-full h-11 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+            {/* Option 1: Check24 Stromvergleich (Mieter + Einzug) OR Handwerker Leads */}
+            {isTenantMoveIn ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="rounded-2xl border-2 border-accent/30 hover:border-accent/60 bg-accent/5 p-4 transition-all"
               >
-                <Wrench className="w-4 h-4" />
-                Handwerkerangebote anfordern & freischalten
-              </Button>
-            </motion.div>
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                    <PlugZap className="w-5 h-5 text-accent-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-sm">Kostenlos freischalten</p>
+                      <span className="text-sm font-bold text-accent-foreground">0 €</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      Jetzt Stromtarife vergleichen und bis zu 500 € sparen – Protokoll wird sofort kostenlos freigeschaltet.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-secondary/30 rounded-xl p-3 mb-3 space-y-1">
+                  <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-primary" />
+                    Stromvergleich über Check24
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Ihre Zähler- und Adressdaten werden automatisch übernommen – kein erneutes Eintippen nötig.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={handleCheck24}
+                  disabled={processing}
+                  className="w-full h-11 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                >
+                  <PlugZap className="w-4 h-4" />
+                  Stromvergleich starten & freischalten
+                </Button>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="rounded-2xl border-2 border-accent/30 hover:border-accent/60 bg-accent/5 p-4 transition-all"
+              >
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                    <Wrench className="w-5 h-5 text-accent-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-sm">Kostenlos freischalten</p>
+                      <span className="text-sm font-bold text-accent-foreground">0 €</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      {defectsCount > 0
+                        ? `${defectsCount} Mängel erkannt – erhalte unverbindliche Handwerkerangebote zur Behebung und schalte das Protokoll sofort kostenlos frei.`
+                        : 'Erhalte unverbindliche Handwerkerangebote und schalte das Protokoll sofort kostenlos frei.'}
+                    </p>
+                  </div>
+                </div>
+
+                {defectsCount > 0 && (
+                  <div className="bg-secondary/30 rounded-xl p-3 mb-3 space-y-2">
+                    <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                      Folgende Daten werden übermittelt:
+                    </p>
+                    <ul className="text-[11px] text-muted-foreground space-y-1 pl-5 list-disc">
+                      <li>Kontaktdaten: <span className="font-medium text-foreground">{data.tenantName || 'Name'}</span>, <span className="font-medium text-foreground">{data.tenantEmail || 'E-Mail'}</span>{data.tenantPhone ? <>, <span className="font-medium text-foreground">{data.tenantPhone}</span></> : ''}</li>
+                      <li>Objektadresse: <span className="font-medium text-foreground">{data.propertyAddress || '–'}</span></li>
+                      <li>{defectsCount} dokumentierte Mängel inkl. Beschreibung, Raum &amp; Schadensart</li>
+                      {defectPhotos > 0 && (
+                        <li className="flex items-center gap-1">
+                          <Camera className="w-3 h-3 shrink-0" />
+                          <span>{defectPhotos} Beweisfoto{defectPhotos > 1 ? 's' : ''} aus der Mängelerfassung</span>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="flex items-start gap-2.5 mb-3 bg-background/60 rounded-xl p-3">
+                  <Checkbox
+                    id="dsgvo-handwerker"
+                    checked={dsgvoConsent}
+                    onCheckedChange={(v) => setDsgvoConsent(v === true)}
+                    className="mt-0.5"
+                  />
+                  <label htmlFor="dsgvo-handwerker" className="text-[11px] text-muted-foreground leading-tight cursor-pointer">
+                    Ich stimme gemäß Art. 6 Abs. 1 lit. a DSGVO zu, dass meine Kontaktdaten ({data.tenantName || 'Name'}, {data.tenantEmail || 'E-Mail'}), die Objektadresse, die dokumentierten Mängel sowie die zugehörigen Beweisfotos an ausgewählte Handwerksbetriebe zur unverbindlichen Angebotserstellung weitergegeben werden. Die Einwilligung kann jederzeit widerrufen werden.{' '}
+                    <a href="/datenschutz" className="underline text-primary">Datenschutzerklärung</a>.
+                  </label>
+                </div>
+
+                <Button
+                  onClick={handleHandwerkerLeads}
+                  disabled={!dsgvoConsent || processing}
+                  className="w-full h-11 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                >
+                  <Wrench className="w-4 h-4" />
+                  Handwerkerangebote anfordern & freischalten
+                </Button>
+              </motion.div>
+            )}
 
             {/* Divider */}
             <div className="flex items-center gap-3">
