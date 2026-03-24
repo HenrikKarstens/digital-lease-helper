@@ -3,7 +3,7 @@ import { useState, useMemo, useCallback } from 'react';
 import {
   CreditCard, Shield, CheckCircle2, Mail, FileText, Eye, Printer, X,
   PartyPopper, MapPin, Users, Key, Camera, Wrench, ArrowRight,
-  AlertTriangle, Zap, Building2, Flame, Droplets
+  AlertTriangle, Zap, Building2, Flame, Droplets, PlugZap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -18,9 +18,17 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+const CHECK24_AFFILIATE_ID = 'ESTATETURN_PARTNER';
+
+function extractPlz(address: string): string {
+  const match = address.match(/\b(\d{5})\b/);
+  return match ? match[1] : '';
+}
+
 export const Step12Unlock = () => {
   const { data, updateData, resetData } = useHandover();
-  const { ownerRole, clientRole } = useTransactionLabels();
+  const { ownerRole, clientRole, isMoveIn } = useTransactionLabels();
+  const isTenantMoveIn = data.role === 'tenant' && isMoveIn;
   const { toast } = useToast();
 
   const [processing, setProcessing] = useState(false);
@@ -96,12 +104,45 @@ export const Step12Unlock = () => {
     }, 2000);
   };
 
-  // Free: Handwerker leads via DSGVO
+  // Build Check24 link for tenant move-in
+  const buildCheck24Link = () => {
+    const plz = extractPlz(data.propertyAddress || '');
+    const rooms = parseInt(data.roomCount || '3', 10);
+    const baseKwh: Record<number, number> = { 1: 1500, 2: 2000, 3: 2500, 4: 3500, 5: 4000 };
+    const kwh = baseKwh[Math.min(rooms, 5)] ?? 3500;
+    const stromMeter = data.meterReadings.find(m => m.medium?.toLowerCase().includes('strom'));
+    const params = new URLSearchParams({
+      zipcode: plz || '25746',
+      totalConsumption: String(kwh),
+      affiliate_id: CHECK24_AFFILIATE_ID,
+      partnerId: CHECK24_AFFILIATE_ID,
+    });
+    if (stromMeter?.meterNumber) params.set('meterNumber', stromMeter.meterNumber);
+    if (data.tenantName) params.set('billing_name', data.tenantName);
+    if (data.tenantEmail) params.set('customer_email', data.tenantEmail);
+    if (data.tenantBirthday) params.set('birthdate', data.tenantBirthday);
+    if (data.propertyAddress) params.set('billing_address', data.propertyAddress);
+    return `https://www.check24.de/strom/vergleich/?${params.toString()}`;
+  };
+
+  // Free: Handwerker leads via DSGVO (default for non move-in tenants)
   const handleHandwerkerLeads = () => {
     setProcessing(true);
-    // Open MyHammer or similar
     const myHammerUrl = 'https://www.myhammer.de/';
     window.open(myHammerUrl, '_blank');
+    setTimeout(() => {
+      updateData({ serviceCheckStatus: 'completed' });
+      setProcessing(false);
+      sendProtocol(recipientList);
+    }, 1500);
+  };
+
+  // Free: Check24 Stromvergleich (for tenant move-in)
+  const handleCheck24 = () => {
+    setProcessing(true);
+    const url = buildCheck24Link();
+    const win = window.open(url, '_blank');
+    if (!win) window.location.href = url;
     setTimeout(() => {
       updateData({ serviceCheckStatus: 'completed' });
       setProcessing(false);
