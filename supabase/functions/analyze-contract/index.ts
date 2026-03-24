@@ -61,13 +61,21 @@ serve(async (req) => {
     for (let idx = 0; idx < maxPages; idx++) {
       const file = files[idx];
       const arrayBuffer = await file.arrayBuffer();
-      const base64Data = uint8ToBase64(new Uint8Array(arrayBuffer));
-      const mimeType = file.type || 'application/pdf';
+      const bytes = new Uint8Array(arrayBuffer);
+      const base64Data = uint8ToBase64(bytes);
+      const mimeType = file.type && file.type !== 'application/octet-stream'
+        ? file.type
+        : 'image/jpeg'; // Camera captures are JPEG by default
+      
+      console.log(`[analyze-contract] Page ${idx + 1}: ${file.name || 'unnamed'}, type=${mimeType}, size=${bytes.length} bytes`);
+      
       imageParts.push({
         type: 'image_url',
         image_url: { url: `data:${mimeType};base64,${base64Data}` }
       });
     }
+    
+    console.log(`[analyze-contract] Sending ${imageParts.length} page(s) for ${documentType} analysis`);
 
     let docTypeLabel = '';
     let extraFields = '';
