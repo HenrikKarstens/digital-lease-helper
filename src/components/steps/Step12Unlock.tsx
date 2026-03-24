@@ -19,10 +19,39 @@ import {
 } from '@/components/ui/tooltip';
 
 const CHECK24_AFFILIATE_ID = 'ESTATETURN_PARTNER';
+const CHECK24_BEST_PRICE_PER_KWH = 0.2890;
+const CHECK24_BEST_GRUNDPREIS = 95;
+
+const GRUNDVERSORGER_DB: Record<string, { name: string; pricePerKwh: number; grundpreis: number }> = {
+  '10': { name: 'Vattenfall Berlin', pricePerKwh: 0.3890, grundpreis: 148 },
+  '20': { name: 'Vattenfall Hamburg', pricePerKwh: 0.3750, grundpreis: 142 },
+  '22': { name: 'Vattenfall Hamburg', pricePerKwh: 0.3750, grundpreis: 142 },
+  '30': { name: 'enercity Hannover', pricePerKwh: 0.3680, grundpreis: 139 },
+  '40': { name: 'Stadtwerke Düsseldorf', pricePerKwh: 0.3720, grundpreis: 141 },
+  '50': { name: 'RheinEnergie Köln', pricePerKwh: 0.3650, grundpreis: 138 },
+  '60': { name: 'Mainova Frankfurt', pricePerKwh: 0.3810, grundpreis: 145 },
+  '70': { name: 'EnBW Stuttgart', pricePerKwh: 0.3790, grundpreis: 144 },
+  '80': { name: 'SWM München', pricePerKwh: 0.3850, grundpreis: 147 },
+  '90': { name: 'N-ERGIE Nürnberg', pricePerKwh: 0.3710, grundpreis: 140 },
+  '25': { name: 'Stadtwerke Heide', pricePerKwh: 0.3620, grundpreis: 136 },
+  '01': { name: 'DREWAG Dresden', pricePerKwh: 0.3580, grundpreis: 135 },
+  '04': { name: 'Stadtwerke Leipzig', pricePerKwh: 0.3640, grundpreis: 137 },
+};
 
 function extractPlz(address: string): string {
   const match = address.match(/\b(\d{5})\b/);
   return match ? match[1] : '';
+}
+
+function lookupGrundversorger(plz: string) {
+  if (!plz) return { name: 'Lokaler Grundversorger', pricePerKwh: 0.3700, grundpreis: 140 };
+  const prefix2 = plz.substring(0, 2);
+  return GRUNDVERSORGER_DB[prefix2] || { name: 'Lokaler Grundversorger', pricePerKwh: 0.3700, grundpreis: 140 };
+}
+
+function estimateKwh(rooms: number): number {
+  const map: Record<number, number> = { 1: 1500, 2: 2000, 3: 2500, 4: 3500, 5: 4000 };
+  return map[Math.min(rooms, 5)] ?? 3500;
 }
 
 export const Step12Unlock = () => {
@@ -315,48 +344,86 @@ export const Step12Unlock = () => {
           <div className={`space-y-3 transition-opacity ${previewViewed ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
 
             {/* Option 1: Check24 Stromvergleich (Mieter + Einzug) OR Handwerker Leads */}
-            {isTenantMoveIn ? (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="rounded-2xl border-2 border-accent/30 hover:border-accent/60 bg-accent/5 p-4 transition-all"
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                    <PlugZap className="w-5 h-5 text-accent-foreground" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="font-bold text-sm">Kostenlos freischalten</p>
-                      <span className="text-sm font-bold text-accent-foreground">0 €</span>
+            {isTenantMoveIn ? (() => {
+              const plz = extractPlz(data.propertyAddress || '');
+              const rooms = parseInt(data.roomCount || '3', 10);
+              const kwh = estimateKwh(rooms);
+              const gv = lookupGrundversorger(plz);
+              const gvJahr = Math.round(gv.grundpreis + kwh * gv.pricePerKwh);
+              const c24Jahr = Math.round(CHECK24_BEST_GRUNDPREIS + kwh * CHECK24_BEST_PRICE_PER_KWH);
+              const ersparnis = gvJahr - c24Jahr;
+
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="rounded-2xl border-2 border-accent/30 hover:border-accent/60 bg-accent/5 p-4 transition-all"
+                >
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                      <PlugZap className="w-5 h-5 text-accent-foreground" />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                      Jetzt Stromtarife vergleichen und bis zu 500 € sparen – Protokoll wird sofort kostenlos freigeschaltet.
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-bold text-sm">Kostenlos freischalten</p>
+                        <span className="text-sm font-bold text-accent-foreground">0 €</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        Stromtarif vergleichen & Protokoll sofort kostenlos freischalten.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Savings calculation */}
+                  <div className="bg-secondary/30 rounded-2xl p-4 mb-3 space-y-3">
+                    <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-primary" />
+                      Ihr Einsparpotenzial ({rooms}-Zimmer, ca. {kwh.toLocaleString('de-DE')} kWh/Jahr)
+                    </p>
+
+                    {/* Grundversorger row */}
+                    <div className="flex items-center justify-between bg-destructive/5 rounded-xl px-3 py-2">
+                      <div>
+                        <p className="text-xs font-medium text-foreground">{gv.name}</p>
+                        <p className="text-[10px] text-muted-foreground">Grundversorgung · {(gv.pricePerKwh * 100).toFixed(1)} ct/kWh</p>
+                      </div>
+                      <p className="text-sm font-bold text-destructive">~{gvJahr} €<span className="text-[10px] font-normal text-muted-foreground">/Jahr</span></p>
+                    </div>
+
+                    {/* Check24 row */}
+                    <div className="flex items-center justify-between bg-primary/5 rounded-xl px-3 py-2">
+                      <div>
+                        <p className="text-xs font-medium text-foreground">Bester Tarif (Check24)</p>
+                        <p className="text-[10px] text-muted-foreground">Wechselbonus inkl. · {(CHECK24_BEST_PRICE_PER_KWH * 100).toFixed(1)} ct/kWh</p>
+                      </div>
+                      <p className="text-sm font-bold text-primary">~{c24Jahr} €<span className="text-[10px] font-normal text-muted-foreground">/Jahr</span></p>
+                    </div>
+
+                    {/* Savings badge */}
+                    {ersparnis > 0 && (
+                      <div className="flex items-center justify-center gap-2 bg-primary/10 rounded-xl px-3 py-2.5">
+                        <CheckCircle2 className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-bold text-primary">Bis zu {ersparnis} € pro Jahr sparen</span>
+                      </div>
+                    )}
+
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      Ihre Zähler- und Adressdaten werden automatisch übernommen.
                     </p>
                   </div>
-                </div>
 
-                <div className="bg-secondary/30 rounded-xl p-3 mb-3 space-y-1">
-                  <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
-                    <Zap className="w-3.5 h-3.5 text-primary" />
-                    Stromvergleich über Check24
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Ihre Zähler- und Adressdaten werden automatisch übernommen – kein erneutes Eintippen nötig.
-                  </p>
-                </div>
-
-                <Button
-                  onClick={handleCheck24}
-                  disabled={processing}
-                  className="w-full h-11 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-                >
-                  <PlugZap className="w-4 h-4" />
-                  Stromvergleich starten & freischalten
-                </Button>
-              </motion.div>
-            ) : (
+                  <Button
+                    onClick={handleCheck24}
+                    disabled={processing}
+                    className="w-full h-11 rounded-2xl font-semibold gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                  >
+                    <PlugZap className="w-4 h-4" />
+                    Stromvergleich starten & freischalten
+                  </Button>
+                </motion.div>
+              );
+            })() : (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
