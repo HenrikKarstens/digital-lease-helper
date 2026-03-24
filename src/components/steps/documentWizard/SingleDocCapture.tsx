@@ -80,10 +80,51 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
   
   const [manualValues, setManualValues] = useState<Record<string, string>>({});
 
+  /** Compress an image file to max ~1.5MB for reliable AI analysis */
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      // Skip non-image files (PDFs etc.)
+      if (!file.type.startsWith('image/')) {
+        resolve(file);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 2048;
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressed = new File([blob], file.name || 'photo.jpg', { type: 'image/jpeg' });
+              console.log(`[EstateTurn] Compressed ${(file.size / 1024).toFixed(0)}KB → ${(compressed.size / 1024).toFixed(0)}KB`);
+              resolve(compressed);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          0.85
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const runAnalysis = async (scannedPages: PagePhoto[]) => {
     if (scannedPages.length === 0) return;
 
-    console.log('[EstateTurn] File detected:', scannedPages.map(p => `${p.file.name} (${p.mimeType})`));
+    console.log('[EstateTurn] File detected:', scannedPages.map(p => `${p.file.name} (${p.mimeType}, ${(p.file.size / 1024).toFixed(0)}KB)`));
     setMode('analyzing');
     setError(null);
     setAnalysisStepIdx(0);
@@ -96,13 +137,16 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     }, 1200);
 
     try {
+      // Compress images before upload
+      const compressedFiles = await Promise.all(scannedPages.map(p => compressImage(p.file)));
+
       const formData = new FormData();
       formData.append('transactionType', data.transactionType || 'rental');
       formData.append('documentType', docStep.id);
 
-      scannedPages.forEach((page, idx) => {
+      compressedFiles.forEach((file, idx) => {
         setCurrentAnalyzingPage(idx + 1);
-        formData.append(`file_${idx}`, page.file);
+        formData.append(`file_${idx}`, file);
       });
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
