@@ -135,19 +135,26 @@ serve(async (req) => {
 - "confidence": Ein JSON-Objekt mit Feldnamen als Keys und Werten "high", "medium" oder "low"`;
     }
 
-    const prompt = `Du bist ein deutscher Immobilienrechtsexperte.
-Analysiere alle bereitgestellten Seiten (${maxPages} Seite${maxPages > 1 ? 'n' : ''}) dieses Dokuments: ${docTypeLabel}.
+    const prompt = `Du bist ein deutscher Immobilienrechtsexperte. Du analysierst ein fotografiertes/gescanntes Dokument: ${docTypeLabel}.
+Es wurden ${maxPages} Seite(n) als Foto(s) bereitgestellt.
+
+KRITISCHE REGEL – KEIN RATEN:
+- Du darfst NUR Daten extrahieren, die du TATSÄCHLICH im Bild LESEN kannst.
+- Wenn ein Feld im Dokument NICHT SICHTBAR oder NICHT LESBAR ist: setze es auf "" (leerer String).
+- ERFINDE NIEMALS Werte! Keine Schätzungen, keine Vermutungen, keine Beispieldaten.
+- Wenn das Foto unscharf ist oder du dir bei einem Wert nicht sicher bist: "" setzen.
+- Wenn das Bild KEIN Vertragsdokument zeigt, setze ALLE Felder auf "".
 
 Extrahiere die folgenden Informationen als JSON:
 ${extraFields}
 
-WICHTIG: 
-- Antworte NUR mit validem JSON, keine Erklärungen davor oder danach. KEIN Markdown-Codeblock.
-- Felder, die nicht gefunden werden, mit leerem String "" befüllen, nicht weglassen.
-- Zahlen ohne Währungssymbol, nur die Zahl (z.B. "280" nicht "280 €" oder "280,00").
+FORMAT-REGELN:
+- Antworte NUR mit validem JSON. KEIN Markdown-Codeblock, keine Erklärungen.
+- Felder die nicht im Dokument gefunden werden: "" (leerer String).
+- Zahlen ohne Währungssymbol, nur die Zahl (z.B. "280" nicht "280 €").
 - Datumsformat immer TT.MM.JJJJ (z.B. "01.08.2019").
-- Halte die Antwort KOMPAKT. Bewertungen in max 1 Satz. Kein confidence-Objekt nötig.
-- KAUTIONSPRÜFUNG: Führe IMMER die Berechnung 3 × Kaltmiete durch und vergleiche mit depositAmount. Dokumentiere das Ergebnis in depositLegalCheck.
+- Halte die Antwort KOMPAKT. Bewertungen in max 1 Satz.
+- KAUTIONSPRÜFUNG: Führe die Berechnung 3 × Kaltmiete durch, aber NUR wenn du beide Werte tatsächlich im Dokument lesen konntest.
 - Beginne direkt mit { und ende mit }.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
