@@ -635,6 +635,7 @@ export const Step8MeterScan = () => {
                     {(['Strom', 'Gas', 'Zweirichtungszähler', 'Strom (Bezug 1.8.0)', 'Strom (Einspeisung 2.8.0)'].includes(editForm.medium)) && (
                       <Input value={editForm.maloId} onChange={e => setEditForm(p => p ? { ...p, maloId: e.target.value } : p)} placeholder="Marktlokations-ID (optional)" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
                     )}
+                    <Input value={editForm.location} onChange={e => setEditForm(p => p ? { ...p, location: e.target.value } : p)} placeholder="Standort (z. B. Keller, Küche…)" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 text-sm">
@@ -650,6 +651,12 @@ export const Step8MeterScan = () => {
                       <div className="col-span-2">
                         <span className="text-muted-foreground text-xs">Marktlokations-ID</span>
                         <p className="font-mono text-xs truncate">{meter.maloId}</p>
+                      </div>
+                    )}
+                    {meter.location && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground text-xs">Standort</span>
+                        <p className="text-xs font-medium">{meter.location}</p>
                       </div>
                     )}
                   </div>
