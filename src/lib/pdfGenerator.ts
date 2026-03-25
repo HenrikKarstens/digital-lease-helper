@@ -1955,76 +1955,23 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     }
   }
 
-  if (y > pageH - 80) { doc.addPage(); y = 36; }
+  if (y > pageH - 60) { doc.addPage(); y = 36; }
   const bghRef = isSale ? 'BGH V ZR 104/19 (Kaufrecht)' : 'BGH VIII ZR 222/15 (Wohnraummietrecht)';
   const defectFindings2 = data.findings.filter(f => f.entryType !== 'note');
   const noteFindings2 = data.findings.filter(f => f.entryType === 'note');
 
-  y = sectionTitle(doc, '§6a  Festgestellte Mängel & Schäden', y, pageW);
-  const unknownRoomWarning = defectFindings2.some(f => !f.room || f.room === 'Unbekannt');
-  if (unknownRoomWarning) {
-    doc.setFillColor(255, 240, 200);
-    doc.roundedRect(14, y, pageW - 28, 8, 2, 2, 'F');
-    doc.setTextColor(180, 90, 0); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
-    doc.text('⚠ Rechtlicher Hinweis: Ohne Raumzuordnung ist die Fristsetzung zur Mängelbeseitigung ggf. unwirksam.', 18, y + 5.5);
-    doc.setFont('helvetica', 'normal');
-    y += 12;
-  }
-  if (defectFindings2.length > 0) {
-    autoTable(doc, {
-      startY: y,
-      margin: { left: 14, right: 14 },
-      head: [['Raum', 'Lage', 'Material', 'Schaden', 'Zeitwert %', 'Einbehalt €', 'Frist']],
-      body: defectFindings2.map(f => [
-        f.room || '⚠ Unbekannt',
-        (f as any).locationDetail || '–',
-        f.material,
-        f.damageType,
-        `${f.timeValueDeduction}%`,
-        f.recommendedWithholding > 0 ? `${f.recommendedWithholding} €` : '–',
-        f.remediationDeadline ? `bis ${f.remediationDeadline}` : '–',
-      ]),
-      headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7 },
-      bodyStyles: { fontSize: 7 },
-      alternateRowStyles: { fillColor: [255, 248, 248] },
-      columnStyles: { 4: { halign: 'center' }, 5: { halign: 'right', fontStyle: 'bold' } },
-    });
-    y = (doc as any).lastAutoTable.finalY + 4;
-    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5); doc.setFont('helvetica', 'italic');
-    defectFindings2.forEach(f => {
-      if (f.bghReference) {
-        const ref = isSale ? f.bghReference.replace('VIII ZR', 'V ZR') : f.bghReference;
-        doc.text(`• ${f.room || 'Unbekannt'} / ${f.damageType}: ${ref} – ${f.description}`, col1, y);
-        y += 3.5;
-        if (y > pageH - 20) { doc.addPage(); y = 36; }
-      }
-    });
-    doc.setFont('helvetica', 'normal'); y += 2;
-    // Embed defect photos (blob)
-    const defectPhotos2 = defectFindings2
-      .filter(f => f.photoUrl)
-      .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo), sha256: f.sha256Hash }));
-    y = embedPhotos(doc, defectPhotos2, y, pageW, pageH, col1);
-  } else {
+  y = sectionTitle(doc, isMoveIn ? '§6  Zustandsdokumentation je Raum' : '§6  Bestandsaufnahme & Mängel je Raum', y, pageW);
+
+  if (data.findings.length === 0 && !((data as any).__roomConfigs?.length > 0)) {
     doc.setTextColor(...SUCCESS_COLOR); doc.setFontSize(8);
-    doc.text('✓ Keine Mängel dokumentiert.', col1, y); y += 8;
+    doc.text('✓ Keine Mängel oder Besonderheiten dokumentiert.', col1, y); y += 8;
+  } else {
+    y = generateRoomSections(doc, data, y, pageW, pageH, col1, date, isMoveIn);
   }
 
-  // §6b – Zusätzliche Feststellungen
-  if (noteFindings2.length > 0) {
-    if (y > pageH - 60) { doc.addPage(); y = 36; }
-    y = sectionTitle(doc, '§6b  Zusätzliche Feststellungen (Zustand / Besonderheiten)', y, pageW);
-    autoTable(doc, {
-      startY: y, margin: { left: 14, right: 14 },
-      head: [['Raum', 'Lage', 'Feststellung', 'Zeitstempel']],
-      body: noteFindings2.map(f => [f.room || '–', (f as any).locationDetail || '–', f.description || f.damageType, f.timestamp]),
-      headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7 },
-      bodyStyles: { fontSize: 7 },
-      alternateRowStyles: { fillColor: [248, 249, 255] },
-    });
-    y = (doc as any).lastAutoTable.finalY + 4;
+  if (isMoveIn && data.findings.length > 0) {
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5); doc.setFont('helvetica', 'italic');
-    doc.text('Hinweis: Reine Beweisanker ohne Kautionsabzug – dokumentieren den vollständigen Objektzustand.', col1, y);
+    doc.text('Dokumentation des Ist-Zustands zur Beweissicherung bei Einzug. Keine Kautionsabzüge.', col1, y);
     doc.setFont('helvetica', 'normal'); y += 7;
   }
 
