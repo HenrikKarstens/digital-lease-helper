@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef, ReactNode } from 'react';
 import { getFilteredSteps as getFilteredStepsImported } from '@/hooks/useStepConfig';
+import { idbPutMany, idbGetMany, idbClearAll } from '@/lib/indexedDbStorage';
 
 export interface Participant {
   id: string;
