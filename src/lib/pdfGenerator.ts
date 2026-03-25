@@ -899,10 +899,11 @@ export function generateMasterProtocol(data: HandoverData): void {
     autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
-      head: [['Typ / Medium', 'Zählernummer', 'Ablesung', 'Einheit', 'Datum']],
+      head: [['Typ / Medium', 'Zählernummer', 'Standort', 'Ablesung', 'Einheit', 'Datum']],
       body: data.meterReadings.map(m => [
         m.medium,
         m.meterNumber || '–',
+        m.location || '–',
         m.reading,
         m.unit,
         m.maloId || date,
