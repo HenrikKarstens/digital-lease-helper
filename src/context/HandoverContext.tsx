@@ -363,8 +363,75 @@ interface HandoverContextType {
 
 const HandoverContext = createContext<HandoverContextType | undefined>(undefined);
 
+/** Collect all base64 data URLs from HandoverData into key-value pairs for IndexedDB */
+function collectBlobs(data: HandoverData): [string, string | null][] {
+  const entries: [string, string | null][] = [];
+  // Top-level photo fields
+  const photoFields: (keyof HandoverData)[] = [
+    'keyBundlePhotoUrl', 'floorPlanUrl', 'attendancePhotoUrl',
+    'signatureLandlord', 'signatureTenant',
+  ];
+  for (const field of photoFields) {
+    const val = data[field] as string | null;
+    entries.push([`photo:${field}`, val?.startsWith('data:') ? val : null]);
+  }
+  // Finding photos
+  data.findings.forEach((f, i) => {
+    entries.push([`photo:finding:${f.id}`, f.photoUrl?.startsWith('data:') ? f.photoUrl : null]);
+  });
+  // Meter reading photos
+  data.meterReadings.forEach((m) => {
+    entries.push([`photo:meter:${m.id}`, m.photoUrl?.startsWith('data:') ? m.photoUrl : null]);
+  });
+  // Document pages
+  data.capturedDocuments.forEach((d) => {
+    d.pages.forEach((p) => {
+      entries.push([`photo:doc:${d.id}:${p.id}`, p.dataUrl?.startsWith('data:') ? p.dataUrl : null]);
+    });
+  });
+  return entries;
+}
+
+/** Restore base64 blobs from IndexedDB into HandoverData */
+async function restoreBlobs(data: HandoverData): Promise<HandoverData> {
+  const keys: string[] = [];
+  const photoFields: (keyof HandoverData)[] = [
+    'keyBundlePhotoUrl', 'floorPlanUrl', 'attendancePhotoUrl',
+    'signatureLandlord', 'signatureTenant',
+  ];
+  for (const field of photoFields) keys.push(`photo:${field}`);
+  data.findings.forEach(f => keys.push(`photo:finding:${f.id}`));
+  data.meterReadings.forEach(m => keys.push(`photo:meter:${m.id}`));
+  data.capturedDocuments.forEach(d => d.pages.forEach(p => keys.push(`photo:doc:${d.id}:${p.id}`)));
+
+  if (keys.length === 0) return data;
+  const blobs = await idbGetMany(keys);
+
+  const restored = { ...data };
+  for (const field of photoFields) {
+    const val = blobs[`photo:${field}`];
+    if (val) (restored as any)[field] = val;
+  }
+  restored.findings = data.findings.map(f => ({
+    ...f,
+    photoUrl: blobs[`photo:finding:${f.id}`] || f.photoUrl,
+  }));
+  restored.meterReadings = data.meterReadings.map(m => ({
+    ...m,
+    photoUrl: blobs[`photo:meter:${m.id}`] || m.photoUrl,
+  }));
+  restored.capturedDocuments = data.capturedDocuments.map(d => ({
+    ...d,
+    pages: d.pages.map(p => ({
+      ...p,
+      dataUrl: blobs[`photo:doc:${d.id}:${p.id}`] || p.dataUrl,
+    })),
+  }));
+  return restored;
+}
+
 export const HandoverProvider = ({ children }: { children: ReactNode }) => {
-  // Restore from localStorage on mount
+  // Restore from localStorage on mount (without blobs – those come from IndexedDB)
   const [data, setData] = useState<HandoverData>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -383,10 +450,24 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
     return 0;
   });
 
-  // Auto-save to localStorage on every change (strip large base64 to avoid QuotaExceededError)
+  const idbRestoreDone = useRef(false);
+
+  // Restore blobs from IndexedDB on mount (one-time)
+  useEffect(() => {
+    if (idbRestoreDone.current) return;
+    idbRestoreDone.current = true;
+    restoreBlobs(data).then(restored => {
+      // Only update if something actually changed
+      if (JSON.stringify(restored) !== JSON.stringify(data)) {
+        setData(restored);
+      }
+    }).catch(e => console.warn('[IDB] restore failed:', e));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save: localStorage gets stripped metadata, IndexedDB gets the blobs
   useEffect(() => {
     try {
-      // Strip base64 data URLs from persistence to stay within ~5 MB localStorage quota
+      // Strip base64 data URLs from localStorage to stay within ~5 MB quota
       const stripped = {
         ...data,
         keyBundlePhotoUrl: data.keyBundlePhotoUrl?.startsWith('data:') ? '__photo_captured__' : data.keyBundlePhotoUrl,
@@ -413,6 +494,13 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ data: stripped, step: currentStep }));
     } catch (e) {
       console.warn('localStorage save failed:', e);
+    }
+
+    // Save blobs to IndexedDB (async, non-blocking)
+    const blobs = collectBlobs(data);
+    const nonNullBlobs = blobs.filter(([, v]) => v !== null);
+    if (nonNullBlobs.length > 0) {
+      idbPutMany(blobs).catch(e => console.warn('[IDB] save failed:', e));
     }
   }, [data, currentStep]);
 
