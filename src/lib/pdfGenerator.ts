@@ -59,15 +59,7 @@ function embedPhotos(
     if (colIdx === 0 && i > 0) y += imgH + 18;
     if (y + imgH + 18 > pageH - 20) { doc.addPage(); y = 36; }
     
-    try {
-      safeAddImage(doc, validPhotos[i].url, x, y, imgW, imgH);
-      doc.setDrawColor(200, 200, 215);
-      doc.rect(x, y, imgW, imgH);
-    } catch {
-      doc.setTextColor(...MUTED_COLOR);
-      doc.setFontSize(6.5);
-      doc.text('Bild nicht ladbar', x + 2, y + imgH / 2);
-    }
+    safeAddImage(doc, validPhotos[i].url, x, y, imgW, imgH);
     // Label
     doc.setTextColor(...MUTED_COLOR);
     doc.setFontSize(6);
