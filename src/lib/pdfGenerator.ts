@@ -884,7 +884,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       try {
         const imgW = 60;
         const imgH = 45;
-        doc.addImage(data.attendancePhotoUrl, 'JPEG', col1, y, imgW, imgH);
+        safeAddImage(doc, data.attendancePhotoUrl, col1, y, imgW, imgH);
         doc.setDrawColor(200, 200, 215);
         doc.rect(col1, y, imgW, imgH);
         doc.setTextColor(...MUTED_COLOR);
@@ -1007,7 +1007,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       try {
         const imgW = 60;
         const imgH = 45;
-        doc.addImage(data.keyBundlePhotoUrl, 'JPEG', col1, y, imgW, imgH);
+        safeAddImage(doc, data.keyBundlePhotoUrl, col1, y, imgW, imgH);
         doc.setDrawColor(200, 200, 215);
         doc.rect(col1, y, imgW, imgH);
         doc.setTextColor(...MUTED_COLOR);
@@ -1840,7 +1840,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   if (data.attendancePhotoUrl && data.attendancePhotoUrl.startsWith('data:')) {
     if (y > pageH - 60) { doc.addPage(); y = 36; }
     try {
-      doc.addImage(data.attendancePhotoUrl, 'JPEG', col1, y, 60, 45);
+      safeAddImage(doc, data.attendancePhotoUrl, col1, y, 60, 45);
       doc.setDrawColor(200, 200, 215); doc.rect(col1, y, 60, 45);
       doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
       doc.text('Beweisfoto: Anwesenheit der Teilnehmer', col1 + 64, y + 6);
@@ -1928,7 +1928,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     if (data.keyBundlePhotoUrl) {
       if (y > pageH - 60) { doc.addPage(); y = 36; }
       try {
-        doc.addImage(data.keyBundlePhotoUrl, 'JPEG', col1, y, 60, 45);
+        safeAddImage(doc, data.keyBundlePhotoUrl, col1, y, 60, 45);
         doc.setDrawColor(200, 200, 215); doc.rect(col1, y, 60, 45);
         doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
         doc.text('Beweisfoto: Schlüsselbund bei Übergabe', col1 + 64, y + 6);
