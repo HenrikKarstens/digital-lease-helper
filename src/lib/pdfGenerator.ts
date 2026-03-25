@@ -937,7 +937,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       .filter(m => m.photoUrl)
       .map(m => ({
         url: m.photoUrl!,
-        label: `${m.medium} – Zähler ${m.meterNumber || '–'}`,
+        label: `${m.medium} – Zähler ${m.meterNumber || '–'}${m.location ? ' (' + m.location + ')' : ''}`,
         timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date,
         gps: formatGeoForPdf(m.photoGeo),
         sha256: m.sha256Hash,
@@ -1545,7 +1545,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       .filter(m => m.photoUrl && m.photoUrl.startsWith('data:'))
       .map(m => ({
         url: m.photoUrl!,
-        label: `${m.medium} – Zähler ${m.meterNumber || '–'}`,
+        label: `${m.medium} – Zähler ${m.meterNumber || '–'}${m.location ? ' (' + m.location + ')' : ''}`,
         timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date,
         gps: formatGeoForPdf(m.photoGeo),
         sha256: m.sha256Hash,
@@ -1875,7 +1875,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     // Embed meter photos (blob)
     const meterPhotos2 = data.meterReadings
       .filter(m => m.photoUrl)
-      .map(m => ({ url: m.photoUrl!, label: `${m.medium} – Zähler ${m.meterNumber || '–'}`, timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date, gps: formatGeoForPdf(m.photoGeo), sha256: m.sha256Hash }));
+      .map(m => ({ url: m.photoUrl!, label: `${m.medium} – Zähler ${m.meterNumber || '–'}${m.location ? ' (' + m.location + ')' : ''}`, timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date, gps: formatGeoForPdf(m.photoGeo), sha256: m.sha256Hash }));
     y = embedPhotos(doc, meterPhotos2, y, pageW, pageH, col1);
   } else {
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(8);
