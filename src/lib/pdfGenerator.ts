@@ -14,7 +14,29 @@ const MUTED_COLOR: [number, number, number] = [100, 116, 139];   // Slate-500
 const GOLD_COLOR: [number, number, number] = [197, 160, 89];     // Muted Gold #C5A059
 const GOLD_LIGHT: [number, number, number] = [254, 249, 235];    // Gold background
 
-// Helper: embed photos with timestamp/GPS metadata + SHA-256 hash below a section
+// Helper: detect image format from data URL
+function imgFormat(dataUrl: string): string {
+  if (dataUrl.startsWith('data:image/png')) return 'PNG';
+  if (dataUrl.startsWith('data:image/webp')) return 'WEBP';
+  return 'JPEG';
+}
+
+// Helper: safely add image to PDF with auto-format detection
+function safeAddImage(doc: jsPDF, url: string, x: number, y: number, w: number, h: number): boolean {
+  try {
+    doc.addImage(url, imgFormat(url), x, y, w, h);
+    doc.setDrawColor(200, 200, 215);
+    doc.rect(x, y, w, h);
+    return true;
+  } catch {
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(6.5);
+    doc.text('Bild nicht ladbar', x + 2, y + h / 2);
+    return false;
+  }
+}
+
+
 function embedPhotos(
   doc: jsPDF,
   photos: { url: string; label: string; timestamp?: string; gps?: string; sha256?: string }[],
@@ -37,15 +59,7 @@ function embedPhotos(
     if (colIdx === 0 && i > 0) y += imgH + 18;
     if (y + imgH + 18 > pageH - 20) { doc.addPage(); y = 36; }
     
-    try {
-      doc.addImage(validPhotos[i].url, 'JPEG', x, y, imgW, imgH);
-      doc.setDrawColor(200, 200, 215);
-      doc.rect(x, y, imgW, imgH);
-    } catch {
-      doc.setTextColor(...MUTED_COLOR);
-      doc.setFontSize(6.5);
-      doc.text('Bild nicht ladbar', x + 2, y + imgH / 2);
-    }
+    safeAddImage(doc, validPhotos[i].url, x, y, imgW, imgH);
     // Label
     doc.setTextColor(...MUTED_COLOR);
     doc.setFontSize(6);
@@ -235,14 +249,7 @@ function generateRoomSections(
         const x = col1 + colIdx * (imgW + 4);
         if (colIdx === 0 && i > 0) y += imgH + 8;
         if (y + imgH + 8 > pageH - 20) { doc.addPage(); y = 36; }
-        try {
-          doc.addImage(overviewPhotos[i].url, 'JPEG', x, y, imgW, imgH);
-          doc.setDrawColor(200, 200, 215);
-          doc.rect(x, y, imgW, imgH);
-        } catch {
-          doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
-          doc.text('Bild nicht ladbar', x + 2, y + imgH / 2);
-        }
+        safeAddImage(doc, overviewPhotos[i].url, x, y, imgW, imgH);
         // Timestamp
         if (overviewPhotos[i].timestamp) {
           doc.setTextColor(...MUTED_COLOR); doc.setFontSize(5.5); doc.setFont('helvetica', 'italic');
@@ -320,9 +327,7 @@ function generateRoomSections(
 
         if (hasPhoto) {
           try {
-            doc.addImage(defect.photoUrl!, 'JPEG', col1, y, photoW, photoH);
-            doc.setDrawColor(200, 200, 215);
-            doc.rect(col1, y, photoW, photoH);
+            safeAddImage(doc, defect.photoUrl!, col1, y, photoW, photoH);
           } catch { /* skip */ }
         }
 
@@ -556,18 +561,18 @@ export function generateBeweisanker(data: HandoverData): void {
   if (y > pageH - 60) { doc.addPage(); y = 36; }
   y = sectionTitle(doc, '§3  Zählerstände', y, pageW);
   const meterRows: string[][] = data.meterReadings.length > 0
-    ? data.meterReadings.map(m => [m.medium, m.meterNumber || '', m.reading, m.unit, ''])
+    ? data.meterReadings.map(m => [m.medium, m.meterNumber || '', m.location || '', m.reading, m.unit, ''])
     : [
-        ['Strom', '', '', 'kWh', ''],
-        ['Gas', '', '', 'm³', ''],
-        ['Wasser', '', '', 'm³', ''],
-        ['Heizung', '', '', 'MWh', ''],
-        ['Sonstiges', '', '', '', ''],
+        ['Strom', '', '', '', 'kWh', ''],
+        ['Gas', '', '', '', 'm³', ''],
+        ['Wasser', '', '', '', 'm³', ''],
+        ['Heizung', '', '', '', 'MWh', ''],
+        ['Sonstiges', '', '', '', '', ''],
       ];
   autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
-    head: [['Typ / Medium', 'Zählernummer', 'Ablesewert (Zahl)', 'Einheit', 'Foto / Bemerkung']],
+    head: [['Typ / Medium', 'Zählernummer', 'Standort', 'Ablesewert (Zahl)', 'Einheit', 'Foto / Bemerkung']],
     body: meterRows,
     headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
     bodyStyles: { fontSize: 8, textColor: TEXT_COLOR, minCellHeight: 10 },
@@ -862,9 +867,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       try {
         const imgW = 60;
         const imgH = 45;
-        doc.addImage(data.attendancePhotoUrl, 'JPEG', col1, y, imgW, imgH);
-        doc.setDrawColor(200, 200, 215);
-        doc.rect(col1, y, imgW, imgH);
+        safeAddImage(doc, data.attendancePhotoUrl, col1, y, imgW, imgH);
         doc.setTextColor(...MUTED_COLOR);
         doc.setFontSize(6.5);
         doc.text('Beweisfoto: Anwesenheit der Teilnehmer', col1 + imgW + 4, y + 6);
@@ -885,10 +888,11 @@ export function generateMasterProtocol(data: HandoverData): void {
     autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
-      head: [['Typ / Medium', 'Zählernummer', 'Ablesung', 'Einheit', 'Datum']],
+      head: [['Typ / Medium', 'Zählernummer', 'Standort', 'Ablesung', 'Einheit', 'Datum']],
       body: data.meterReadings.map(m => [
         m.medium,
         m.meterNumber || '–',
+        m.location || '–',
         m.reading,
         m.unit,
         m.maloId || date,
@@ -933,7 +937,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       .filter(m => m.photoUrl)
       .map(m => ({
         url: m.photoUrl!,
-        label: `${m.medium} – Zähler ${m.meterNumber || '–'}`,
+        label: `${m.medium} – Zähler ${m.meterNumber || '–'}${m.location ? ' (' + m.location + ')' : ''}`,
         timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date,
         gps: formatGeoForPdf(m.photoGeo),
         sha256: m.sha256Hash,
@@ -985,9 +989,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       try {
         const imgW = 60;
         const imgH = 45;
-        doc.addImage(data.keyBundlePhotoUrl, 'JPEG', col1, y, imgW, imgH);
-        doc.setDrawColor(200, 200, 215);
-        doc.rect(col1, y, imgW, imgH);
+        safeAddImage(doc, data.keyBundlePhotoUrl, col1, y, imgW, imgH);
         doc.setTextColor(...MUTED_COLOR);
         doc.setFontSize(6.5);
         doc.text('Beweisfoto: Schlüsselbund bei Übergabe', col1 + imgW + 4, y + 6);
@@ -1522,10 +1524,11 @@ export function generateMasterProtocol(data: HandoverData): void {
     autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
-      head: [['Typ / Medium', 'Zählernummer', 'Ablesewert', 'Einheit', 'MaLo-ID']],
+      head: [['Typ / Medium', 'Zählernummer', 'Standort', 'Ablesewert', 'Einheit', 'MaLo-ID']],
       body: data.meterReadings.map(m => [
         m.medium,
         m.meterNumber || '–',
+        m.location || '–',
         m.reading,
         m.unit,
         m.maloId || '–',
@@ -1533,7 +1536,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
       bodyStyles: { fontSize: 8, textColor: TEXT_COLOR },
       alternateRowStyles: { fillColor: [248, 249, 255] },
-      columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } },
+      columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
     });
     y = (doc as any).lastAutoTable.finalY + 4;
 
@@ -1542,7 +1545,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       .filter(m => m.photoUrl && m.photoUrl.startsWith('data:'))
       .map(m => ({
         url: m.photoUrl!,
-        label: `${m.medium} – Zähler ${m.meterNumber || '–'}`,
+        label: `${m.medium} – Zähler ${m.meterNumber || '–'}${m.location ? ' (' + m.location + ')' : ''}`,
         timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date,
         gps: formatGeoForPdf(m.photoGeo),
         sha256: m.sha256Hash,
@@ -1818,9 +1821,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
   if (data.attendancePhotoUrl && data.attendancePhotoUrl.startsWith('data:')) {
     if (y > pageH - 60) { doc.addPage(); y = 36; }
     try {
-      doc.addImage(data.attendancePhotoUrl, 'JPEG', col1, y, 60, 45);
-      doc.setDrawColor(200, 200, 215); doc.rect(col1, y, 60, 45);
-      doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
+      safeAddImage(doc, data.attendancePhotoUrl, col1, y, 60, 45);
       doc.text('Beweisfoto: Anwesenheit der Teilnehmer', col1 + 64, y + 6);
       if (data.attendancePhotoGeo) {
         const gpsText = formatGeoForPdf(data.attendancePhotoGeo);
@@ -1838,8 +1839,8 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
-      head: [['Typ / Medium', 'Zählernummer', 'Ablesung', 'Einheit', 'Datum']],
-      body: data.meterReadings.map(m => [m.medium, m.meterNumber || '–', m.reading, m.unit, m.maloId || date]),
+      head: [['Typ / Medium', 'Zählernummer', 'Standort', 'Ablesung', 'Einheit', 'Datum']],
+      body: data.meterReadings.map(m => [m.medium, m.meterNumber || '–', m.location || '–', m.reading, m.unit, m.maloId || date]),
       headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: [248, 249, 255] },
@@ -1874,7 +1875,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     // Embed meter photos (blob)
     const meterPhotos2 = data.meterReadings
       .filter(m => m.photoUrl)
-      .map(m => ({ url: m.photoUrl!, label: `${m.medium} – Zähler ${m.meterNumber || '–'}`, timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date, gps: formatGeoForPdf(m.photoGeo), sha256: m.sha256Hash }));
+      .map(m => ({ url: m.photoUrl!, label: `${m.medium} – Zähler ${m.meterNumber || '–'}${m.location ? ' (' + m.location + ')' : ''}`, timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date, gps: formatGeoForPdf(m.photoGeo), sha256: m.sha256Hash }));
     y = embedPhotos(doc, meterPhotos2, y, pageW, pageH, col1);
   } else {
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(8);
@@ -1906,9 +1907,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     if (data.keyBundlePhotoUrl) {
       if (y > pageH - 60) { doc.addPage(); y = 36; }
       try {
-        doc.addImage(data.keyBundlePhotoUrl, 'JPEG', col1, y, 60, 45);
-        doc.setDrawColor(200, 200, 215); doc.rect(col1, y, 60, 45);
-        doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
+        safeAddImage(doc, data.keyBundlePhotoUrl, col1, y, 60, 45);
         doc.text('Beweisfoto: Schlüsselbund bei Übergabe', col1 + 64, y + 6);
         if (data.keyBundlePhotoGeo) {
           const gpsText = formatGeoForPdf(data.keyBundlePhotoGeo);
