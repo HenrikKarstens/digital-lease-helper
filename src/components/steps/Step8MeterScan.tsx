@@ -46,6 +46,7 @@ interface ManualForm {
   readingFeed: string; // For Zweirichtungszähler: Einspeisung (2.8.0)
   unit: string;
   maloId: string;
+  location: string;
   date: string;
 }
 
@@ -56,6 +57,7 @@ const emptyForm = (): ManualForm => ({
   readingFeed: '',
   unit: '',
   maloId: '',
+  location: '',
   date: TODAY,
 });
 
@@ -289,6 +291,7 @@ export const Step8MeterScan = () => {
         reading: manualForm.reading,
         unit: manualForm.unit || 'kWh',
         maloId: manualForm.maloId,
+        location: manualForm.location || undefined,
         source: 'manual',
       };
       const einspeisung: MeterReading = {
@@ -298,6 +301,7 @@ export const Step8MeterScan = () => {
         reading: manualForm.readingFeed,
         unit: manualForm.unit || 'kWh',
         maloId: manualForm.maloId,
+        location: manualForm.location || undefined,
         source: 'manual',
       };
       updateData({ meterReadings: [...data.meterReadings, bezug, einspeisung] });
@@ -309,6 +313,7 @@ export const Step8MeterScan = () => {
         reading: manualForm.reading,
         unit: manualForm.unit,
         maloId: manualForm.maloId,
+        location: manualForm.location || undefined,
         source: 'manual',
       };
       updateData({ meterReadings: [...data.meterReadings, newMeter] });
@@ -326,6 +331,7 @@ export const Step8MeterScan = () => {
       readingFeed: '',
       unit: meter.unit,
       maloId: meter.maloId,
+      location: meter.location || '',
       date: TODAY,
     });
   };
@@ -334,7 +340,7 @@ export const Step8MeterScan = () => {
     if (!editForm) return;
     updateData({
       meterReadings: data.meterReadings.map(m =>
-        m.id === id ? { ...m, medium: editForm.medium, meterNumber: editForm.meterNumber, reading: editForm.reading, unit: editForm.unit, maloId: editForm.maloId } : m
+        m.id === id ? { ...m, medium: editForm.medium, meterNumber: editForm.meterNumber, reading: editForm.reading, unit: editForm.unit, maloId: editForm.maloId, location: editForm.location || undefined } : m
       ),
     });
     setEditingId(null);
@@ -528,6 +534,20 @@ export const Step8MeterScan = () => {
               </div>
             )}
 
+            {/* Optional location field */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                <Home className="w-3 h-3" />
+                Standort des Zählers (optional)
+              </Label>
+              <Input
+                placeholder="z. B. Keller, Hausanschlussraum, Küche…"
+                value={manualForm.location}
+                onChange={e => setManualForm(p => ({ ...p, location: e.target.value }))}
+                className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+              />
+            </div>
+
             <Button
               onClick={handleAddManual}
               disabled={!manualForm.medium || !manualForm.reading || (manualForm.medium === 'Zweirichtungszähler' && !manualForm.readingFeed)}
@@ -615,6 +635,7 @@ export const Step8MeterScan = () => {
                     {(['Strom', 'Gas', 'Zweirichtungszähler', 'Strom (Bezug 1.8.0)', 'Strom (Einspeisung 2.8.0)'].includes(editForm.medium)) && (
                       <Input value={editForm.maloId} onChange={e => setEditForm(p => p ? { ...p, maloId: e.target.value } : p)} placeholder="Marktlokations-ID (optional)" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
                     )}
+                    <Input value={editForm.location} onChange={e => setEditForm(p => p ? { ...p, location: e.target.value } : p)} placeholder="Standort (z. B. Keller, Küche…)" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 text-sm">
@@ -630,6 +651,12 @@ export const Step8MeterScan = () => {
                       <div className="col-span-2">
                         <span className="text-muted-foreground text-xs">Marktlokations-ID</span>
                         <p className="font-mono text-xs truncate">{meter.maloId}</p>
+                      </div>
+                    )}
+                    {meter.location && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground text-xs">Standort</span>
+                        <p className="text-xs font-medium">{meter.location}</p>
                       </div>
                     )}
                   </div>
