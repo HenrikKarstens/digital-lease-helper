@@ -249,14 +249,7 @@ function generateRoomSections(
         const x = col1 + colIdx * (imgW + 4);
         if (colIdx === 0 && i > 0) y += imgH + 8;
         if (y + imgH + 8 > pageH - 20) { doc.addPage(); y = 36; }
-        try {
-          safeAddImage(doc, overviewPhotos[i].url, x, y, imgW, imgH);
-          doc.setDrawColor(200, 200, 215);
-          doc.rect(x, y, imgW, imgH);
-        } catch {
-          doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
-          doc.text('Bild nicht ladbar', x + 2, y + imgH / 2);
-        }
+        safeAddImage(doc, overviewPhotos[i].url, x, y, imgW, imgH);
         // Timestamp
         if (overviewPhotos[i].timestamp) {
           doc.setTextColor(...MUTED_COLOR); doc.setFontSize(5.5); doc.setFont('helvetica', 'italic');
