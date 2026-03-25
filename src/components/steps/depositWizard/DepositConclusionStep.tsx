@@ -64,6 +64,7 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
   const payout = Math.max(0, saldo);
   const restforderung = saldo < 0 ? Math.abs(saldo) : 0;
   const withheld = Math.min(baseAmount, totalDeductions);
+  const ibanProvided = !data.ibanDeferred && !!data.payeeIban?.trim() && !!data.payeeAccountHolder?.trim();
   const paymentDeadline = calcPaymentDeadline(2);
 
   const tenantName = data.tenantName || clientRole;
