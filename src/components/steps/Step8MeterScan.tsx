@@ -534,6 +534,20 @@ export const Step8MeterScan = () => {
               </div>
             )}
 
+            {/* Optional location field */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                <Home className="w-3 h-3" />
+                Standort des Zählers (optional)
+              </Label>
+              <Input
+                placeholder="z. B. Keller, Hausanschlussraum, Küche…"
+                value={manualForm.location}
+                onChange={e => setManualForm(p => ({ ...p, location: e.target.value }))}
+                className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+              />
+            </div>
+
             <Button
               onClick={handleAddManual}
               disabled={!manualForm.medium || !manualForm.reading || (manualForm.medium === 'Zweirichtungszähler' && !manualForm.readingFeed)}
