@@ -56,6 +56,7 @@ export interface MeterReading {
   reading: string;
   unit: string;
   maloId: string;
+  location?: string;
   photoUrl?: string;
   photoGeo?: PhotoGeoMeta;
   sha256Hash?: string;
