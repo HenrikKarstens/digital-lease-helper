@@ -291,6 +291,7 @@ export const Step8MeterScan = () => {
         reading: manualForm.reading,
         unit: manualForm.unit || 'kWh',
         maloId: manualForm.maloId,
+        location: manualForm.location || undefined,
         source: 'manual',
       };
       const einspeisung: MeterReading = {
@@ -300,6 +301,7 @@ export const Step8MeterScan = () => {
         reading: manualForm.readingFeed,
         unit: manualForm.unit || 'kWh',
         maloId: manualForm.maloId,
+        location: manualForm.location || undefined,
         source: 'manual',
       };
       updateData({ meterReadings: [...data.meterReadings, bezug, einspeisung] });
@@ -311,6 +313,7 @@ export const Step8MeterScan = () => {
         reading: manualForm.reading,
         unit: manualForm.unit,
         maloId: manualForm.maloId,
+        location: manualForm.location || undefined,
         source: 'manual',
       };
       updateData({ meterReadings: [...data.meterReadings, newMeter] });
@@ -337,7 +340,7 @@ export const Step8MeterScan = () => {
     if (!editForm) return;
     updateData({
       meterReadings: data.meterReadings.map(m =>
-        m.id === id ? { ...m, medium: editForm.medium, meterNumber: editForm.meterNumber, reading: editForm.reading, unit: editForm.unit, maloId: editForm.maloId } : m
+        m.id === id ? { ...m, medium: editForm.medium, meterNumber: editForm.meterNumber, reading: editForm.reading, unit: editForm.unit, maloId: editForm.maloId, location: editForm.location || undefined } : m
       ),
     });
     setEditingId(null);
