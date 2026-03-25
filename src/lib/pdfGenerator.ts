@@ -60,7 +60,7 @@ function embedPhotos(
     if (y + imgH + 18 > pageH - 20) { doc.addPage(); y = 36; }
     
     try {
-      doc.addImage(validPhotos[i].url, 'JPEG', x, y, imgW, imgH);
+      safeAddImage(doc, validPhotos[i].url, x, y, imgW, imgH);
       doc.setDrawColor(200, 200, 215);
       doc.rect(x, y, imgW, imgH);
     } catch {
@@ -258,7 +258,7 @@ function generateRoomSections(
         if (colIdx === 0 && i > 0) y += imgH + 8;
         if (y + imgH + 8 > pageH - 20) { doc.addPage(); y = 36; }
         try {
-          doc.addImage(overviewPhotos[i].url, 'JPEG', x, y, imgW, imgH);
+          safeAddImage(doc, overviewPhotos[i].url, x, y, imgW, imgH);
           doc.setDrawColor(200, 200, 215);
           doc.rect(x, y, imgW, imgH);
         } catch {
@@ -342,7 +342,7 @@ function generateRoomSections(
 
         if (hasPhoto) {
           try {
-            doc.addImage(defect.photoUrl!, 'JPEG', col1, y, photoW, photoH);
+            safeAddImage(doc, defect.photoUrl!, col1, y, photoW, photoH);
             doc.setDrawColor(200, 200, 215);
             doc.rect(col1, y, photoW, photoH);
           } catch { /* skip */ }
