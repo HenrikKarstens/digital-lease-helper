@@ -1853,8 +1853,8 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
     autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
-      head: [['Typ / Medium', 'Zählernummer', 'Ablesung', 'Einheit', 'Datum']],
-      body: data.meterReadings.map(m => [m.medium, m.meterNumber || '–', m.reading, m.unit, m.maloId || date]),
+      head: [['Typ / Medium', 'Zählernummer', 'Standort', 'Ablesung', 'Einheit', 'Datum']],
+      body: data.meterReadings.map(m => [m.medium, m.meterNumber || '–', m.location || '–', m.reading, m.unit, m.maloId || date]),
       headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
       bodyStyles: { fontSize: 8 },
       alternateRowStyles: { fillColor: [248, 249, 255] },
