@@ -348,6 +348,24 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
     updateData({ findings: data.findings.filter(f => f.id !== id) });
   }, [data.findings, updateData]);
 
+  const startEditFinding = useCallback((f: Finding) => {
+    setEditFindingId(f.id);
+    setEditFindingDesc(f.description || '');
+    setEditFindingDamageType(f.damageType || '');
+  }, []);
+
+  const saveEditFinding = useCallback(() => {
+    if (!editFindingId) return;
+    updateData({
+      findings: data.findings.map(f =>
+        f.id === editFindingId
+          ? { ...f, description: editFindingDesc, damageType: editFindingDamageType }
+          : f
+      ),
+    });
+    setEditFindingId(null);
+  }, [editFindingId, editFindingDesc, editFindingDamageType, data.findings, updateData]);
+
   const resetDefectFlow = () => {
     setCapturedFile(null);
     setCapturedPreview(null);
