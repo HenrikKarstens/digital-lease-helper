@@ -106,6 +106,9 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
   const [editingId, setEditingId] = useState<string | null>(null);
   const [manualDesc, setManualDesc] = useState('');
   const [manualType, setManualType] = useState<EntryType>('defect');
+  const [editFindingId, setEditFindingId] = useState<string | null>(null);
+  const [editFindingDesc, setEditFindingDesc] = useState('');
+  const [editFindingDamageType, setEditFindingDamageType] = useState('');
   const [cameraMode, setCameraMode] = useState<'overview' | 'defect'>('defect');
   
   // Wall classification state
