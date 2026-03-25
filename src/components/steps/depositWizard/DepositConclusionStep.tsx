@@ -64,6 +64,7 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
   const payout = Math.max(0, saldo);
   const restforderung = saldo < 0 ? Math.abs(saldo) : 0;
   const withheld = Math.min(baseAmount, totalDeductions);
+  const ibanProvided = !data.ibanDeferred && !!data.payeeIban?.trim() && !!data.payeeAccountHolder?.trim();
   const paymentDeadline = calcPaymentDeadline(2);
 
   const tenantName = data.tenantName || clientRole;
@@ -166,7 +167,7 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
           {data.payeeIban && data.payeeAccountHolder && (
             <div className="rounded-xl p-3 text-xs leading-relaxed bg-secondary/40 text-foreground/80">
               Der Betrag in Höhe von <strong>{amount.toFixed(2)} €</strong> ist bis zum{' '}
-              <strong>{paymentDeadline}</strong> auf das folgende Konto zu überweisen:{' '}
+              <strong>{data.immediateReletting ? 'sofort' : paymentDeadline}</strong> auf das folgende Konto zu überweisen:{' '}
               <strong>{data.payeeAccountHolder}</strong>, IBAN: <strong>{data.payeeIban}</strong>
               {data.payeeBic && <>, BIC: <strong>{data.payeeBic}</strong></>}.
             </div>
@@ -203,7 +204,8 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
         <div className="rounded-xl p-3 text-xs leading-relaxed bg-accent/10 text-foreground/80">
           <Info className="w-3.5 h-3.5 inline mr-1" />
           Im Protokoll wird vermerkt: „Bankverbindung wird vom {clientRole} nachgereicht.
-          Die Auszahlung erfolgt nach Eingang der Kontodaten."
+          Die Auszahlung erfolgt innerhalb von 14 Tagen nach Eingang der Kontodaten.
+          Das gesetzliche Zahlungsziel beginnt erst mit Übermittlung der Bankdaten (§ 271 Abs. 1 BGB)."
         </div>
       )}
     </div>
@@ -233,8 +235,12 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
               <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               {data.immediateReletting ? (
                 <>Zahlungsziel: <strong className="ml-1">Sofort fällig</strong> (§ 281 Abs. 2 BGB)</>
-              ) : (
+              ) : data.ibanDeferred ? (
+                <>Zahlungsziel: <strong className="ml-1">14 Tage nach Eingang der Bankdaten</strong> – Die Frist beginnt erst, wenn der Empfänger seine Kontodaten übermittelt hat (§ 271 Abs. 1 BGB).</>
+              ) : ibanProvided ? (
                 <>Zahlungsziel: <strong className="ml-1">{paymentDeadline}</strong> (14 Tage nach Übergabe)</>
+              ) : (
+                <>Zahlungsziel: <strong className="ml-1">14 Tage nach Übermittlung der Bankdaten</strong> – Bitte Bankdaten unten eingeben.</>
               )}
             </p>
           </div>
@@ -358,6 +364,7 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
                     <p><strong>§ 551 Abs. 4 BGB:</strong> Die Kaution ist nach Beendigung des Mietverhältnisses zurückzugeben, sobald keine Ansprüche mehr geltend gemacht werden.</p>
                     <p><strong>BGH VIII ZR 71/05:</strong> Der {ownerRole} darf einen angemessenen Teilbetrag für noch ausstehende Betriebskostenabrechnungen einbehalten.</p>
                     <p><strong>§ 538 BGB:</strong> Normale Abnutzung ist vom Mieter nicht zu ersetzen.</p>
+                    <p><strong>§ 271 Abs. 1 BGB:</strong> Das Zahlungsziel beginnt erst, wenn der Gläubiger die zur Leistung erforderlichen Mitwirkungshandlungen erbracht hat (z.B. Übermittlung der Bankverbindung).</p>
                   </div>
                 </div>
               </div>
