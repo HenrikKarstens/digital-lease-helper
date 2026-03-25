@@ -167,7 +167,7 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
           {data.payeeIban && data.payeeAccountHolder && (
             <div className="rounded-xl p-3 text-xs leading-relaxed bg-secondary/40 text-foreground/80">
               Der Betrag in Höhe von <strong>{amount.toFixed(2)} €</strong> ist bis zum{' '}
-              <strong>{paymentDeadline}</strong> auf das folgende Konto zu überweisen:{' '}
+              <strong>{data.immediateReletting ? 'sofort' : paymentDeadline}</strong> auf das folgende Konto zu überweisen:{' '}
               <strong>{data.payeeAccountHolder}</strong>, IBAN: <strong>{data.payeeIban}</strong>
               {data.payeeBic && <>, BIC: <strong>{data.payeeBic}</strong></>}.
             </div>
