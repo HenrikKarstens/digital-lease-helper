@@ -328,8 +328,6 @@ function generateRoomSections(
         if (hasPhoto) {
           try {
             safeAddImage(doc, defect.photoUrl!, col1, y, photoW, photoH);
-            doc.setDrawColor(200, 200, 215);
-            doc.rect(col1, y, photoW, photoH);
           } catch { /* skip */ }
         }
 
