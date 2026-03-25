@@ -512,6 +512,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
     setData(defaultData);
     setCurrentStep(0);
     try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    idbClearAll().catch(e => console.warn('[IDB] clear failed:', e));
   }, []);
 
   const loadProject = useCallback((savedData: Partial<HandoverData>, step: number) => {
