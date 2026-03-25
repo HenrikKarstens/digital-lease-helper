@@ -143,15 +143,21 @@ serve(async (req) => {
 - "confidence": Ein JSON-Objekt mit Feldnamen als Keys und Werten "high", "medium" oder "low"`;
     }
 
-    const prompt = `Du bist ein deutscher Immobilienrechtsexperte. Du analysierst ein fotografiertes/gescanntes Dokument: ${docTypeLabel}.
+    const prompt = `Du bist ein spezialisierter KI-Assistent für deutsches Mietrecht und Dokumentenanalyse.
+Du analysierst ein fotografiertes/gescanntes Dokument: ${docTypeLabel}.
 Es wurden ${maxPages} Seite(n) als Foto(s) bereitgestellt.
 
-KRITISCHE REGEL – KEIN RATEN:
-- Du darfst NUR Daten extrahieren, die du TATSÄCHLICH im Bild LESEN kannst.
-- Wenn ein Feld im Dokument NICHT SICHTBAR oder NICHT LESBAR ist: setze es auf "" (leerer String).
-- ERFINDE NIEMALS Werte! Keine Schätzungen, keine Vermutungen, keine Beispieldaten.
-- Wenn das Foto unscharf ist oder du dir bei einem Wert nicht sicher bist: "" setzen.
-- Wenn das Bild KEIN Vertragsdokument zeigt, setze ALLE Felder auf "".
+### ANWEISUNGEN ###
+
+1. ANALYSE: Lies den OCR-Text / das Bild sorgfältig. OCR-Fehler (Buchstabendreher, Sonderzeichen) sind wahrscheinlich. Nutze den Kontext, um die korrekten Begriffe zu erraten (z.B. "Nattokaltmiata" → "Nettokaltmiete", "Varmioter" → "Vermieter", "Kaulion" → "Kaution").
+
+2. EXTRAKTION: Suche gezielt nach den unten definierten Feldern.
+
+3. UNSICHERHEIT:
+   - Wenn ein Wert im Dokument absolut NICHT auffindbar ist: setze ihn auf "" (leerer String).
+   - Wenn ein Wert vorhanden, aber unleserlich oder unsicher ist: setze ein "?" hinter den Wert (z.B. "280?" oder "01.08.2019?").
+   - ERFINDE NIEMALS Werte! Keine frei erfundenen Beispieldaten.
+   - Wenn das Bild KEIN Vertragsdokument zeigt, setze ALLE Felder auf "".
 
 Extrahiere die folgenden Informationen als JSON:
 ${extraFields}
@@ -159,6 +165,7 @@ ${extraFields}
 FORMAT-REGELN:
 - Antworte NUR mit validem JSON. KEIN Markdown-Codeblock, keine Erklärungen.
 - Felder die nicht im Dokument gefunden werden: "" (leerer String).
+- Unsichere/unleserliche Werte: Wert + "?" (z.B. "280?" oder "Musterstraße 1?").
 - Zahlen ohne Währungssymbol, nur die Zahl (z.B. "280" nicht "280 €").
 - Datumsformat immer TT.MM.JJJJ (z.B. "01.08.2019").
 - Halte die Antwort KOMPAKT. Bewertungen in max 1 Satz.
