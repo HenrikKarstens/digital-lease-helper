@@ -1524,10 +1524,11 @@ export function generateMasterProtocol(data: HandoverData): void {
     autoTable(doc, {
       startY: y,
       margin: { left: 14, right: 14 },
-      head: [['Typ / Medium', 'Zählernummer', 'Ablesewert', 'Einheit', 'MaLo-ID']],
+      head: [['Typ / Medium', 'Zählernummer', 'Standort', 'Ablesewert', 'Einheit', 'MaLo-ID']],
       body: data.meterReadings.map(m => [
         m.medium,
         m.meterNumber || '–',
+        m.location || '–',
         m.reading,
         m.unit,
         m.maloId || '–',
@@ -1535,7 +1536,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
       bodyStyles: { fontSize: 8, textColor: TEXT_COLOR },
       alternateRowStyles: { fillColor: [248, 249, 255] },
-      columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } },
+      columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
     });
     y = (doc as any).lastAutoTable.finalY + 4;
 
