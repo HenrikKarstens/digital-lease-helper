@@ -256,6 +256,14 @@ export interface HandoverData {
   wallsNeutralColors: boolean | null;
   geoPermissionDenied: boolean;
   geoPermissionGranted: boolean;
+  // Move-in deposit (Phase 8 Einzug)
+  moveInDepositType: 'cash' | 'guarantee' | 'account' | null;
+  moveInDepositAmount: string;
+  moveInInstallments: boolean;
+  moveInFirstRateProofUrl: string | null;
+  moveInGuaranteeProvider: string;
+  moveInGuaranteeCertUrl: string | null;
+  moveInPledgeDocUrl: string | null;
 }
 
 const STORAGE_KEY = 'estateturn_draft';
@@ -349,6 +357,13 @@ const defaultData: HandoverData = {
   wallsNeutralColors: null,
   geoPermissionDenied: false,
   geoPermissionGranted: false,
+  moveInDepositType: null,
+  moveInDepositAmount: '',
+  moveInInstallments: false,
+  moveInFirstRateProofUrl: null,
+  moveInGuaranteeProvider: '',
+  moveInGuaranteeCertUrl: null,
+  moveInPledgeDocUrl: null,
 };
 
 interface HandoverContextType {
