@@ -234,8 +234,12 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
               <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               {data.immediateReletting ? (
                 <>Zahlungsziel: <strong className="ml-1">Sofort fällig</strong> (§ 281 Abs. 2 BGB)</>
-              ) : (
+              ) : data.ibanDeferred ? (
+                <>Zahlungsziel: <strong className="ml-1">14 Tage nach Eingang der Bankdaten</strong> – Die Frist beginnt erst, wenn der Empfänger seine Kontodaten übermittelt hat (§ 271 Abs. 1 BGB).</>
+              ) : ibanProvided ? (
                 <>Zahlungsziel: <strong className="ml-1">{paymentDeadline}</strong> (14 Tage nach Übergabe)</>
+              ) : (
+                <>Zahlungsziel: <strong className="ml-1">14 Tage nach Übermittlung der Bankdaten</strong> – Bitte Bankdaten unten eingeben.</>
               )}
             </p>
           </div>
