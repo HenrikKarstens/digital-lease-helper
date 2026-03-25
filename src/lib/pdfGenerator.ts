@@ -561,18 +561,18 @@ export function generateBeweisanker(data: HandoverData): void {
   if (y > pageH - 60) { doc.addPage(); y = 36; }
   y = sectionTitle(doc, '§3  Zählerstände', y, pageW);
   const meterRows: string[][] = data.meterReadings.length > 0
-    ? data.meterReadings.map(m => [m.medium, m.meterNumber || '', m.reading, m.unit, ''])
+    ? data.meterReadings.map(m => [m.medium, m.meterNumber || '', m.location || '', m.reading, m.unit, ''])
     : [
-        ['Strom', '', '', 'kWh', ''],
-        ['Gas', '', '', 'm³', ''],
-        ['Wasser', '', '', 'm³', ''],
-        ['Heizung', '', '', 'MWh', ''],
-        ['Sonstiges', '', '', '', ''],
+        ['Strom', '', '', '', 'kWh', ''],
+        ['Gas', '', '', '', 'm³', ''],
+        ['Wasser', '', '', '', 'm³', ''],
+        ['Heizung', '', '', '', 'MWh', ''],
+        ['Sonstiges', '', '', '', '', ''],
       ];
   autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
-    head: [['Typ / Medium', 'Zählernummer', 'Ablesewert (Zahl)', 'Einheit', 'Foto / Bemerkung']],
+    head: [['Typ / Medium', 'Zählernummer', 'Standort', 'Ablesewert (Zahl)', 'Einheit', 'Foto / Bemerkung']],
     body: meterRows,
     headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
     bodyStyles: { fontSize: 8, textColor: TEXT_COLOR, minCellHeight: 10 },
