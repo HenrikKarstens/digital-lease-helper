@@ -364,6 +364,7 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
                     <p><strong>§ 551 Abs. 4 BGB:</strong> Die Kaution ist nach Beendigung des Mietverhältnisses zurückzugeben, sobald keine Ansprüche mehr geltend gemacht werden.</p>
                     <p><strong>BGH VIII ZR 71/05:</strong> Der {ownerRole} darf einen angemessenen Teilbetrag für noch ausstehende Betriebskostenabrechnungen einbehalten.</p>
                     <p><strong>§ 538 BGB:</strong> Normale Abnutzung ist vom Mieter nicht zu ersetzen.</p>
+                    <p><strong>§ 271 Abs. 1 BGB:</strong> Das Zahlungsziel beginnt erst, wenn der Gläubiger die zur Leistung erforderlichen Mitwirkungshandlungen erbracht hat (z.B. Übermittlung der Bankverbindung).</p>
                   </div>
                 </div>
               </div>
