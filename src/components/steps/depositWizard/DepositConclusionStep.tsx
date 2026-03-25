@@ -204,7 +204,8 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
         <div className="rounded-xl p-3 text-xs leading-relaxed bg-accent/10 text-foreground/80">
           <Info className="w-3.5 h-3.5 inline mr-1" />
           Im Protokoll wird vermerkt: „Bankverbindung wird vom {clientRole} nachgereicht.
-          Die Auszahlung erfolgt nach Eingang der Kontodaten."
+          Die Auszahlung erfolgt innerhalb von 14 Tagen nach Eingang der Kontodaten.
+          Das gesetzliche Zahlungsziel beginnt erst mit Übermittlung der Bankdaten (§ 271 Abs. 1 BGB)."
         </div>
       )}
     </div>
