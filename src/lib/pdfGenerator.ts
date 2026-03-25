@@ -167,6 +167,291 @@ function labelValue(doc: jsPDF, label: string, value: string, x: number, y: numb
   return y + 4 + lines.length * 4;
 }
 
+// ── Room-by-room section helper ──────────────────────────────────────────────
+function generateRoomSections(
+  doc: jsPDF,
+  data: HandoverData,
+  yStart: number,
+  pageW: number,
+  pageH: number,
+  col1: number,
+  date: string,
+  isMoveIn: boolean,
+): number {
+  let y = yStart;
+  const roomConfigs = (data as any).__roomConfigs as any[] | undefined;
+  const rooms = roomConfigs && roomConfigs.length > 0 ? roomConfigs : [];
+
+  // Group findings by room name
+  const findingsByRoom = new Map<string, typeof data.findings>();
+  for (const f of data.findings) {
+    const key = f.room || '__unassigned__';
+    if (!findingsByRoom.has(key)) findingsByRoom.set(key, []);
+    findingsByRoom.get(key)!.push(f);
+  }
+
+  // Track which room names we've rendered
+  const renderedRoomNames = new Set<string>();
+
+  const techCheckLabel = (val: any): string => {
+    if (!val || val.status === null || val.status === undefined) return '–';
+    if (val.status === 'ok') return '☑ OK';
+    if (val.status === 'nv') return '⊘ N/V';
+    if (val.status === 'ng') return `⚠ Mangel${val.comment ? ': ' + val.comment : ''}`;
+    return '–';
+  };
+
+  for (const room of rooms) {
+    renderedRoomNames.add(room.name);
+    const roomFindings = findingsByRoom.get(room.name) || [];
+    const roomDefects = roomFindings.filter(f => f.entryType !== 'note');
+    const roomNotes = roomFindings.filter(f => f.entryType === 'note');
+
+    // ── Room sub-header ──
+    if (y > pageH - 60) { doc.addPage(); y = 36; }
+    doc.setFillColor(230, 235, 245);
+    doc.roundedRect(14, y, pageW - 28, 8, 2, 2, 'F');
+    doc.setFillColor(...GOLD_COLOR);
+    doc.rect(14, y, 2, 8, 'F');
+    doc.setTextColor(...BRAND_COLOR);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`🏠  ${room.name}`, 20, y + 5.5);
+    // Status badge
+    const statusText = room.completed ? '✓ Abgeschlossen' : '○ Offen';
+    const statusColor: [number, number, number] = room.completed ? SUCCESS_COLOR : MUTED_COLOR;
+    doc.setTextColor(...statusColor);
+    doc.setFontSize(7);
+    doc.text(statusText, pageW - 16, y + 5.5, { align: 'right' });
+    y += 12;
+
+    // ── Overview photos (2 per row) ──
+    const overviewPhotos = (room.overviewPhotos || []).filter((p: any) => p.url && p.url.startsWith('data:'));
+    if (overviewPhotos.length > 0) {
+      const imgW = (pageW - 28 - 4) / 2; // 2 photos per row
+      const imgH = imgW * 0.65;
+      for (let i = 0; i < overviewPhotos.length; i++) {
+        const colIdx = i % 2;
+        const x = col1 + colIdx * (imgW + 4);
+        if (colIdx === 0 && i > 0) y += imgH + 8;
+        if (y + imgH + 8 > pageH - 20) { doc.addPage(); y = 36; }
+        try {
+          doc.addImage(overviewPhotos[i].url, 'JPEG', x, y, imgW, imgH);
+          doc.setDrawColor(200, 200, 215);
+          doc.rect(x, y, imgW, imgH);
+        } catch {
+          doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
+          doc.text('Bild nicht ladbar', x + 2, y + imgH / 2);
+        }
+        // Timestamp
+        if (overviewPhotos[i].timestamp) {
+          doc.setTextColor(...MUTED_COLOR); doc.setFontSize(5.5); doc.setFont('helvetica', 'italic');
+          doc.text(overviewPhotos[i].timestamp, x, y + imgH + 3, { maxWidth: imgW });
+          doc.setFont('helvetica', 'normal');
+        }
+        // SHA-256
+        if (overviewPhotos[i].sha256Hash) {
+          doc.setTextColor(100, 100, 120); doc.setFontSize(4);
+          doc.text(`SHA-256: ${overviewPhotos[i].sha256Hash.substring(0, 16)}…`, x, y + imgH + 6, { maxWidth: imgW });
+        }
+      }
+      y += imgH + 10;
+    }
+
+    // ── Checklist status ──
+    const checkItems: [string, string][] = [];
+    if (room.cleaningDone !== undefined) checkItems.push(['Reinigung/Besenrein', room.cleaningDone ? '☑ Ja' : '☐ Nein']);
+    if (room.smokeDetectorOk !== undefined) checkItems.push(['Rauchwarnmelder', room.smokeDetectorOk ? '☑ OK' : '☐ Nicht geprüft']);
+    if (room.wallsNeutral !== undefined && room.wallsNeutral !== null) checkItems.push(['Wände neutral', room.wallsNeutral ? '☑ Ja' : '☐ Nein']);
+    // Tech checks
+    const techFields: [string, string][] = [
+      ['Fenster & Türen', 'windowsDoors'], ['Sanitär', 'sanitary'],
+      ['Elektrik', 'electrical'], ['Rauchwarnmelder', 'smokeDetector'],
+      ['Herd/Backofen', 'oven'], ['Spüle/Abfluss', 'sinkDrain'],
+      ['Fliesen/Fugen', 'tilesGrout'], ['Spülung/Armaturen', 'flushFittings'],
+    ];
+    for (const [label, field] of techFields) {
+      const val = (room as any)[field];
+      if (val && val.status !== null && val.status !== undefined) {
+        checkItems.push([label, techCheckLabel(val)]);
+      }
+    }
+    if (checkItems.length > 0) {
+      if (y + 10 > pageH - 20) { doc.addPage(); y = 36; }
+      autoTable(doc, {
+        startY: y,
+        margin: { left: 14, right: 14 },
+        head: [['Prüfpunkt', 'Ergebnis']],
+        body: checkItems,
+        headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7 },
+        bodyStyles: { fontSize: 7, textColor: TEXT_COLOR },
+        alternateRowStyles: { fillColor: [248, 249, 255] },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60 } },
+        didParseCell: (hookData: any) => {
+          if (hookData.section === 'body' && hookData.column.index === 1) {
+            const text = hookData.cell.text?.[0] || '';
+            if (text.startsWith('⚠')) {
+              hookData.cell.styles.textColor = DANGER_COLOR;
+              hookData.cell.styles.fontStyle = 'bold';
+            }
+          }
+        },
+      });
+      y = (doc as any).lastAutoTable.finalY + 4;
+    }
+
+    // ── Defects for this room ──
+    if (roomDefects.length > 0) {
+      if (y + 10 > pageH - 20) { doc.addPage(); y = 36; }
+      doc.setTextColor(...DANGER_COLOR); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+      doc.text(`Befunde / Mängel (${roomDefects.length})`, col1, y);
+      doc.setFont('helvetica', 'normal');
+      y += 5;
+
+      for (const defect of roomDefects) {
+        if (y + 50 > pageH - 20) { doc.addPage(); y = 36; }
+
+        // Defect photo + description side by side
+        const hasPhoto = defect.photoUrl && defect.photoUrl.startsWith('data:');
+        const photoW = 45;
+        const photoH = 34;
+        const textX = hasPhoto ? col1 + photoW + 4 : col1;
+        const textW = hasPhoto ? pageW - 28 - photoW - 4 : pageW - 28;
+
+        if (hasPhoto) {
+          try {
+            doc.addImage(defect.photoUrl!, 'JPEG', col1, y, photoW, photoH);
+            doc.setDrawColor(200, 200, 215);
+            doc.rect(col1, y, photoW, photoH);
+          } catch { /* skip */ }
+        }
+
+        // Label
+        doc.setFillColor(255, 240, 240);
+        doc.roundedRect(textX, y, Math.min(textW, 40), 5, 1, 1, 'F');
+        doc.setTextColor(...DANGER_COLOR); doc.setFontSize(6); doc.setFont('helvetica', 'bold');
+        doc.text('Befund / Mangel', textX + 1, y + 3.5);
+        doc.setFont('helvetica', 'normal');
+
+        let ty = y + 8;
+        // Damage type
+        doc.setTextColor(...TEXT_COLOR); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+        const dtLines = doc.splitTextToSize(defect.damageType || '–', textW);
+        doc.text(dtLines, textX, ty);
+        ty += dtLines.length * 3.5 + 1;
+        doc.setFont('helvetica', 'normal');
+
+        // Description
+        if (defect.description) {
+          doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7);
+          const descLines = doc.splitTextToSize(defect.description, textW);
+          doc.text(descLines, textX, ty);
+          ty += descLines.length * 3 + 1;
+        }
+
+        // Material
+        if (defect.material) {
+          doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5);
+          doc.text(`Material: ${defect.material}`, textX, ty);
+          ty += 3.5;
+        }
+
+        // Withholding (move-out only)
+        if (!isMoveIn && defect.recommendedWithholding > 0) {
+          doc.setTextColor(...DANGER_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+          doc.text(`Einbehalt: ${defect.recommendedWithholding} €`, textX, ty);
+          doc.setFont('helvetica', 'normal');
+          ty += 3.5;
+        }
+
+        // Forensic metadata
+        if (hasPhoto) {
+          const metaX = col1;
+          let my = y + photoH + 2;
+          doc.setTextColor(...MUTED_COLOR); doc.setFontSize(5.5); doc.setFont('helvetica', 'italic');
+          if (defect.photoGeo?.timestamp) {
+            doc.text(formatTimestampForPdf(defect.photoGeo.timestamp) || '', metaX, my, { maxWidth: photoW });
+            my += 3;
+          }
+          if (defect.photoGeo) {
+            const gps = formatGeoForPdf(defect.photoGeo);
+            if (gps) { doc.text(gps, metaX, my, { maxWidth: photoW }); my += 3; }
+          }
+          if (defect.sha256Hash) {
+            doc.setFontSize(4); doc.setTextColor(100, 100, 120); doc.setFont('helvetica', 'normal');
+            doc.text(`SHA-256: ${defect.sha256Hash.substring(0, 16)}…`, metaX, my, { maxWidth: photoW });
+            my += 2.5;
+          }
+          doc.setTextColor(...GOLD_COLOR); doc.setFontSize(4.5); doc.setFont('helvetica', 'bold');
+          doc.text('Forensisch gesichert durch EstateTurn Live-GPS-Validierung', metaX, my, { maxWidth: photoW });
+          doc.setFont('helvetica', 'normal');
+          y = Math.max(ty, my + 4) + 4;
+        } else {
+          y = ty + 4;
+        }
+      }
+    }
+
+    // ── Notes for this room ──
+    if (roomNotes.length > 0) {
+      if (y + 10 > pageH - 20) { doc.addPage(); y = 36; }
+      doc.setTextColor(...BRAND_COLOR); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
+      doc.text(`Feststellungen (${roomNotes.length})`, col1, y);
+      doc.setFont('helvetica', 'normal');
+      y += 4;
+      for (const note of roomNotes) {
+        if (y + 10 > pageH - 20) { doc.addPage(); y = 36; }
+        doc.setTextColor(...TEXT_COLOR); doc.setFontSize(7);
+        const noteText = `• ${note.description || note.damageType}`;
+        const noteLines = doc.splitTextToSize(noteText, pageW - 32);
+        doc.text(noteLines, col1 + 2, y);
+        y += noteLines.length * 3.5 + 2;
+      }
+      y += 2;
+    }
+
+    // Separator line between rooms
+    doc.setDrawColor(220, 220, 230);
+    doc.setLineWidth(0.2);
+    doc.line(col1, y, pageW - 14, y);
+    doc.setLineWidth(0.1);
+    y += 4;
+  }
+
+  // ── Findings not assigned to any room ──
+  const unassigned = data.findings.filter(f => !renderedRoomNames.has(f.room || '') && f.room !== '__unassigned__');
+  const unassignedDefects = unassigned.filter(f => f.entryType !== 'note');
+  if (unassignedDefects.length > 0) {
+    if (y > pageH - 40) { doc.addPage(); y = 36; }
+    doc.setFillColor(255, 240, 200);
+    doc.roundedRect(14, y, pageW - 28, 8, 2, 2, 'F');
+    doc.setTextColor(180, 90, 0); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
+    doc.text(`⚠ ${unassignedDefects.length} Befund(e) ohne Raumzuordnung`, 18, y + 5.5);
+    doc.setFont('helvetica', 'normal');
+    y += 12;
+    autoTable(doc, {
+      startY: y,
+      margin: { left: 14, right: 14 },
+      head: [['Raum', 'Schaden', 'Beschreibung', isMoveIn ? '' : 'Einbehalt €']],
+      body: unassignedDefects.map(f => [
+        f.room || '–', f.damageType, f.description || '–',
+        isMoveIn ? '' : (f.recommendedWithholding > 0 ? `${f.recommendedWithholding} €` : '–'),
+      ]),
+      headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7 },
+      bodyStyles: { fontSize: 7 },
+      alternateRowStyles: { fillColor: [255, 248, 248] },
+    });
+    y = (doc as any).lastAutoTable.finalY + 4;
+    // Embed unassigned photos
+    const unassignedPhotos = unassignedDefects
+      .filter(f => f.photoUrl && f.photoUrl.startsWith('data:'))
+      .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo), sha256: f.sha256Hash }));
+    y = embedPhotos(doc, unassignedPhotos, y, pageW, pageH, col1);
+  }
+
+  return y;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // VORAB-DOKUMENT / OFFLINE-PROTOKOLL – comprehensive pre-meeting document
 // ─────────────────────────────────────────────────────────────────────────────
