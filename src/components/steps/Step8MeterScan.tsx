@@ -328,6 +328,7 @@ export const Step8MeterScan = () => {
       readingFeed: '',
       unit: meter.unit,
       maloId: meter.maloId,
+      location: meter.location || '',
       date: TODAY,
     });
   };
