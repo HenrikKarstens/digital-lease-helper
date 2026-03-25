@@ -14,7 +14,29 @@ const MUTED_COLOR: [number, number, number] = [100, 116, 139];   // Slate-500
 const GOLD_COLOR: [number, number, number] = [197, 160, 89];     // Muted Gold #C5A059
 const GOLD_LIGHT: [number, number, number] = [254, 249, 235];    // Gold background
 
-// Helper: embed photos with timestamp/GPS metadata + SHA-256 hash below a section
+// Helper: detect image format from data URL
+function imgFormat(dataUrl: string): string {
+  if (dataUrl.startsWith('data:image/png')) return 'PNG';
+  if (dataUrl.startsWith('data:image/webp')) return 'WEBP';
+  return 'JPEG';
+}
+
+// Helper: safely add image to PDF with auto-format detection
+function safeAddImage(doc: jsPDF, url: string, x: number, y: number, w: number, h: number): boolean {
+  try {
+    doc.addImage(url, imgFormat(url), x, y, w, h);
+    doc.setDrawColor(200, 200, 215);
+    doc.rect(x, y, w, h);
+    return true;
+  } catch {
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(6.5);
+    doc.text('Bild nicht ladbar', x + 2, y + h / 2);
+    return false;
+  }
+}
+
+
 function embedPhotos(
   doc: jsPDF,
   photos: { url: string; label: string; timestamp?: string; gps?: string; sha256?: string }[],
