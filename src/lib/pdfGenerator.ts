@@ -1117,126 +1117,25 @@ export function generateMasterProtocol(data: HandoverData): void {
     }
   }
 
-  // ── §6a  Mängel / Zustandsdokumentation ────────────────────────────────────
+  // ── §6  Raum-für-Raum-Dokumentation ────────────────────────────────────────
   const defectFindings = data.findings.filter(f => f.entryType !== 'note');
   const noteFindings = data.findings.filter(f => f.entryType === 'note');
 
-  if (y > pageH - 80) { doc.addPage(); y = 36; }
+  if (y > pageH - 60) { doc.addPage(); y = 36; }
+  y = sectionTitle(doc, isMoveIn ? '§6  Zustandsdokumentation je Raum' : '§6  Bestandsaufnahme & Mängel je Raum', y, pageW);
 
-  if (isMoveIn) {
-    // ── Einzug: Einheitliche Tabelle ohne monetäre Spalten ──
-    y = sectionTitle(doc, '§6  Dokumentierte Mängel & Zustandsbesonderheiten bei Übergabe', y, pageW);
-    if (data.findings.length > 0) {
-      autoTable(doc, {
-        startY: y,
-        margin: { left: 14, right: 14 },
-        head: [['Raum', 'Lage', 'Material', 'Feststellung', 'Zeitstempel']],
-        body: data.findings.map(f => [
-          f.room || '–',
-          (f as any).locationDetail || '–',
-          f.material || '–',
-          f.description || f.damageType,
-          f.timestamp,
-        ]),
-        headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7 },
-        bodyStyles: { fontSize: 7 },
-        alternateRowStyles: { fillColor: [248, 249, 255] },
-      });
-      y = (doc as any).lastAutoTable.finalY + 4;
-      doc.setTextColor(...MUTED_COLOR);
-      doc.setFontSize(6.5);
-      doc.setFont('helvetica', 'italic');
-      doc.text('Dokumentation des Ist-Zustands zur Beweissicherung bei Einzug. Keine Kautionsabzüge.', col1, y);
-      doc.setFont('helvetica', 'normal');
-      y += 7;
-      // Embed finding photos (move-in)
-      const findingPhotos = data.findings
-        .filter(f => f.photoUrl)
-        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType || f.description}`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo), sha256: f.sha256Hash }));
-      y = embedPhotos(doc, findingPhotos, y, pageW, pageH, col1);
-    } else {
-      doc.setTextColor(...SUCCESS_COLOR);
-      doc.setFontSize(8);
-      doc.text('✓ Keine Mängel oder Besonderheiten dokumentiert.', col1, y);
-      y += 8;
-    }
+  if (data.findings.length === 0 && !((data as any).__roomConfigs?.length > 0)) {
+    doc.setTextColor(...SUCCESS_COLOR);
+    doc.setFontSize(8);
+    doc.text('✓ Keine Mängel oder Besonderheiten dokumentiert.', col1, y);
+    y += 8;
   } else {
-    // ── Auszug / Kauf: Voller Mängel-Report mit Einbehalt ──
-    y = sectionTitle(doc, '§6a  Festgestellte Mängel & Schäden', y, pageW);
-    if (defectFindings.length > 0) {
-      autoTable(doc, {
-        startY: y,
-        margin: { left: 14, right: 14 },
-        head: [['Raum', 'Lage', 'Material', 'Schaden', 'Zeitwert %', 'Einbehalt €', 'Maßnahme']],
-        body: defectFindings.map(f => [
-          f.room || '⚠ Unbekannt',
-          (f as any).locationDetail || '–',
-          f.material,
-          f.damageType,
-          `${f.timeValueDeduction}%`,
-          f.recommendedWithholding > 0 ? `${f.recommendedWithholding} €` : '–',
-          f.remediationOption === 'self'
-            ? `Selbst behoben (${f.remediationParty || '–'})`
-            : f.remediationOption === 'notice'
-              ? `Aufforderung bis ${f.remediationDeadline || '–'}`
-              : '–',
-        ]),
-        headStyles: { fillColor: DANGER_COLOR, textColor: [255, 255, 255], fontSize: 7 },
-        bodyStyles: { fontSize: 7 },
-        alternateRowStyles: { fillColor: [255, 248, 248] },
-        columnStyles: { 4: { halign: 'center' }, 5: { halign: 'right', fontStyle: 'bold' } },
-      });
-      y = (doc as any).lastAutoTable.finalY + 4;
-
-      // BGH references
-      doc.setTextColor(...MUTED_COLOR);
-      doc.setFontSize(6.5);
-      doc.setFont('helvetica', 'italic');
-      defectFindings.forEach(f => {
-        if (f.bghReference) {
-          doc.text(`• ${f.room || 'Unbekannt'} / ${f.damageType}: ${f.bghReference} – ${f.description}`, col1, y);
-          y += 3.5;
-          if (y > pageH - 20) { doc.addPage(); y = 36; }
-        }
-      });
-      doc.setFont('helvetica', 'normal');
-      y += 2;
-      // Embed defect photos (move-out)
-      const defectPhotos = defectFindings
-        .filter(f => f.photoUrl)
-        .map(f => ({ url: f.photoUrl!, label: `${f.room || '–'}: ${f.damageType} (${f.material})`, timestamp: formatTimestampForPdf(f.photoGeo?.timestamp) || f.timestamp, gps: formatGeoForPdf(f.photoGeo), sha256: f.sha256Hash }));
-      y = embedPhotos(doc, defectPhotos, y, pageW, pageH, col1);
-    } else {
-      doc.setTextColor(...SUCCESS_COLOR);
-      doc.setFontSize(8);
-      doc.text('✓ Keine Mängel dokumentiert.', col1, y);
-      y += 8;
-    }
+    y = generateRoomSections(doc, data, y, pageW, pageH, col1, date, isMoveIn);
   }
 
-  // ── §6b Zusätzliche Feststellungen (nur bei Auszug/Kauf, da bei Einzug alles in §6 vereint) ──
-  if (!isMoveIn && noteFindings.length > 0) {
-    if (y > pageH - 60) { doc.addPage(); y = 36; }
-    y = sectionTitle(doc, '§6b  Zusätzliche Feststellungen (Zustand / Besonderheiten)', y, pageW);
-    autoTable(doc, {
-      startY: y,
-      margin: { left: 14, right: 14 },
-      head: [['Raum', 'Lage', 'Feststellung', 'Zeitstempel']],
-      body: noteFindings.map(f => [
-        f.room || '–',
-        (f as any).locationDetail || '–',
-        f.description || f.damageType,
-        f.timestamp,
-      ]),
-      headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7 },
-      bodyStyles: { fontSize: 7 },
-      alternateRowStyles: { fillColor: [248, 249, 255] },
-    });
-    y = (doc as any).lastAutoTable.finalY + 4;
-    doc.setTextColor(...MUTED_COLOR);
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'italic');
-    doc.text('Hinweis: Die obigen Feststellungen sind reine Beweisanker ohne Kautionsabzug. Sie dienen der vollständigen Dokumentation des Objektzustands.', col1, y);
+  if (isMoveIn && data.findings.length > 0) {
+    doc.setTextColor(...MUTED_COLOR); doc.setFontSize(6.5); doc.setFont('helvetica', 'italic');
+    doc.text('Dokumentation des Ist-Zustands zur Beweissicherung bei Einzug. Keine Kautionsabzüge.', col1, y);
     doc.setFont('helvetica', 'normal');
     y += 7;
   }
