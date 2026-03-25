@@ -516,20 +516,17 @@ export const Step8MeterScan = () => {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">MaLo-ID (optional)</Label>
-              <Input
-                placeholder="Wird aus Stromrechnung (Phase 10) übernommen"
-                value={manualForm.maloId}
-                onChange={e => setManualForm(p => ({ ...p, maloId: e.target.value }))}
-                className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
-              />
-              {!manualForm.maloId && (
-                <p className="text-[10px] text-muted-foreground/70 italic">
-                  Die MaLo-ID wird automatisch aus der Stromrechnung in Phase 10 extrahiert.
-                </p>
-              )}
-            </div>
+            {(['Strom', 'Gas', 'Zweirichtungszähler'].includes(manualForm.medium)) && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Marktlokations-ID (optional)</Label>
+                <Input
+                  placeholder="z. B. DE000..."
+                  value={manualForm.maloId}
+                  onChange={e => setManualForm(p => ({ ...p, maloId: e.target.value }))}
+                  className="rounded-xl h-11 bg-secondary/50 border-0 focus-visible:ring-1"
+                />
+              </div>
+            )}
 
             <Button
               onClick={handleAddManual}
@@ -615,14 +612,9 @@ export const Step8MeterScan = () => {
                       <Input value={editForm.reading} onChange={e => setEditForm(p => p ? { ...p, reading: e.target.value } : p)} placeholder="Zählerstand" inputMode="decimal" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
                       <Input value={editForm.unit} onChange={e => setEditForm(p => p ? { ...p, unit: e.target.value } : p)} placeholder="Einheit" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
                     </div>
-                    <div className="space-y-1">
-                      <Input value={editForm.maloId} onChange={e => setEditForm(p => p ? { ...p, maloId: e.target.value } : p)} placeholder="Wird aus Stromrechnung (Phase 10) übernommen" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
-                      {!editForm.maloId && (
-                        <p className="text-[10px] text-muted-foreground/70 italic">
-                          Die MaLo-ID wird automatisch aus der Stromrechnung in Phase 10 extrahiert.
-                        </p>
-                      )}
-                    </div>
+                    {(['Strom', 'Gas', 'Zweirichtungszähler', 'Strom (Bezug 1.8.0)', 'Strom (Einspeisung 2.8.0)'].includes(editForm.medium)) && (
+                      <Input value={editForm.maloId} onChange={e => setEditForm(p => p ? { ...p, maloId: e.target.value } : p)} placeholder="Marktlokations-ID (optional)" className="rounded-xl text-sm h-10 bg-secondary/50 border-0" />
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 text-sm">
@@ -634,14 +626,10 @@ export const Step8MeterScan = () => {
                       <span className="text-muted-foreground text-xs">Stand</span>
                       <p className="font-mono font-medium">{meter.reading} {meter.unit}</p>
                     </div>
-                    {meter.maloId ? (
+                    {meter.maloId && (
                       <div className="col-span-2">
-                        <span className="text-muted-foreground text-xs">MaLo-ID</span>
+                        <span className="text-muted-foreground text-xs">Marktlokations-ID</span>
                         <p className="font-mono text-xs truncate">{meter.maloId}</p>
-                      </div>
-                    ) : (
-                      <div className="col-span-2">
-                        <span className="text-muted-foreground text-xs italic">MaLo-ID: Wird aus Stromrechnung (Phase 10) übernommen</span>
                       </div>
                     )}
                   </div>
