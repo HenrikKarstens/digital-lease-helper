@@ -792,6 +792,24 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
             {roomFindings.map(f => (
               <motion.div key={f.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                 className={`glass-card rounded-xl p-3 border ${f.entryType === 'note' ? 'border-primary/20' : 'border-amber-500/20'}`}>
+                {editFindingId === f.id ? (
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-[10px] font-semibold text-muted-foreground uppercase">Schadensart</label>
+                      <input type="text" value={editFindingDamageType} onChange={e => setEditFindingDamageType(e.target.value)}
+                        className="w-full h-8 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-semibold text-muted-foreground uppercase">Beschreibung</label>
+                      <textarea value={editFindingDesc} onChange={e => setEditFindingDesc(e.target.value)} rows={2}
+                        className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setEditFindingId(null)} className="flex-1 rounded-lg h-7 text-xs">Abbrechen</Button>
+                      <Button size="sm" onClick={saveEditFinding} className="flex-1 rounded-lg h-7 text-xs gap-1"><CheckCircle2 className="w-3 h-3" />Speichern</Button>
+                    </div>
+                  </div>
+                ) : (
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2 flex-1 min-w-0">
                     {f.photoUrl && (
@@ -815,11 +833,15 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
                     {!isMoveIn && f.recommendedWithholding > 0 && (
                       <span className="text-xs font-bold text-primary mr-1">{f.recommendedWithholding} €</span>
                     )}
+                    <button onClick={() => startEditFinding(f)} className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
                     <button onClick={() => deleteFinding(f.id)} className="p-1 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
+                )}
               </motion.div>
             ))}
           </div>
