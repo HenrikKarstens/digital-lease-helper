@@ -1008,7 +1008,7 @@ export function generateMasterProtocol(data: HandoverData): void {
     y += 5;
 
     // Embed key bundle photo
-    if (data.keyBundlePhotoUrl) {
+    if (isValidDataUrl(data.keyBundlePhotoUrl)) {
       if (y > pageH - 60) { doc.addPage(); y = 36; }
       try {
         const imgW = 60;
