@@ -14,11 +14,35 @@ const MUTED_COLOR: [number, number, number] = [100, 116, 139];   // Slate-500
 const GOLD_COLOR: [number, number, number] = [197, 160, 89];     // Muted Gold #C5A059
 const GOLD_LIGHT: [number, number, number] = [254, 249, 235];    // Gold background
 
-// Helper: detect image format from data URL
+// Helper: detect image format from data URL (jsPDF supports JPEG, PNG, GIF, BMP – NOT WEBP)
 function imgFormat(dataUrl: string): string {
   if (dataUrl.startsWith('data:image/png')) return 'PNG';
-  if (dataUrl.startsWith('data:image/webp')) return 'WEBP';
+  // WEBP is not supported by jsPDF – treat as JPEG (safeAddImage will handle via canvas conversion)
   return 'JPEG';
+}
+
+// Helper: check if a URL is a valid base64 data URL (not a placeholder like __photo_captured__)
+function isValidDataUrl(url: string | null | undefined): url is string {
+  return !!url && url.startsWith('data:');
+}
+
+// Helper: convert WEBP data URL to JPEG via canvas (jsPDF doesn't support WEBP)
+async function convertWebpToJpeg(dataUrl: string): Promise<string> {
+  if (!dataUrl.startsWith('data:image/webp')) return dataUrl;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(dataUrl); return; }
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/jpeg', 0.92));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
 }
 
 // Helper: safely add image to PDF with auto-format detection
@@ -984,7 +1008,7 @@ export function generateMasterProtocol(data: HandoverData): void {
     y += 5;
 
     // Embed key bundle photo
-    if (data.keyBundlePhotoUrl) {
+    if (isValidDataUrl(data.keyBundlePhotoUrl)) {
       if (y > pageH - 60) { doc.addPage(); y = 36; }
       try {
         const imgW = 60;
