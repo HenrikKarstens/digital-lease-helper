@@ -10,7 +10,7 @@ interface ExtractedField {
 }
 
 interface ValidationWarning {
-  type: 'deposit' | 'date' | 'missing';
+  type: 'deposit' | 'date' | 'missing' | 'address';
   title: string;
   description: string;
   severity: 'warning' | 'error';
