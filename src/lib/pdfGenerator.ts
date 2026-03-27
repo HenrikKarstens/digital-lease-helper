@@ -968,7 +968,7 @@ export function generateMasterProtocol(data: HandoverData): void {
     
     // Embed meter photos with GPS
     const meterPhotos = data.meterReadings
-      .filter(m => m.photoUrl)
+      .filter(m => isValidDataUrl(m.photoUrl))
       .map(m => ({
         url: m.photoUrl!,
         label: `${m.medium} – Zähler ${m.meterNumber || '–'}${m.location ? ' (' + m.location + ')' : ''}`,
@@ -976,7 +976,16 @@ export function generateMasterProtocol(data: HandoverData): void {
         gps: formatGeoForPdf(m.photoGeo),
         sha256: m.sha256Hash,
       }));
-    y = embedPhotos(doc, meterPhotos, y, pageW, pageH, col1);
+    if (meterPhotos.length > 0) {
+      y += 2;
+      doc.setTextColor(...TEXT_COLOR);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Zählerfotos mit forensischer Sicherung:', col1, y);
+      doc.setFont('helvetica', 'normal');
+      y += 5;
+      y = embedPhotos(doc, meterPhotos, y, pageW, pageH, col1);
+    }
   } else {
     doc.setTextColor(...MUTED_COLOR);
     doc.setFontSize(8);
@@ -1320,7 +1329,7 @@ export function generateMasterProtocol(data: HandoverData): void {
           doc.setTextColor(...MUTED_COLOR);
           doc.setFontSize(7);
           doc.setFont('helvetica', 'italic');
-          doc.text('Verwendungszweck: Kautionsrückzahlung gemäß Übergabeprotokoll EstateTurn · Objekt: ' + (data.propertyAddress || '–'), col1, y);
+          doc.text(`Verwendungszweck: Kautionsrückzahlung gemäß Übergabeprotokoll vom ${date} Objektadresse: ${data.propertyAddress || '–'}`, col1, y);
           doc.setFont('helvetica', 'normal');
           y += 7;
         } else {
@@ -1373,7 +1382,7 @@ export function generateMasterProtocol(data: HandoverData): void {
       doc.setTextColor(...MUTED_COLOR);
       doc.setFontSize(7);
       doc.setFont('helvetica', 'italic');
-      doc.text(`Verwendungszweck: Nachforderung gemäß EstateTurn-Übergabeprotokoll · Objekt: ${data.propertyAddress || '–'}`, col1, y);
+      doc.text(`Verwendungszweck: Nachforderung gemäß Übergabeprotokoll vom ${date} Objektadresse: ${data.propertyAddress || '–'}`, col1, y);
       doc.setFont('helvetica', 'normal');
       y += 7;
     }
@@ -1938,9 +1947,15 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
 
     // Embed meter photos (blob)
     const meterPhotos2 = data.meterReadings
-      .filter(m => m.photoUrl)
+      .filter(m => isValidDataUrl(m.photoUrl))
       .map(m => ({ url: m.photoUrl!, label: `${m.medium} – Zähler ${m.meterNumber || '–'}${m.location ? ' (' + m.location + ')' : ''}`, timestamp: formatTimestampForPdf(m.photoGeo?.timestamp) || date, gps: formatGeoForPdf(m.photoGeo), sha256: m.sha256Hash }));
-    y = embedPhotos(doc, meterPhotos2, y, pageW, pageH, col1);
+    if (meterPhotos2.length > 0) {
+      y += 2;
+      doc.setTextColor(...TEXT_COLOR); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+      doc.text('Zählerfotos mit forensischer Sicherung:', col1, y);
+      doc.setFont('helvetica', 'normal'); y += 5;
+      y = embedPhotos(doc, meterPhotos2, y, pageW, pageH, col1);
+    }
   } else {
     doc.setTextColor(...MUTED_COLOR); doc.setFontSize(8);
     doc.text('Keine Zähler erfasst.', col1, y); y += 8;
@@ -2121,7 +2136,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
         }
 
         doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'italic');
-        doc.text('Verwendungszweck: Kautionsrückzahlung gemäß EstateTurn-Übergabeprotokoll · Objekt: ' + (data.propertyAddress || '–'), col1, y);
+        doc.text(`Verwendungszweck: Kautionsrückzahlung gemäß Übergabeprotokoll vom ${date} Objektadresse: ${data.propertyAddress || '–'}`, col1, y);
         doc.setFont('helvetica', 'normal'); y += 7;
       } else {
         // No bank details provided – legal notice
@@ -2162,7 +2177,7 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
       y += 20;
 
       doc.setTextColor(...MUTED_COLOR); doc.setFontSize(7); doc.setFont('helvetica', 'italic');
-      doc.text(`Verwendungszweck: Nachforderung gemäß EstateTurn-Übergabeprotokoll · Objekt: ${data.propertyAddress || '–'}`, col1, y);
+      doc.text(`Verwendungszweck: Nachforderung gemäß Übergabeprotokoll vom ${date} Objektadresse: ${data.propertyAddress || '–'}`, col1, y);
       doc.setFont('helvetica', 'normal'); y += 7;
     }
   }
