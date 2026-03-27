@@ -46,7 +46,6 @@ export const Step13Certificate = () => {
   }, [previewUrl]);
 
   const closePreview = useCallback(() => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
   }, [previewUrl]);
 
