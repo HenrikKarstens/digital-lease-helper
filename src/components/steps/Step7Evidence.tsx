@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   MapPin, Camera, X, CheckCircle2, Crosshair, Clock, Compass,
   AlertTriangle, Euro, ChevronDown, Pencil, Trash2, Plus,
-  FileText, StickyNote, ArrowRight, Loader2
+  FileText, StickyNote, ArrowRight, Loader2, Gauge, Zap, Droplets, Flame, Thermometer, HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover, Finding, EntryType } from '@/context/HandoverContext';
