@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useToast } from '@/hooks/use-toast';
-import { generateMasterProtocol } from '@/lib/pdfGenerator';
+import { generateMasterProtocol, generateMasterProtocolBlob } from '@/lib/pdfGenerator';
 
 export const Step10DataComplete = () => {
   const { data, updateData, goToStepById } = useHandover();
