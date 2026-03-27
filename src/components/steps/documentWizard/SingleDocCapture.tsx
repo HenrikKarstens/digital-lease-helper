@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion';
-import { PenLine, AlertCircle, SkipForward, CheckCircle2, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PenLine, AlertCircle, SkipForward, CheckCircle2, RefreshCw, Eye, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +33,10 @@ interface Props {
 const getManualFields = (docType: string, isSale: boolean, ownerRole: string, clientRole: string) => {
   if (docType === 'main-contract') {
     return [
-      { key: 'propertyAddress', label: 'Objektadresse', placeholder: 'Musterstraße 1, 12345 Berlin' },
+      { key: 'propertyStreet', label: 'Straße', placeholder: 'Musterstraße' },
+      { key: 'propertyHouseNumber', label: 'Hausnummer', placeholder: '1' },
+      { key: 'propertyZip', label: 'PLZ', placeholder: '12345' },
+      { key: 'propertyCity', label: 'Ort', placeholder: 'Berlin' },
       { key: 'landlordName', label: ownerRole, placeholder: `Name des ${ownerRole}s` },
       { key: 'landlordEmail', label: `E-Mail ${ownerRole}`, placeholder: 'email@beispiel.de', type: 'email' },
       { key: 'tenantName', label: clientRole, placeholder: `Name des ${clientRole}s` },
@@ -79,6 +82,8 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
   const [error, setError] = useState<string | null>(null);
   
   const [manualValues, setManualValues] = useState<Record<string, string>>({});
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewPageIdx, setPreviewPageIdx] = useState(0);
 
   /** Compress an image file to max ~1.5MB for reliable AI analysis */
   const compressImage = (file: File): Promise<File> => {
@@ -187,6 +192,21 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       Object.entries(fieldMap).forEach(([src, dst]) => {
         if (result[src]) patch[dst] = result[src];
       });
+      // Parse propertyAddress into structured fields
+      if (result.propertyAddress) {
+        const addr = result.propertyAddress as string;
+        // Try pattern: "Straße Nr, PLZ Ort" or "Straße Nr, PLZ Ort"
+        const match = addr.match(/^(.+?)\s+(\d+\s*\w?)\s*,\s*(\d{5})\s+(.+)$/);
+        if (match) {
+          patch['propertyStreet'] = match[1].trim();
+          patch['propertyHouseNumber'] = match[2].trim();
+          patch['propertyZip'] = match[3].trim();
+          patch['propertyCity'] = match[4].trim();
+        } else {
+          // Fallback: put entire address into street
+          patch['propertyStreet'] = addr;
+        }
+      }
       if (docStep.id === 'amendment' && result.contractStart) {
         patch['amendmentDate'] = result.contractStart;
       }
@@ -298,6 +318,14 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     return null;
   }
 
+  const existingDoc = (data.capturedDocuments || []).find(d => d.type === docStep.id);
+
+  const handleDeleteDoc = () => {
+    const updatedDocs = (data.capturedDocuments || []).filter(d => d.type !== docStep.id);
+    updateData({ capturedDocuments: updatedDocs });
+    setShowPreview(false);
+  };
+
   // ── Idle / capture ──
   return (
     <div className="flex flex-col px-4 py-2">
@@ -310,6 +338,103 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
           </div>
         </div>
       </div>
+
+      {/* Already uploaded document preview */}
+      {existingDoc && existingDoc.pages.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-2xl p-4 mb-4 border border-primary/20"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span className="text-sm font-semibold">Dokument hochgeladen</span>
+              <span className="text-[10px] text-muted-foreground">({existingDoc.pages.length} {existingDoc.pages.length === 1 ? 'Seite' : 'Seiten'})</span>
+            </div>
+          </div>
+
+          {/* Thumbnail gallery */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {existingDoc.pages.map((page, idx) => (
+              <button
+                key={page.id}
+                onClick={() => { setPreviewPageIdx(idx); setShowPreview(true); }}
+                className="shrink-0 w-16 h-20 rounded-lg overflow-hidden border border-border/50 hover:border-primary/50 transition-colors relative group"
+              >
+                {page.dataUrl?.startsWith('data:') ? (
+                  <img src={page.dataUrl} alt={`Seite ${idx + 1}`} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-secondary flex items-center justify-center text-[10px] text-muted-foreground">S.{idx + 1}</div>
+                )}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                  <Eye className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 mt-3">
+            <Button size="sm" variant="outline" onClick={() => { setPreviewPageIdx(0); setShowPreview(true); }} className="flex-1 rounded-xl text-xs h-9 gap-1">
+              <Eye className="w-3.5 h-3.5" />
+              Ansehen
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleDeleteDoc} className="flex-1 rounded-xl text-xs h-9 gap-1 text-destructive hover:text-destructive">
+              <Trash2 className="w-3.5 h-3.5" />
+              Löschen & Neu
+            </Button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Full-screen preview modal */}
+      <AnimatePresence>
+        {showPreview && existingDoc && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center"
+          >
+            <div className="absolute top-4 right-4 flex gap-2">
+              <button onClick={() => setShowPreview(false)} className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 flex items-center justify-center w-full px-4 py-16">
+              {existingDoc.pages[previewPageIdx]?.dataUrl?.startsWith('data:') ? (
+                <img
+                  src={existingDoc.pages[previewPageIdx].dataUrl}
+                  alt={`Seite ${previewPageIdx + 1}`}
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                />
+              ) : (
+                <div className="text-white text-sm">Vorschau nicht verfügbar</div>
+              )}
+            </div>
+            {existingDoc.pages.length > 1 && (
+              <div className="flex items-center gap-4 pb-6">
+                <button
+                  disabled={previewPageIdx === 0}
+                  onClick={() => setPreviewPageIdx(p => p - 1)}
+                  className="px-4 py-2 rounded-xl bg-white/10 text-white text-sm disabled:opacity-30"
+                >
+                  ← Zurück
+                </button>
+                <span className="text-white text-sm">{previewPageIdx + 1} / {existingDoc.pages.length}</span>
+                <button
+                  disabled={previewPageIdx >= existingDoc.pages.length - 1}
+                  onClick={() => setPreviewPageIdx(p => p + 1)}
+                  className="px-4 py-2 rounded-xl bg-white/10 text-white text-sm disabled:opacity-30"
+                >
+                  Weiter →
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {error && (
         <motion.div
