@@ -107,6 +107,8 @@ export const Step4Validation = () => {
     { key: 'propertyHouseNumber', label: 'Hausnummer' },
     { key: 'propertyZip', label: 'PLZ' },
     { key: 'propertyCity', label: 'Ort' },
+    ...(data.propertyFloor ? [{ key: 'propertyFloor' as keyof typeof data, label: 'Lage / Geschoss' }] : []),
+    ...(data.propertyUnitNumber ? [{ key: 'propertyUnitNumber' as keyof typeof data, label: 'Wohnungsnummer' }] : []),
     { key: 'roomCount', label: 'Zimmeranzahl' },
     { key: 'landlordName', label: ownerRole },
     { key: 'landlordEmail', label: `E-Mail ${ownerRole}` },

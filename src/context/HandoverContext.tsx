@@ -159,6 +159,8 @@ export interface HandoverData {
   propertyZip: string;
   propertyCity: string;
   propertyAddress: string; // computed: "Straße Nr, PLZ Ort"
+  propertyFloor: string; // z.B. "Erdgeschoss", "2. OG"
+  propertyUnitNumber: string; // Wohnungsnummer
   landlordName: string;
   landlordEmail: string;
   landlordPhone: string;
@@ -283,6 +285,8 @@ const defaultData: HandoverData = {
   propertyZip: '',
   propertyCity: '',
   propertyAddress: '',
+  propertyFloor: '',
+  propertyUnitNumber: '',
   landlordName: '',
   landlordEmail: '',
   landlordPhone: '',
