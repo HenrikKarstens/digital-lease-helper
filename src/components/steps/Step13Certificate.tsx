@@ -21,13 +21,19 @@ export const Step13Certificate = () => {
 
   const isUnlocked = data.paymentStatus === 'paid' || data.serviceCheckStatus === 'completed';
 
-  const handlePreview = useCallback(() => {
+  const handlePreview = useCallback(async () => {
     try {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
       const blob = generateMasterProtocolBlob(data);
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-      setHasPreviewed(true);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(reader.result as string);
+        setHasPreviewed(true);
+      };
+      reader.onerror = () => {
+        toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
+      };
+      reader.readAsDataURL(blob);
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
@@ -40,7 +46,6 @@ export const Step13Certificate = () => {
   }, [previewUrl]);
 
   const closePreview = useCallback(() => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
   }, [previewUrl]);
 

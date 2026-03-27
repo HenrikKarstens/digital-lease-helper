@@ -24,13 +24,19 @@ export const Step10DataComplete = () => {
   const uniqueMeters = [...new Set(meterTypes)];
   const participantCount = data.participants.filter(p => p.present).length;
 
-  const handlePreview = useCallback(() => {
+  const handlePreview = useCallback(async () => {
     try {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
       const blob = generateMasterProtocolBlob(data);
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-      updateData({ previewViewed: true });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(reader.result as string);
+        updateData({ previewViewed: true });
+      };
+      reader.onerror = () => {
+        toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
+      };
+      reader.readAsDataURL(blob);
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
