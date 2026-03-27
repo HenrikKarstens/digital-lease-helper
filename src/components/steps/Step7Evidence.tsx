@@ -24,6 +24,12 @@ const ROOMS_OUTDOOR = [
   'Balkon/Terrasse', 'Garten', 'Garage', 'Carport', 'Keller', 'Dachboden', 'Außenbereich',
 ];
 
+const METER_MEDIUM_ICONS: Record<string, React.ElementType> = {
+  Strom: Zap, Zweirichtungszähler: Zap, 'Strom (Bezug 1.8.0)': Zap, 'Strom (Einspeisung 2.8.0)': Zap,
+  Wasser: Droplets, 'Wasser (kalt)': Droplets, 'Wasser (warm)': Droplets,
+  Gas: Flame, Wärmemengenzähler: Thermometer, Heizkostenverteiler: Thermometer, Sonstiges: HelpCircle,
+};
+
 type Phase = 'list' | 'camera' | 'room-select' | 'analyzing' | 'result' | 'manual-entry' | 'edit';
 
 // ─── RoomDropdown helper ──────────────────────────────────────────────────────
