@@ -158,6 +158,30 @@ export const useExtractionValidation = (data: HandoverData) => {
       });
     }
 
+    // Address validation warnings
+    const addrValidationRaw = (data as any)._addressValidation;
+    if (addrValidationRaw) {
+      try {
+        const addrValidation = typeof addrValidationRaw === 'string' ? JSON.parse(addrValidationRaw) : addrValidationRaw;
+        const labelMap: Record<string, string> = {
+          propertyAddress: 'Objektadresse',
+          landlordAddress: 'Vermieteradresse',
+          tenantAddress: 'Mieteradresse',
+          priorAddress: 'Voranschrift',
+        };
+        for (const [key, result] of Object.entries(addrValidation) as [string, any][]) {
+          if (!result.exists) {
+            warnings.push({
+              type: 'address',
+              title: `${labelMap[key] || key}: Adresse nicht verifiziert`,
+              description: `Die extrahierte Adresse „${result.original}" konnte nicht als gültige deutsche Adresse bestätigt werden. Bitte manuell prüfen – möglicherweise ein OCR-Lesefehler.`,
+              severity: 'warning',
+            });
+          }
+        }
+      } catch { /* ignore parse errors */ }
+    }
+
     return { fields, warnings };
   }, [data]);
 };
