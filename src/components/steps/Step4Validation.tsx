@@ -103,7 +103,10 @@ export const Step4Validation = () => {
 
 
   const rows: { key: keyof typeof data; label: string }[] = [
-    { key: 'propertyAddress', label: 'Objektadresse' },
+    { key: 'propertyStreet', label: 'Straße' },
+    { key: 'propertyHouseNumber', label: 'Hausnummer' },
+    { key: 'propertyZip', label: 'PLZ' },
+    { key: 'propertyCity', label: 'Ort' },
     { key: 'roomCount', label: 'Zimmeranzahl' },
     { key: 'landlordName', label: ownerRole },
     { key: 'landlordEmail', label: `E-Mail ${ownerRole}` },
