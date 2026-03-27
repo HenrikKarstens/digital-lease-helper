@@ -398,7 +398,24 @@ export const Step7Evidence = () => {
             </motion.div>
           )}
 
-          {/* ── Total (nur bei Auszug) ── */}
+          {/* ── Meter photos from Phase 8 ── */}
+          {data.meterReadings.filter(m => m.photoUrl).length > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Gauge className="w-3.5 h-3.5 text-primary" /> Zählerfotos ({data.meterReadings.filter(m => m.photoUrl).length})
+              </h3>
+              <div className="space-y-2">
+                {data.meterReadings.filter(m => m.photoUrl).map(meter => {
+                  const Icon = METER_MEDIUM_ICONS[meter.medium] || Gauge;
+                  return (
+                    <MeterPhotoCard key={meter.id} meter={meter} Icon={Icon} />
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
+
           {defects.length > 0 && !isMoveIn && (
             <motion.div
               key={totalWithholding}
