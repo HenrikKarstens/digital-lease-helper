@@ -1285,34 +1285,58 @@ export function generateMasterProtocol(data: HandoverData): void {
       y += 6;
 
       // ── §7c Zahlungsanweisung ──────────────────────────────
-      if (payoutFinal > 0 && (data.payeeIban || data.payeeAccountHolder)) {
+      if (payoutFinal > 0) {
         if (y > pageH - 50) { doc.addPage(); y = 36; }
-        y = sectionTitle(doc, '§7c  Zahlungsanweisung', y, pageW);
-        const isRelettingPay = data.immediateReletting === true;
-        const deadline14pay = isRelettingPay
-          ? 'sofort fällig'
-          : (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
-        const payeeHolder = data.payeeAccountHolder || data.tenantName || 'Mieter';
-        const payeeIban = data.payeeIban || '(IBAN nicht angegeben)';
+        if (data.payeeIban || data.payeeAccountHolder) {
+          y = sectionTitle(doc, '§7c  Zahlungsanweisung', y, pageW);
+          const isRelettingPay = data.immediateReletting === true;
+          const deadline14pay = isRelettingPay
+            ? 'sofort fällig'
+            : (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); })();
+          const payeeHolder = data.payeeAccountHolder || data.tenantName || 'Mieter';
+          const payeeIban = data.payeeIban || '(IBAN nicht angegeben)';
 
-        doc.setFillColor(238, 242, 255);
-        doc.roundedRect(14, y, pageW - 28, 22, 2, 2, 'F');
-        doc.setTextColor(...TEXT_COLOR);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        const paymentText = isRelettingPay
-          ? `Der Betrag in Höhe von ${payoutFinal.toFixed(2)} € ist sofort fällig (Anschlussvermietung – § 281 Abs. 2 BGB) und auf das folgende Konto zu überweisen: ${payeeHolder}, IBAN: ${payeeIban}.`
-          : `Der Betrag in Höhe von ${payoutFinal.toFixed(2)} € ist bis zum ${deadline14pay} auf das folgende Konto zu überweisen: ${payeeHolder}, IBAN: ${payeeIban}.`;
-        const paymentLines = doc.splitTextToSize(paymentText, pageW - 36);
-        doc.text(paymentLines, 18, y + 6);
-        y += 26;
+          doc.setFillColor(238, 242, 255);
+          doc.roundedRect(14, y, pageW - 28, 22, 2, 2, 'F');
+          doc.setTextColor(...TEXT_COLOR);
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'normal');
+          const paymentText = isRelettingPay
+            ? `Der Betrag in Höhe von ${payoutFinal.toFixed(2)} € ist sofort fällig (Anschlussvermietung – § 281 Abs. 2 BGB) und auf das folgende Konto zu überweisen: ${payeeHolder}, IBAN: ${payeeIban}.`
+            : `Der Betrag in Höhe von ${payoutFinal.toFixed(2)} € ist bis zum ${deadline14pay} auf das folgende Konto zu überweisen: ${payeeHolder}, IBAN: ${payeeIban}.`;
+          const paymentLines = doc.splitTextToSize(paymentText, pageW - 36);
+          doc.text(paymentLines, 18, y + 6);
+          y += 26;
 
-        doc.setTextColor(...MUTED_COLOR);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'italic');
-        doc.text('Verwendungszweck: Kautionsrückzahlung gemäß Übergabeprotokoll EstateTurn · Objekt: ' + (data.propertyAddress || '–'), col1, y);
-        doc.setFont('helvetica', 'normal');
-        y += 7;
+          // Bankdetails
+          if (data.payeeBankName || data.payeeBic) {
+            doc.setTextColor(...MUTED_COLOR);
+            doc.setFontSize(7);
+            const bankDetails = [data.payeeBankName, data.payeeBic ? `BIC: ${data.payeeBic}` : ''].filter(Boolean).join(' · ');
+            doc.text(bankDetails, col1, y);
+            y += 4;
+          }
+
+          doc.setTextColor(...MUTED_COLOR);
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'italic');
+          doc.text('Verwendungszweck: Kautionsrückzahlung gemäß Übergabeprotokoll EstateTurn · Objekt: ' + (data.propertyAddress || '–'), col1, y);
+          doc.setFont('helvetica', 'normal');
+          y += 7;
+        } else {
+          // No bank details provided – legal notice
+          y = sectionTitle(doc, '§7c  Zahlungsanweisung – Bankdaten ausstehend', y, pageW);
+          doc.setFillColor(255, 248, 235);
+          const noIbanText = `Dem Vermieter (${data.landlordName || 'Vermieter'}) liegen zum Zeitpunkt der Übergabe keine Bankverbindungsdaten des Mieters (${data.tenantName || 'Mieter'}) vor. Der Mieter ist gemäß § 362 Abs. 1 BGB verpflichtet, dem Vermieter unverzüglich eine gültige Bankverbindung (IBAN, BIC, Kontoinhaber) zur Rückzahlung der Kaution mitzuteilen. Solange keine Bankverbindung vorliegt, ist der Vermieter nicht in Annahmeverzug (§ 293 BGB). Die Rückzahlungsfrist beginnt erst mit Eingang der vollständigen Bankdaten (§ 271 Abs. 1 BGB, vgl. BGH VIII ZR 71/05).`;
+          const noIbanLines = doc.splitTextToSize(noIbanText, pageW - 36);
+          const noIbanH = noIbanLines.length * 4 + 10;
+          doc.roundedRect(14, y, pageW - 28, noIbanH, 2, 2, 'F');
+          doc.setTextColor(180, 120, 20);
+          doc.setFontSize(8.5);
+          doc.setFont('helvetica', 'normal');
+          doc.text(noIbanLines, 18, y + 6);
+          y += noIbanH + 4;
+        }
       }
     }
 
