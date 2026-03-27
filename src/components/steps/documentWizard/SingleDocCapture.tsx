@@ -40,8 +40,10 @@ const getManualFields = (docType: string, isSale: boolean, ownerRole: string, cl
       { key: 'propertyFloor', label: 'Lage / Geschoss', placeholder: 'z.B. Erdgeschoss, 2. OG' },
       { key: 'propertyUnitNumber', label: 'Wohnungsnummer', placeholder: 'z.B. Whg. 3' },
       { key: 'landlordName', label: ownerRole, placeholder: `Name des ${ownerRole}s` },
+      { key: 'landlordAddress', label: `Anschrift ${ownerRole}`, placeholder: 'Straße Nr, PLZ Ort' },
       { key: 'landlordEmail', label: `E-Mail ${ownerRole}`, placeholder: 'email@beispiel.de', type: 'email' },
       { key: 'tenantName', label: clientRole, placeholder: `Name des ${clientRole}s` },
+      { key: 'tenantAddress', label: `Anschrift ${clientRole}`, placeholder: 'Straße Nr, PLZ Ort' },
       { key: 'tenantEmail', label: `E-Mail ${clientRole}`, placeholder: 'email@beispiel.de', type: 'email' },
       { key: 'roomCount', label: 'Anzahl Zimmer', placeholder: 'z.B. 3' },
       { key: 'contractStart', label: isSale ? 'Übergabedatum' : 'Vertragsbeginn', placeholder: 'TT.MM.JJJJ', required: true },
@@ -176,9 +178,9 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
 
       const fieldMap: Record<string, string> = {
         propertyAddress: 'propertyAddress', propertyFloor: 'propertyFloor', propertyUnitNumber: 'propertyUnitNumber',
-        landlordName: 'landlordName', landlordEmail: 'landlordEmail',
+        landlordName: 'landlordName', landlordAddress: 'landlordAddress', landlordEmail: 'landlordEmail',
         landlordPhone: 'landlordPhone', landlordBirthday: 'landlordBirthday', tenantName: 'tenantName',
-        tenantEmail: 'tenantEmail', tenantPhone: 'tenantPhone', tenantBirthday: 'tenantBirthday',
+        tenantAddress: 'tenantAddress', tenantEmail: 'tenantEmail', tenantPhone: 'tenantPhone', tenantBirthday: 'tenantBirthday',
         priorAddress: 'priorAddress', depositAmount: 'depositAmount', coldRent: 'coldRent',
         nkAdvancePayment: 'nkAdvancePayment', heatingCosts: 'heatingCosts', totalRent: 'totalRent',
         roomCount: 'roomCount', contractStart: 'contractStart', contractEnd: 'contractEnd',

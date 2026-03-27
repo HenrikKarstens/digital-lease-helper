@@ -87,10 +87,12 @@ serve(async (req) => {
 - "propertyFloor": Lage/Geschoss des Objekts (z.B. "Erdgeschoss", "1. OG", "2. Obergeschoss", "Dachgeschoss"). Suche nach "Geschoss", "OG", "EG", "DG", "Erdgeschoss", "Obergeschoss", "Dachgeschoss", "Etage", "Stockwerk". Falls nicht erkennbar: ""
 - "propertyUnitNumber": Wohnungsnummer (z.B. "Whg. 3", "Nr. 12", "Einheit 4"). Suche nach "Wohnungsnummer", "Whg.", "Wohnung Nr.", "Einheit". Falls nicht erkennbar: ""
 - "landlordName": Name ${isSale ? 'des Verkäufers' : 'des Vermieters'}
+- "landlordAddress": Anschrift/Adresse ${isSale ? 'des Verkäufers' : 'des Vermieters'} (falls vorhanden, sonst ""). Suche nach der persönlichen Wohnadresse, NICHT der Objektadresse. Oft im Kopf des Vertrags oder Kontaktblock.
 - "landlordEmail": E-Mail ${isSale ? 'des Verkäufers' : 'des Vermieters'} (falls vorhanden, sonst "")
 - "landlordPhone": Mobilnummer/Telefonnummer ${isSale ? 'des Verkäufers' : 'des Vermieters'} (falls vorhanden, sonst ""). Suche intensiv im gesamten Dokument, auch in Kopfzeilen, Fußzeilen und Kontaktblöcken.
 - "landlordBirthday": Geburtsdatum ${isSale ? 'des Verkäufers' : 'des Vermieters'} im Format TT.MM.JJJJ (falls vorhanden, sonst ""). Suche auch nach Datumsangaben in Personendatenblöcken.
 - "tenantName": Name ${isSale ? 'des Käufers' : 'des Mieters'}
+- "tenantAddress": Anschrift/Adresse ${isSale ? 'des Käufers' : 'des Mieters'} (falls vorhanden, sonst ""). Suche nach der persönlichen Wohnadresse (bisherige Anschrift), NICHT der Objektadresse. Oft im Kopf des Vertrags.
 - "tenantEmail": E-Mail ${isSale ? 'des Käufers' : 'des Mieters'} (falls vorhanden, sonst "")
 - "tenantPhone": Mobilnummer/Telefonnummer ${isSale ? 'des Käufers' : 'des Mieters'} (falls vorhanden, sonst ""). Suche intensiv im gesamten Dokument, auch in Kopfzeilen, Fußzeilen, handschriftlichen Ergänzungen und Kontaktblöcken. Format z.B. "+49 152 57024760".
 - "tenantBirthday": Geburtsdatum ${isSale ? 'des Käufers' : 'des Mieters'} im Format TT.MM.JJJJ (falls vorhanden, sonst ""). Suche auch nach Angaben wie "geb." oder "geboren am" oder Datumsformaten wie "12 09 1982" die als Geburtsdatum interpretiert werden können.

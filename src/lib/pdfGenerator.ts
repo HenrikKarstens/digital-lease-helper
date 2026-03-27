@@ -552,6 +552,9 @@ export function generateBeweisanker(data: HandoverData): void {
   lY = y; rY = y;
   lY = drawField(`Name ${ownerLabel}`, data.landlordName, col1, lY, colW);
   rY = drawField(`Name ${clientLabel}`, data.tenantName, col2, rY, colW);
+  if (data.landlordAddress) lY = drawField(`Anschrift ${ownerLabel}`, data.landlordAddress, col1, lY, colW);
+  const tenantAddrForProtocol = (data.handoverDirection === 'move-out' && data.nextAddress) ? data.nextAddress : data.tenantAddress;
+  if (tenantAddrForProtocol) rY = drawField(`Anschrift ${clientLabel}`, tenantAddrForProtocol, col2, rY, colW);
   lY = drawField(`E-Mail ${ownerLabel}`, data.landlordEmail, col1, lY, colW);
   rY = drawField(`E-Mail ${clientLabel}`, data.tenantEmail, col2, rY, colW);
   y = Math.max(lY, rY) + 2;
@@ -778,13 +781,14 @@ export function generateMasterProtocol(data: HandoverData): void {
 
   // ── §2 Parteien ───────────────────────────────────────────────────────────
   y = sectionTitle(doc, '§2  Vertragsparteien', y, pageW);
+  const tenantAddrProto = (data.handoverDirection === 'move-out' && data.nextAddress) ? data.nextAddress : data.tenantAddress;
   autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
-    head: [['Partei', 'Name', 'E-Mail', 'Mobilnummer', 'Geburtstag']],
+    head: [['Partei', 'Name', 'Anschrift', 'E-Mail', 'Mobilnummer', 'Geburtstag']],
     body: [
-      [isSale ? 'Verkäufer' : 'Vermieter', data.landlordName || '–', data.landlordEmail || '–', data.landlordPhone || '–', data.landlordBirthday || '–'],
-      [isSale ? 'Käufer' : 'Mieter', data.tenantName || '–', data.tenantEmail || '–', data.tenantPhone || '–', data.tenantBirthday || '–'],
+      [isSale ? 'Verkäufer' : 'Vermieter', data.landlordName || '–', data.landlordAddress || '–', data.landlordEmail || '–', data.landlordPhone || '–', data.landlordBirthday || '–'],
+      [isSale ? 'Käufer' : 'Mieter', data.tenantName || '–', tenantAddrProto || '–', data.tenantEmail || '–', data.tenantPhone || '–', data.tenantBirthday || '–'],
     ],
     headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 8 },
     bodyStyles: { fontSize: 7.5 },
@@ -1733,14 +1737,15 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
 
   y = sectionTitle(doc, '§2  Vertragsparteien', y, pageW);
   const signatureTimestamp = new Date().toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const tenantAddrFinal = (data.handoverDirection === 'move-out' && data.nextAddress) ? data.nextAddress : data.tenantAddress;
   autoTable(doc, {
     startY: y,
     margin: { left: 14, right: 14 },
-    head: [['Partei', 'Name', 'E-Mail', 'Mobilnummer', 'Geburtstag', 'Digitale Signatur']],
+    head: [['Partei', 'Name', 'Anschrift', 'E-Mail', 'Mobilnummer', 'Geburtstag', 'Digitale Signatur']],
     body: [
-      [isSale ? 'Verkäufer' : 'Vermieter', data.landlordName || '–', data.landlordEmail || '–', data.landlordPhone || '–', data.landlordBirthday || '–',
+      [isSale ? 'Verkäufer' : 'Vermieter', data.landlordName || '–', data.landlordAddress || '–', data.landlordEmail || '–', data.landlordPhone || '–', data.landlordBirthday || '–',
         data.signatureLandlord ? `✓ Signiert am ${signatureTimestamp}` : 'Nicht unterschrieben'],
-      [isSale ? 'Käufer' : 'Mieter', data.tenantName || '–', data.tenantEmail || '–', data.tenantPhone || '–', data.tenantBirthday || '–',
+      [isSale ? 'Käufer' : 'Mieter', data.tenantName || '–', tenantAddrFinal || '–', data.tenantEmail || '–', data.tenantPhone || '–', data.tenantBirthday || '–',
         data.signatureTenant ? `✓ Signiert am ${signatureTimestamp}` : 'Nicht unterschrieben'],
     ],
     headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontSize: 7 },

@@ -162,10 +162,12 @@ export interface HandoverData {
   propertyFloor: string; // z.B. "Erdgeschoss", "2. OG"
   propertyUnitNumber: string; // Wohnungsnummer
   landlordName: string;
+  landlordAddress: string; // Anschrift des Vermieters/Verkäufers
   landlordEmail: string;
   landlordPhone: string;
   landlordBirthday: string;
   tenantName: string;
+  tenantAddress: string; // Anschrift des Mieters/Käufers
   tenantEmail: string;
   tenantPhone: string;
   tenantBirthday: string;
@@ -288,10 +290,12 @@ const defaultData: HandoverData = {
   propertyFloor: '',
   propertyUnitNumber: '',
   landlordName: '',
+  landlordAddress: '',
   landlordEmail: '',
   landlordPhone: '',
   landlordBirthday: '',
   tenantName: '',
+  tenantAddress: '',
   tenantEmail: '',
   tenantPhone: '',
   tenantBirthday: '',
