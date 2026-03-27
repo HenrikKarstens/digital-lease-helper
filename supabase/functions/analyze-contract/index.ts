@@ -313,6 +313,65 @@ FORMAT-REGELN:
       }
     }
 
+    // ── Address validation against Nominatim/OpenStreetMap ──
+    if (documentType === 'main-contract') {
+      const addressFieldsToValidate = [
+        { key: 'propertyAddress', label: 'Objektadresse' },
+        { key: 'landlordAddress', label: 'Vermieteradresse' },
+        { key: 'tenantAddress', label: 'Mieteradresse' },
+        { key: 'priorAddress', label: 'Voranschrift' },
+      ];
+
+      const addressValidation: Record<string, { exists: boolean; corrected?: string; original: string }> = {};
+
+      const validateAddress = async (address: string): Promise<{ exists: boolean; corrected?: string }> => {
+        if (!address || address.endsWith('?') || address.length < 5) return { exists: true }; // skip uncertain/empty
+        try {
+          const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&countrycodes=de&format=json&limit=1&addressdetails=1`;
+          const resp = await fetch(url, {
+            headers: { 'User-Agent': 'UebergabeProtokoll/1.0' },
+          });
+          if (!resp.ok) {
+            console.warn(`Nominatim returned ${resp.status} for "${address}"`);
+            return { exists: true }; // fail open
+          }
+          const results = await resp.json();
+          if (results.length === 0) {
+            return { exists: false };
+          }
+          // Check if Nominatim returned a meaningfully different (corrected) address
+          const found = results[0].display_name as string;
+          return { exists: true, corrected: found };
+        } catch (e) {
+          console.warn(`Nominatim error for "${address}":`, e);
+          return { exists: true }; // fail open on network errors
+        }
+      };
+
+      // Run validations in parallel (with small stagger to respect Nominatim rate limits)
+      for (const field of addressFieldsToValidate) {
+        const raw = parsedData[field.key];
+        if (raw && typeof raw === 'string' && raw.length >= 5 && !raw.endsWith('?')) {
+          const result = await validateAddress(raw);
+          addressValidation[field.key] = { ...result, original: raw };
+          if (!result.exists) {
+            console.warn(`[address-check] ${field.label} "${raw}" NOT found in Germany – marking uncertain`);
+            // Mark the value as uncertain so the user checks it
+            parsedData[field.key] = raw + '?';
+            // Add to confidence object
+            if (!parsedData.confidence) parsedData.confidence = {};
+            parsedData.confidence[field.key] = 'low';
+          }
+          // Small delay to respect Nominatim usage policy (1 req/sec)
+          await new Promise(r => setTimeout(r, 1100));
+        }
+      }
+
+      if (Object.keys(addressValidation).length > 0) {
+        parsedData._addressValidation = addressValidation;
+      }
+    }
+
     return new Response(
       JSON.stringify({ success: true, data: parsedData, pageCount: maxPages }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

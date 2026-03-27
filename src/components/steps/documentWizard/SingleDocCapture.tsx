@@ -215,6 +215,10 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       if (docStep.id === 'amendment' && result.contractStart) {
         patch['amendmentDate'] = result.contractStart;
       }
+      // Store address validation results if present
+      if (result._addressValidation) {
+        patch['_addressValidation'] = JSON.stringify(result._addressValidation);
+      }
       updateData(patch as any);
       console.log('[EstateTurn] Daten in globalen State geschrieben:', Object.keys(patch));
 
