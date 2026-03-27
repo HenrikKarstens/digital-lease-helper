@@ -33,7 +33,10 @@ interface Props {
 const getManualFields = (docType: string, isSale: boolean, ownerRole: string, clientRole: string) => {
   if (docType === 'main-contract') {
     return [
-      { key: 'propertyAddress', label: 'Objektadresse', placeholder: 'Musterstraße 1, 12345 Berlin' },
+      { key: 'propertyStreet', label: 'Straße', placeholder: 'Musterstraße' },
+      { key: 'propertyHouseNumber', label: 'Hausnummer', placeholder: '1' },
+      { key: 'propertyZip', label: 'PLZ', placeholder: '12345' },
+      { key: 'propertyCity', label: 'Ort', placeholder: 'Berlin' },
       { key: 'landlordName', label: ownerRole, placeholder: `Name des ${ownerRole}s` },
       { key: 'landlordEmail', label: `E-Mail ${ownerRole}`, placeholder: 'email@beispiel.de', type: 'email' },
       { key: 'tenantName', label: clientRole, placeholder: `Name des ${clientRole}s` },
