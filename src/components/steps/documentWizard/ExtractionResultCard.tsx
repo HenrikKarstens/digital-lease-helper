@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, AlertTriangle, XCircle, ArrowRight, Scale, CalendarClock } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, ArrowRight, Scale, CalendarClock, MapPinOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ExtractedField {
@@ -11,7 +11,7 @@ interface ExtractedField {
 }
 
 interface ValidationWarning {
-  type: 'deposit' | 'date' | 'missing';
+  type: 'deposit' | 'date' | 'missing' | 'address';
   title: string;
   description: string;
   severity: 'warning' | 'error';
@@ -75,6 +75,10 @@ export const ExtractionResultCard = ({ fields, warnings, onConfirm, onRescan }: 
             <div className="flex items-start gap-3">
               {warning.type === 'deposit' ? (
                 <Scale className={`w-5 h-5 shrink-0 mt-0.5 ${
+                  warning.severity === 'error' ? 'text-destructive' : 'text-amber-600'
+                }`} />
+              ) : warning.type === 'address' ? (
+                <MapPinOff className={`w-5 h-5 shrink-0 mt-0.5 ${
                   warning.severity === 'error' ? 'text-destructive' : 'text-amber-600'
                 }`} />
               ) : (
