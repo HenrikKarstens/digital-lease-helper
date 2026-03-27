@@ -880,7 +880,11 @@ export function generateMasterProtocol(data: HandoverData): void {
       const isAppUser =
         (isLandlordUser && (p.role === landlordLabel || p.name === data.landlordName)) ||
         (isTenantUser && (p.role === tenantLabel || p.name === data.tenantName));
-      const sigStatus = p.signature
+      // Check participant signature OR global signature fields as fallback
+      const isLandlordParticipant = p.role === landlordLabel || p.name === data.landlordName;
+      const isTenantParticipant = p.role === tenantLabel || p.name === data.tenantName;
+      const hasSig = !!(p.signature || (isLandlordParticipant && data.signatureLandlord) || (isTenantParticipant && data.signatureTenant));
+      const sigStatus = hasSig
         ? (isAppUser ? '✓ Digital geleistet (App-Nutzer)' : '✓ Digital geleistet (vor Ort)')
         : 'Nicht unterschrieben';
       return [p.name, p.role, p.present ? 'Ja' : 'Nein', sigStatus];
@@ -1837,7 +1841,11 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
         const isAppUser2 =
           (isLandlordUser2 && (p.role === landlordLabel2 || p.name === data.landlordName)) ||
           (isTenantUser2 && (p.role === tenantLabel2 || p.name === data.tenantName));
-        const sigStatus2 = p.signature
+        // Check participant signature OR global signature fields as fallback
+        const isLandlordP = p.role === landlordLabel2 || p.name === data.landlordName;
+        const isTenantP = p.role === tenantLabel2 || p.name === data.tenantName;
+        const hasSig2 = !!(p.signature || (isLandlordP && data.signatureLandlord) || (isTenantP && data.signatureTenant));
+        const sigStatus2 = hasSig2
           ? (isAppUser2 ? `✓ Digital geleistet (App-Nutzer) – ${signatureTimestamp}` : `✓ Digital geleistet (vor Ort) – ${signatureTimestamp}`)
           : 'Nicht unterschrieben';
         return [p.name, p.role, p.present ? 'Ja' : 'Nein', sigStatus2];
