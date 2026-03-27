@@ -111,11 +111,13 @@ export const Step4Validation = () => {
     ...(data.propertyUnitNumber ? [{ key: 'propertyUnitNumber' as keyof typeof data, label: 'Wohnungsnummer' }] : []),
     { key: 'roomCount', label: 'Zimmeranzahl' },
     { key: 'landlordName', label: ownerRole },
+    ...(data.landlordAddress ? [{ key: 'landlordAddress' as keyof typeof data, label: `Anschrift ${ownerRole}` }] : []),
     { key: 'landlordEmail', label: `E-Mail ${ownerRole}` },
     // Mobilnummer & Geburtstag nur anzeigen wenn aus Vertrag extrahiert (keine BGB/BGH-Pflicht)
     ...(data.landlordPhone ? [{ key: 'landlordPhone' as keyof typeof data, label: `Mobilnummer ${ownerRole}` }] : []),
     ...(data.landlordBirthday ? [{ key: 'landlordBirthday' as keyof typeof data, label: `Geburtstag ${ownerRole}` }] : []),
     { key: 'tenantName', label: clientRole },
+    ...(data.tenantAddress ? [{ key: 'tenantAddress' as keyof typeof data, label: `Anschrift ${clientRole}` }] : []),
     { key: 'tenantEmail', label: `E-Mail ${clientRole}` },
     ...(data.tenantPhone ? [{ key: 'tenantPhone' as keyof typeof data, label: `Mobilnummer ${clientRole}` }] : []),
     ...(data.tenantBirthday ? [{ key: 'tenantBirthday' as keyof typeof data, label: `Geburtstag ${clientRole}` }] : []),
