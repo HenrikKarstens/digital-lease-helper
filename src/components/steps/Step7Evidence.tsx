@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   MapPin, Camera, X, CheckCircle2, Crosshair, Clock, Compass,
   AlertTriangle, Euro, ChevronDown, Pencil, Trash2, Plus,
-  FileText, StickyNote, ArrowRight, Loader2
+  FileText, StickyNote, ArrowRight, Loader2, Gauge, Zap, Droplets, Flame, Thermometer, HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover, Finding, EntryType } from '@/context/HandoverContext';
@@ -23,6 +23,12 @@ const ROOMS_INDOOR = [
 const ROOMS_OUTDOOR = [
   'Balkon/Terrasse', 'Garten', 'Garage', 'Carport', 'Keller', 'Dachboden', 'Außenbereich',
 ];
+
+const METER_MEDIUM_ICONS: Record<string, React.ElementType> = {
+  Strom: Zap, Zweirichtungszähler: Zap, 'Strom (Bezug 1.8.0)': Zap, 'Strom (Einspeisung 2.8.0)': Zap,
+  Wasser: Droplets, 'Wasser (kalt)': Droplets, 'Wasser (warm)': Droplets,
+  Gas: Flame, Wärmemengenzähler: Thermometer, Heizkostenverteiler: Thermometer, Sonstiges: HelpCircle,
+};
 
 type Phase = 'list' | 'camera' | 'room-select' | 'analyzing' | 'result' | 'manual-entry' | 'edit';
 
@@ -392,7 +398,24 @@ export const Step7Evidence = () => {
             </motion.div>
           )}
 
-          {/* ── Total (nur bei Auszug) ── */}
+          {/* ── Meter photos from Phase 8 ── */}
+          {data.meterReadings.filter(m => m.photoUrl).length > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Gauge className="w-3.5 h-3.5 text-primary" /> Zählerfotos ({data.meterReadings.filter(m => m.photoUrl).length})
+              </h3>
+              <div className="space-y-2">
+                {data.meterReadings.filter(m => m.photoUrl).map(meter => {
+                  const Icon = METER_MEDIUM_ICONS[meter.medium] || Gauge;
+                  return (
+                    <MeterPhotoCard key={meter.id} meter={meter} Icon={Icon} />
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
+
           {defects.length > 0 && !isMoveIn && (
             <motion.div
               key={totalWithholding}
@@ -858,3 +881,58 @@ const FindingCard = memo(({ f, onEdit, onDelete }: FindingCardProps) => {
   );
 });
 FindingCard.displayName = 'FindingCard';
+
+// ─── Meter Photo Card ─────────────────────────────────────────────────────────
+
+import type { MeterReading } from '@/context/HandoverContext';
+
+interface MeterPhotoCardProps {
+  meter: MeterReading;
+  Icon: React.ElementType;
+}
+const MeterPhotoCard = memo(({ meter, Icon }: MeterPhotoCardProps) => {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card rounded-xl p-3 border border-primary/20"
+    >
+      <div className="flex items-start gap-2">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-secondary/30 cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all"
+        >
+          <img src={meter.photoUrl} alt={meter.medium} className="w-full h-full object-cover" />
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <Icon className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="text-sm font-semibold">{meter.medium}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {meter.meterNumber && `Nr. ${meter.meterNumber} · `}{meter.reading} {meter.unit}
+            {meter.location && ` · ${meter.location}`}
+          </p>
+        </div>
+      </div>
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden mt-2"
+          >
+            <img
+              src={meter.photoUrl}
+              alt={`${meter.medium} Zählerfoto`}
+              className="w-full rounded-xl border border-border/50"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+});
+MeterPhotoCard.displayName = 'MeterPhotoCard';
