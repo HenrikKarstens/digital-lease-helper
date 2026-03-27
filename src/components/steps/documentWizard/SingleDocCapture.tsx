@@ -82,6 +82,8 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
   const [error, setError] = useState<string | null>(null);
   
   const [manualValues, setManualValues] = useState<Record<string, string>>({});
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewPageIdx, setPreviewPageIdx] = useState(0);
 
   /** Compress an image file to max ~1.5MB for reliable AI analysis */
   const compressImage = (file: File): Promise<File> => {
@@ -316,10 +318,7 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
     return null;
   }
 
-  // Check for already captured document of this type
   const existingDoc = (data.capturedDocuments || []).find(d => d.type === docStep.id);
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewPageIdx, setPreviewPageIdx] = useState(0);
 
   const handleDeleteDoc = () => {
     const updatedDocs = (data.capturedDocuments || []).filter(d => d.type !== docStep.id);
