@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useGeoPhoto } from '@/hooks/useGeoPhoto';
 import { GeoPermissionGuard } from '@/components/GeoPermissionGuard';
+import { processForensicPhoto } from '@/lib/photoForensics';
 
 const METER_TYPES = [
   { value: 'Strom', label: 'Strom', icon: Zap, unit: 'kWh' },
@@ -185,6 +186,28 @@ export const Step8MeterScan = () => {
       const aiData = result.data;
       const geo = await captureGeo();
 
+      // Convert photo to data URL + forensic processing (watermark + SHA-256)
+      setScanMessage('Forensische Sicherung...');
+      let photoUrl: string | undefined;
+      let sha256Hash: string | undefined;
+      try {
+        const rawDataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => resolve(ev.target?.result as string);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+        const protocolId = data.meterReadings.length > 0 ? data.meterReadings[0].id : Date.now().toString();
+        const { processedUrl, forensic } = await processForensicPhoto(
+          rawDataUrl, protocolId,
+          geo?.latitude ?? null, geo?.longitude ?? null,
+        );
+        photoUrl = processedUrl;
+        sha256Hash = forensic.sha256;
+      } catch (err) {
+        console.warn('Forensic processing for meter photo failed:', err);
+      }
+
       // Support multiple meters from a single photo
       const metersToAdd: MeterReading[] = [];
       if (aiData.multiple && Array.isArray(aiData.meters)) {
@@ -199,6 +222,8 @@ export const Step8MeterScan = () => {
             source: 'ai',
             aiConfidence: m.confidence || 'medium',
             photoGeo: geo,
+            photoUrl,
+            sha256Hash,
           });
         }
       } else {
@@ -212,6 +237,8 @@ export const Step8MeterScan = () => {
           source: 'ai',
           aiConfidence: aiData.confidence || 'medium',
           photoGeo: geo,
+          photoUrl,
+          sha256Hash,
         });
       }
 
