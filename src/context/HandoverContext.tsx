@@ -154,7 +154,11 @@ export interface HandoverData {
   // Step 3-4 (document wizard)
   capturedDocuments: CapturedDocument[];
   // Step 3-4 (extracted data)
-  propertyAddress: string;
+  propertyStreet: string;
+  propertyHouseNumber: string;
+  propertyZip: string;
+  propertyCity: string;
+  propertyAddress: string; // computed: "Straße Nr, PLZ Ort"
   landlordName: string;
   landlordEmail: string;
   landlordPhone: string;
@@ -274,6 +278,10 @@ const defaultData: HandoverData = {
   handoverDirection: null,
   role: null,
   capturedDocuments: [],
+  propertyStreet: '',
+  propertyHouseNumber: '',
+  propertyZip: '',
+  propertyCity: '',
   propertyAddress: '',
   landlordName: '',
   landlordEmail: '',
@@ -521,7 +529,20 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
   }, [data, currentStep]);
 
   const updateData = useCallback((partial: Partial<HandoverData>) => {
-    setData(prev => ({ ...prev, ...partial }));
+    setData(prev => {
+      const next = { ...prev, ...partial };
+      // Auto-compute propertyAddress from structured fields
+      const addrFields: (keyof HandoverData)[] = ['propertyStreet', 'propertyHouseNumber', 'propertyZip', 'propertyCity'];
+      if (addrFields.some(f => f in partial)) {
+        const street = next.propertyStreet?.trim() || '';
+        const nr = next.propertyHouseNumber?.trim() || '';
+        const zip = next.propertyZip?.trim() || '';
+        const city = next.propertyCity?.trim() || '';
+        const streetPart = [street, nr].filter(Boolean).join(' ');
+        next.propertyAddress = [streetPart, [zip, city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+      }
+      return next;
+    });
   }, []);
 
   const resetData = useCallback(() => {
