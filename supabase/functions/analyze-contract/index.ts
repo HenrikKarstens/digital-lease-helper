@@ -84,6 +84,8 @@ serve(async (req) => {
       docTypeLabel = isSale ? 'Kaufvertrag' : 'Mietvertrag';
       extraFields = `
 - "propertyAddress": Die vollständige Objektadresse
+- "propertyFloor": Lage/Geschoss des Objekts (z.B. "Erdgeschoss", "1. OG", "2. Obergeschoss", "Dachgeschoss"). Suche nach "Geschoss", "OG", "EG", "DG", "Erdgeschoss", "Obergeschoss", "Dachgeschoss", "Etage", "Stockwerk". Falls nicht erkennbar: ""
+- "propertyUnitNumber": Wohnungsnummer (z.B. "Whg. 3", "Nr. 12", "Einheit 4"). Suche nach "Wohnungsnummer", "Whg.", "Wohnung Nr.", "Einheit". Falls nicht erkennbar: ""
 - "landlordName": Name ${isSale ? 'des Verkäufers' : 'des Vermieters'}
 - "landlordEmail": E-Mail ${isSale ? 'des Verkäufers' : 'des Vermieters'} (falls vorhanden, sonst "")
 - "landlordPhone": Mobilnummer/Telefonnummer ${isSale ? 'des Verkäufers' : 'des Vermieters'} (falls vorhanden, sonst ""). Suche intensiv im gesamten Dokument, auch in Kopfzeilen, Fußzeilen und Kontaktblöcken.
