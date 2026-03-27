@@ -37,6 +37,8 @@ const getManualFields = (docType: string, isSale: boolean, ownerRole: string, cl
       { key: 'propertyHouseNumber', label: 'Hausnummer', placeholder: '1' },
       { key: 'propertyZip', label: 'PLZ', placeholder: '12345' },
       { key: 'propertyCity', label: 'Ort', placeholder: 'Berlin' },
+      { key: 'propertyFloor', label: 'Lage / Geschoss', placeholder: 'z.B. Erdgeschoss, 2. OG' },
+      { key: 'propertyUnitNumber', label: 'Wohnungsnummer', placeholder: 'z.B. Whg. 3' },
       { key: 'landlordName', label: ownerRole, placeholder: `Name des ${ownerRole}s` },
       { key: 'landlordEmail', label: `E-Mail ${ownerRole}`, placeholder: 'email@beispiel.de', type: 'email' },
       { key: 'tenantName', label: clientRole, placeholder: `Name des ${clientRole}s` },
