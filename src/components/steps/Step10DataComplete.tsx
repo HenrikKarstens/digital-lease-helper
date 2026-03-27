@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useToast } from '@/hooks/use-toast';
-import { generateMasterProtocol } from '@/lib/pdfGenerator';
+import { generateMasterProtocol, generateMasterProtocolBlob } from '@/lib/pdfGenerator';
 
 export const Step10DataComplete = () => {
   const { data, updateData, goToStepById } = useHandover();
@@ -26,9 +26,17 @@ export const Step10DataComplete = () => {
 
   const handlePreview = useCallback(() => {
     try {
-      generateMasterProtocol(data);
+      const blob = generateMasterProtocolBlob(data);
+      const url = URL.createObjectURL(blob);
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        window.location.href = url;
+      } else {
+        const win = window.open(url, '_blank');
+        if (!win) window.location.href = url;
+      }
       updateData({ previewViewed: true });
-      toast({ title: '📥 PDF heruntergeladen', description: 'Protokoll-Vorschau wurde als PDF gespeichert.' });
+      toast({ title: '📥 PDF geöffnet', description: 'Protokoll-Vorschau wurde geöffnet.' });
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }

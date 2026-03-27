@@ -17,7 +17,23 @@ export const Step11ForcedPreview = () => {
     try {
       const blob = generateMasterProtocolBlob(data);
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      // iOS Safari blocks window.open with blob URLs – use anchor click fallback
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      // On iOS Safari, setting download triggers native PDF viewer after save
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        // iOS: direct navigation works better than window.open for blobs
+        window.location.href = url;
+      } else {
+        const win = window.open(url, '_blank');
+        if (!win) {
+          // Popup blocked – fallback to navigation
+          window.location.href = url;
+        }
+      }
       updateData({ previewViewed: true });
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
