@@ -13,14 +13,21 @@ export const Step11ForcedPreview = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const handlePreview = useCallback(() => {
+  const handlePreview = useCallback(async () => {
     try {
-      // Revoke previous URL if any
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
       const blob = generateMasterProtocolBlob(data);
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-      updateData({ previewViewed: true });
+      // iOS Safari cannot render multi-page PDFs from blob: URLs in iframes.
+      // Convert to data URL which works reliably across all platforms.
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(reader.result as string);
+        updateData({ previewViewed: true });
+      };
+      reader.onerror = () => {
+        toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
+      };
+      reader.readAsDataURL(blob);
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
