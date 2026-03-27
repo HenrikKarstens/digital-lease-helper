@@ -541,7 +541,8 @@ export function generateBeweisanker(data: HandoverData): void {
   };
 
   let lY = y, rY = y;
-  lY = drawField('Objekt / Adresse', data.propertyAddress, col1, lY, colW);
+  const locationParts = [data.propertyAddress, data.propertyFloor, data.propertyUnitNumber].filter(Boolean);
+  lY = drawField('Objekt / Adresse', locationParts.join(' · ') || '', col1, lY, colW);
   rY = drawField('Übergabedatum / Uhrzeit', date, col2, rY, colW);
   lY = drawField('Vertragsart', isSale ? 'Kauf' : 'Miete', col1, lY, colW);
   rY = drawField('Übergaberichtung', isMoveIn ? 'Einzug' : 'Auszug', col2, rY, colW);
@@ -768,7 +769,8 @@ export function generateMasterProtocol(data: HandoverData): void {
   y = sectionTitle(doc, '§1  Stammdaten', y, pageW);
   const col1 = 14, col2 = pageW / 2 + 2, colW = pageW / 2 - 16;
   let leftY = y, rightY = y;
-  leftY = labelValue(doc, 'Objekt / Adresse', data.propertyAddress, col1, leftY, colW) + 4;
+  const locationParts2 = [data.propertyAddress, data.propertyFloor, data.propertyUnitNumber].filter(Boolean);
+  leftY = labelValue(doc, 'Objekt / Adresse', locationParts2.join(' · '), col1, leftY, colW) + 4;
   rightY = labelValue(doc, 'Übergabedatum', date, col2, rightY, colW) + 4;
   leftY = labelValue(doc, 'Vertragsart', isSale ? 'Kauf' : 'Miete', col1, leftY, colW) + 4;
   rightY = labelValue(doc, 'Übergaberichtung', data.handoverDirection === 'move-in' ? 'Einzug' : 'Auszug', col2, rightY, colW) + 4;
@@ -1722,7 +1724,8 @@ export function generateMasterProtocolBlob(data: HandoverData): Blob {
 
   y = sectionTitle(doc, '§1  Stammdaten', y, pageW);
   leftY = y; rightY = y;
-  leftY = labelValue(doc, 'Objekt / Adresse', data.propertyAddress, col1, leftY, colW) + 4;
+  const locationParts3 = [data.propertyAddress, data.propertyFloor, data.propertyUnitNumber].filter(Boolean);
+  leftY = labelValue(doc, 'Objekt / Adresse', locationParts3.join(' · '), col1, leftY, colW) + 4;
   rightY = labelValue(doc, 'Übergabedatum', date, col2, rightY, colW) + 4;
   leftY = labelValue(doc, 'Vertragsart', isSale ? 'Kauf' : 'Miete', col1, leftY, colW) + 4;
   rightY = labelValue(doc, 'Übergaberichtung', data.handoverDirection === 'move-in' ? 'Einzug' : 'Auszug', col2, rightY, colW) + 4;
