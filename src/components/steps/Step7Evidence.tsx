@@ -881,3 +881,58 @@ const FindingCard = memo(({ f, onEdit, onDelete }: FindingCardProps) => {
   );
 });
 FindingCard.displayName = 'FindingCard';
+
+// ─── Meter Photo Card ─────────────────────────────────────────────────────────
+
+import type { MeterReading } from '@/context/HandoverContext';
+
+interface MeterPhotoCardProps {
+  meter: MeterReading;
+  Icon: React.ElementType;
+}
+const MeterPhotoCard = memo(({ meter, Icon }: MeterPhotoCardProps) => {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card rounded-xl p-3 border border-primary/20"
+    >
+      <div className="flex items-start gap-2">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-secondary/30 cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all"
+        >
+          <img src={meter.photoUrl} alt={meter.medium} className="w-full h-full object-cover" />
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <Icon className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="text-sm font-semibold">{meter.medium}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {meter.meterNumber && `Nr. ${meter.meterNumber} · `}{meter.reading} {meter.unit}
+            {meter.location && ` · ${meter.location}`}
+          </p>
+        </div>
+      </div>
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden mt-2"
+          >
+            <img
+              src={meter.photoUrl}
+              alt={`${meter.medium} Zählerfoto`}
+              className="w-full rounded-xl border border-border/50"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+});
+MeterPhotoCard.displayName = 'MeterPhotoCard';
