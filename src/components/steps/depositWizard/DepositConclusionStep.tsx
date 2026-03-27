@@ -34,6 +34,10 @@ async function lookupBic(iban: string): Promise<{ bic: string; bankName: string 
   }
 }
 
+/* ── IBAN formatting helper ── */
+const formatIban = (raw: string) => raw.replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim();
+const unformatIban = (formatted: string) => formatted.replace(/\s/g, '');
+
 export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
   const { data, updateData } = useHandover();
   const { ownerRole, clientRole } = useTransactionLabels();
@@ -74,10 +78,21 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
   const [showLegalHint, setShowLegalHint] = useState(false);
   const [bicLoading, setBicLoading] = useState(false);
   const [bicError, setBicError] = useState('');
+  // Cache bank details when user defers
+  const [cachedBankDetails, setCachedBankDetails] = useState<{
+    payeeIban: string; payeeBic: string; payeeBankName: string; payeeAccountHolder: string;
+  } | null>(null);
+
+  // Pre-fill account holder with tenant name if empty
+  useEffect(() => {
+    if (!data.payeeAccountHolder && data.tenantName) {
+      updateData({ payeeAccountHolder: data.tenantName });
+    }
+  }, []);
 
   // BIC auto-lookup when IBAN changes
   useEffect(() => {
-    const clean = (data.payeeIban || '').replace(/\s/g, '');
+    const clean = unformatIban(data.payeeIban || '');
     if (clean.length >= 18 && clean.startsWith('DE')) {
       setBicLoading(true);
       setBicError('');
@@ -125,7 +140,7 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
         <>
           <p className="text-xs text-muted-foreground">{label}</p>
           <div className="space-y-2">
-            <div>
+             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Kontoinhaber</label>
               <Input
                 value={data.payeeAccountHolder}
@@ -133,15 +148,27 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
                 placeholder={placeholder}
                 className="rounded-xl bg-secondary/50 border-0 h-9 text-sm"
               />
+              {data.tenantName && data.payeeAccountHolder !== data.tenantName && (
+                <button
+                  type="button"
+                  onClick={() => updateData({ payeeAccountHolder: data.tenantName })}
+                  className="text-[10px] text-primary hover:underline mt-1"
+                >
+                  Mietername übernehmen: {data.tenantName}
+                </button>
+              )}
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">IBAN</label>
               <Input
-                value={data.payeeIban}
-                onChange={e => updateData({ payeeIban: e.target.value.toUpperCase() })}
+                value={formatIban(data.payeeIban || '')}
+                onChange={e => {
+                  const raw = unformatIban(e.target.value).toUpperCase().slice(0, 22);
+                  updateData({ payeeIban: raw });
+                }}
                 placeholder="DE00 0000 0000 0000 0000 00"
-                className="rounded-xl bg-secondary/50 border-0 h-9 text-sm font-mono"
-                maxLength={34}
+                className="rounded-xl bg-secondary/50 border-0 h-9 text-sm font-mono tracking-wider"
+                maxLength={27}
               />
             </div>
 
@@ -182,10 +209,20 @@ export const DepositConclusionStep = ({ costOverrides, onFinish }: Props) => {
           checked={data.ibanDeferred || false}
           onCheckedChange={(checked) => {
             const val = checked === true;
-            updateData({ ibanDeferred: val });
             if (val) {
-              updateData({ payeeIban: '', payeeBic: '', payeeBankName: '', payeeAccountHolder: '' });
+              // Cache current bank details before hiding
+              setCachedBankDetails({
+                payeeIban: data.payeeIban || '',
+                payeeBic: data.payeeBic || '',
+                payeeBankName: data.payeeBankName || '',
+                payeeAccountHolder: data.payeeAccountHolder || '',
+              });
+            } else if (cachedBankDetails) {
+              // Restore cached bank details
+              updateData(cachedBankDetails);
+              setCachedBankDetails(null);
             }
+            updateData({ ibanDeferred: val });
           }}
           className="mt-0.5"
         />
