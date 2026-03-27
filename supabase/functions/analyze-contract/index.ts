@@ -151,17 +151,26 @@ serve(async (req) => {
 Du analysierst ein fotografiertes/gescanntes Dokument: ${docTypeLabel}.
 Es wurden ${maxPages} Seite(n) als Foto(s) bereitgestellt.
 
+### KRITISCHE REGEL: KEIN HALLUZINIEREN ###
+
+Du darfst NIEMALS Werte erfinden, schätzen oder aus dem Kontext ableiten, die NICHT EXPLIZIT im Dokument sichtbar sind.
+Wenn ein Feld im Bild nicht lesbar oder nicht vorhanden ist, MUSS der Wert "" (leerer String) sein.
+Es ist BESSER, ein Feld leer zu lassen, als einen falschen Wert zu liefern.
+
 ### ANWEISUNGEN ###
 
-1. ANALYSE: Lies den OCR-Text / das Bild sorgfältig. OCR-Fehler (Buchstabendreher, Sonderzeichen) sind wahrscheinlich. Nutze den Kontext, um die korrekten Begriffe zu erraten (z.B. "Nattokaltmiata" → "Nettokaltmiete", "Varmioter" → "Vermieter", "Kaulion" → "Kaution").
+1. ANALYSE: Lies das Bild sorgfältig Wort für Wort. OCR-Fehler (Buchstabendreher, Sonderzeichen) sind wahrscheinlich. Nutze den Kontext NUR um Tippfehler in VORHANDENEN Wörtern zu korrigieren (z.B. "Nattokaltmiata" → "Nettokaltmiete"), NICHT um fehlende Informationen zu ergänzen.
 
-2. EXTRAKTION: Suche gezielt nach den unten definierten Feldern.
+2. EXTRAKTION: Suche gezielt nach den unten definierten Feldern. Extrahiere NUR Werte, die du TATSÄCHLICH im Bild lesen kannst.
 
-3. UNSICHERHEIT:
-   - Wenn ein Wert im Dokument absolut NICHT auffindbar ist: setze ihn auf "" (leerer String).
-   - Wenn ein Wert vorhanden, aber unleserlich oder unsicher ist: setze ein "?" hinter den Wert (z.B. "280?" oder "01.08.2019?").
-   - ERFINDE NIEMALS Werte! Keine frei erfundenen Beispieldaten.
+3. STRENGE VALIDIERUNG – Prüfe JEDEN extrahierten Wert:
+   - Kannst du die EXAKTE Textstelle im Dokument zeigen, wo der Wert steht? Wenn NEIN → ""
+   - Ist der Wert teilweise verdeckt, abgeschnitten oder unscharf? → Wert + "?" (z.B. "280?")
+   - Ist der Wert KOMPLETT unleserlich oder nicht auffindbar? → ""
+   - ERFINDE NIEMALS Werte! Keine Beispieldaten, keine Schätzungen, keine Annahmen.
    - Wenn das Bild KEIN Vertragsdokument zeigt, setze ALLE Felder auf "".
+   - Telefonnummern, E-Mails, Geburtsdaten: NUR extrahieren wenn EXPLIZIT im Dokument sichtbar. NIEMALS aus dem Gedächtnis oder typischen Mustern ableiten.
+   - Adressen: NIEMALS die Objektadresse als Vermieter-/Mieteradresse verwenden, außer es ist EXPLIZIT so gekennzeichnet.
 
 Extrahiere die folgenden Informationen als JSON:
 ${extraFields}
@@ -174,6 +183,7 @@ FORMAT-REGELN:
 - Datumsformat immer TT.MM.JJJJ (z.B. "01.08.2019").
 - Halte die Antwort KOMPAKT. Bewertungen in max 1 Satz.
 - KAUTIONSPRÜFUNG: Führe die Berechnung 3 × Kaltmiete durch, aber NUR wenn du beide Werte tatsächlich im Dokument lesen konntest.
+- LIEBER LEER ALS FALSCH: Im Zweifel "" zurückgeben. Ein fehlendes Feld kann der Nutzer ergänzen, ein falscher Wert ist gefährlich.
 - Beginne direkt mit { und ende mit }.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -193,7 +203,7 @@ FORMAT-REGELN:
             ],
           },
         ],
-        temperature: 0.1,
+        temperature: 0.0,
         max_tokens: 8192,
       }),
     });
