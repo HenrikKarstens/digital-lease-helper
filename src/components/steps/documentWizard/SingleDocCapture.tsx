@@ -190,6 +190,21 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       Object.entries(fieldMap).forEach(([src, dst]) => {
         if (result[src]) patch[dst] = result[src];
       });
+      // Parse propertyAddress into structured fields
+      if (result.propertyAddress) {
+        const addr = result.propertyAddress as string;
+        // Try pattern: "Straße Nr, PLZ Ort" or "Straße Nr, PLZ Ort"
+        const match = addr.match(/^(.+?)\s+(\d+\s*\w?)\s*,\s*(\d{5})\s+(.+)$/);
+        if (match) {
+          patch['propertyStreet'] = match[1].trim();
+          patch['propertyHouseNumber'] = match[2].trim();
+          patch['propertyZip'] = match[3].trim();
+          patch['propertyCity'] = match[4].trim();
+        } else {
+          // Fallback: put entire address into street
+          patch['propertyStreet'] = addr;
+        }
+      }
       if (docStep.id === 'amendment' && result.contractStart) {
         patch['amendmentDate'] = result.contractStart;
       }
