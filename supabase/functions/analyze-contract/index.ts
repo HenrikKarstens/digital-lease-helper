@@ -172,6 +172,20 @@ Es ist BESSER, ein Feld leer zu lassen, als einen falschen Wert zu liefern.
    - Telefonnummern, E-Mails, Geburtsdaten: NUR extrahieren wenn EXPLIZIT im Dokument sichtbar. NIEMALS aus dem Gedächtnis oder typischen Mustern ableiten.
    - Adressen: NIEMALS die Objektadresse als Vermieter-/Mieteradresse verwenden, außer es ist EXPLIZIT so gekennzeichnet.
 
+4. NAMEN-BEREINIGUNG – Bei Personennamen (landlordName, tenantName):
+   - Entferne ALLE Anreden, Titel und Berufsbezeichnungen: "Herr", "Frau", "Dr.", "Prof.", "Landwirt", "Kaufmann", "Dipl.-Ing.", etc.
+   - Extrahiere NUR Vorname(n) und Nachname(n). Beispiele:
+     - "Herr Max Mustermann" → "Max Mustermann"
+     - "Frau Dr. Anna Schmidt" → "Anna Schmidt"
+     - "Landwirt Peter Müller" → "Peter Müller"
+     - "Dipl.-Ing. Klaus Weber" → "Klaus Weber"
+   - Wenn mehrere Personen genannt sind (z.B. "Herr Max Müller und Frau Lisa Müller"), extrahiere alle Namen ohne Titel: "Max Müller und Lisa Müller"
+
+5. ADRESSEN-PLAUSIBILITÄT – Prüfe bei tenantAddress und priorAddress:
+   - Sieht die extrahierte Adresse wie eine echte deutsche Adresse aus? (Straße + Hausnummer, PLZ + Ort)
+   - Wenn eine Adresse offensichtlich unplausibel ist (z.B. fehlende PLZ, unvollständig, oder keine erkennbare Straße), markiere sie mit "?" am Ende.
+   - Wenn du dir unsicher bist ob die Adresse existiert, füge sie dem confidence-Objekt mit "medium" hinzu.
+
 Extrahiere die folgenden Informationen als JSON:
 ${extraFields}
 
