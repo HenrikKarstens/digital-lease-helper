@@ -23,14 +23,15 @@ export const Step13Certificate = () => {
 
   const handlePreview = useCallback(() => {
     try {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       const blob = generateMasterProtocolBlob(data);
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      setPreviewUrl(url);
       setHasPreviewed(true);
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
-  }, [data, toast]);
+  }, [data, toast, previewUrl]);
 
   const handlePrint = useCallback(() => {
     if (!previewUrl) return;

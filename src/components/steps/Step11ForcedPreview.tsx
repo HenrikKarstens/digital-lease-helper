@@ -15,30 +15,16 @@ export const Step11ForcedPreview = () => {
 
   const handlePreview = useCallback(() => {
     try {
+      // Revoke previous URL if any
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       const blob = generateMasterProtocolBlob(data);
       const url = URL.createObjectURL(blob);
-      // iOS Safari blocks window.open with blob URLs – use anchor click fallback
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      // On iOS Safari, setting download triggers native PDF viewer after save
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (isIOS) {
-        // iOS: direct navigation works better than window.open for blobs
-        window.location.href = url;
-      } else {
-        const win = window.open(url, '_blank');
-        if (!win) {
-          // Popup blocked – fallback to navigation
-          window.location.href = url;
-        }
-      }
+      setPreviewUrl(url);
       updateData({ previewViewed: true });
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
-  }, [data, toast, updateData]);
+  }, [data, toast, updateData, previewUrl]);
 
   const handleDownload = useCallback(() => {
     generateMasterProtocol(data);

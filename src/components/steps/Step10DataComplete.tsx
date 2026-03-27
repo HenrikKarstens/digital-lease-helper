@@ -26,21 +26,15 @@ export const Step10DataComplete = () => {
 
   const handlePreview = useCallback(() => {
     try {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       const blob = generateMasterProtocolBlob(data);
       const url = URL.createObjectURL(blob);
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (isIOS) {
-        window.location.href = url;
-      } else {
-        const win = window.open(url, '_blank');
-        if (!win) window.location.href = url;
-      }
+      setPreviewUrl(url);
       updateData({ previewViewed: true });
-      toast({ title: '📥 PDF geöffnet', description: 'Protokoll-Vorschau wurde geöffnet.' });
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
-  }, [data, toast, updateData]);
+  }, [data, toast, updateData, previewUrl]);
 
   const handleDownload = useCallback(() => {
     generateMasterProtocol(data);
@@ -54,8 +48,9 @@ export const Step10DataComplete = () => {
   }, [previewUrl]);
 
   const closePreview = useCallback(() => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
-  }, []);
+  }, [previewUrl]);
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-8">
