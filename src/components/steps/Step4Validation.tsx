@@ -63,9 +63,14 @@ const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId, uncertain
             </button>
           </div>
         ) : (
-          <p className={`text-sm font-medium truncate ${filled ? 'text-foreground' : 'text-muted-foreground/50 italic'}`}>
-            {value || '—'}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className={`text-sm font-medium truncate ${filled ? 'text-foreground' : 'text-muted-foreground/50 italic'}`}>
+              {value || '—'}
+            </p>
+            {uncertain && (
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">bitte prüfen</span>
+            )}
+          </div>
         )}
       </div>
       {!editing && (
