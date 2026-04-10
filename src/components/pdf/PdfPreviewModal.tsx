@@ -63,7 +63,7 @@ export const PdfPreviewModal = ({
           canvas.width = Math.ceil(viewport.width);
           canvas.height = Math.ceil(viewport.height);
 
-          await page.render({ canvasContext: context, viewport }).promise;
+          await page.render({ canvas, canvasContext: context, viewport }).promise;
 
           const imageBlob = await new Promise<Blob>((resolve, reject) => {
             canvas.toBlob((blob) => {
