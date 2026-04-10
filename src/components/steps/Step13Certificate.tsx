@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { FileText, Send, CheckCircle2, Shield, Mail, Calendar, MapPin, Users, Download, Printer, X, Eye, Lock } from 'lucide-react';
+import { FileText, Send, CheckCircle2, Shield, Mail, Calendar, MapPin, Users, Download, Eye, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
@@ -8,12 +8,13 @@ import { useToast } from '@/hooks/use-toast';
 import { generateMasterProtocol, generateMasterProtocolBlob } from '@/lib/pdfGenerator';
 import { SendDialog } from './SendDialog';
 import { PaywallOverlay } from './PaywallOverlay';
+import { PdfPreviewModal } from '@/components/pdf/PdfPreviewModal';
 
 export const Step13Certificate = () => {
   const { data, updateData, goToStepById } = useHandover();
   const { ownerRole, clientRole, depositLabel, isSale, isMoveIn } = useTransactionLabels();
   const [sending, setSending] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [hasPreviewed, setHasPreviewed] = useState(false);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -23,31 +24,35 @@ export const Step13Certificate = () => {
 
   const handlePreview = useCallback(async () => {
     try {
-      const blob = generateMasterProtocolBlob(data);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(reader.result as string);
-        setHasPreviewed(true);
-      };
-      reader.onerror = () => {
-        toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
-      };
-      reader.readAsDataURL(blob);
+      setPreviewBlob(generateMasterProtocolBlob(data));
+      setHasPreviewed(true);
     } catch (e) {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
-  }, [data, toast, previewUrl]);
+  }, [data, toast]);
 
   const handlePrint = useCallback(() => {
-    if (!previewUrl) return;
-    const win = window.open(previewUrl, '_blank');
-    win?.focus();
-  }, [previewUrl]);
+    if (!previewBlob) return;
+    const pdfUrl = URL.createObjectURL(previewBlob);
+    const win = window.open(pdfUrl, '_blank');
+
+    if (!win) {
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = `Uebergabeprotokoll_${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      win.focus();
+    }
+
+    window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 5000);
+  }, [previewBlob]);
 
   const closePreview = useCallback(() => {
-    setPreviewUrl(null);
-  }, [previewUrl]);
+    setPreviewBlob(null);
+  }, []);
 
   const deposit = parseFloat(data.depositAmount) || 0;
   const defectsCost = data.findings.reduce((sum, f) => sum + f.recommendedWithholding, 0);
@@ -85,49 +90,14 @@ export const Step13Certificate = () => {
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
-      {/* PDF inline preview modal */}
-      {previewUrl && (
-        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background">
-            <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" />
-              <span className="font-semibold text-sm">Protokoll-Vorschau</span>
-              {!isUnlocked && (
-                <span className="text-[10px] bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium">
-                  VORABZUG
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 rounded-xl">
-                <Printer className="w-4 h-4" />
-                Drucken / Speichern
-              </Button>
-              <Button size="icon" variant="ghost" onClick={closePreview} className="rounded-xl">
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-          <div className="flex-1 relative">
-            <iframe src={previewUrl} className="w-full h-full border-0" title="Protokoll PDF Vorschau" />
-            {/* Diagonal watermark overlay when not unlocked */}
-            {!isUnlocked && (
-              <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center">
-                <div
-                  className="text-destructive/15 font-black text-2xl sm:text-4xl whitespace-nowrap select-none"
-                  style={{
-                    transform: 'rotate(-35deg)',
-                    letterSpacing: '0.05em',
-                    textShadow: '0 0 20px hsl(var(--destructive) / 0.1)',
-                  }}
-                >
-                  VORABZUG – Kein Original
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <PdfPreviewModal
+        pdfBlob={previewBlob}
+        title="Protokoll-Vorschau"
+        badgeText={!isUnlocked ? 'VORABZUG' : undefined}
+        watermarkText={!isUnlocked ? 'VORABZUG – Kein Original' : undefined}
+        onPrint={handlePrint}
+        onClose={closePreview}
+      />
 
       <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-2 text-center">
         EstateTurn-Zertifikat
