@@ -107,6 +107,13 @@ export const Step4Validation = () => {
   const isMoveIn = data.handoverDirection === 'move-in';
   const hasAmendment = (data.capturedDocuments || []).some(d => d.type === 'amendment');
 
+  // Parse OCR confidence map for uncertain field highlighting
+  const ocrConfidence: Record<string, string> = useMemo(() => {
+    const raw = (data as any)._ocrConfidence;
+    if (!raw) return {};
+    try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return {}; }
+  }, [data]);
+
 
   const rows: { key: keyof typeof data; label: string }[] = [
     { key: 'propertyStreet', label: 'Straße' },
