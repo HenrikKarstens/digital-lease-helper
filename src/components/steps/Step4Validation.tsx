@@ -17,9 +17,10 @@ interface EditableRowProps {
   onSave: (v: string) => void;
   filled: boolean;
   rowId?: string;
+  uncertain?: boolean;
 }
 
-const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId }: EditableRowProps) => {
+const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId, uncertain }: EditableRowProps) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -28,7 +29,7 @@ const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId }: Editabl
   const handleBlur = () => { if (draft !== value) { onSave(draft); } setEditing(false); };
 
   return (
-    <div id={rowId} className="flex items-center gap-2 py-2.5 border-b border-border/40 last:border-0 scroll-mt-20">
+    <div id={rowId} className={`flex items-center gap-2 py-2.5 border-b border-border/40 last:border-0 scroll-mt-20 rounded-lg px-2 -mx-2 ${uncertain && !editing ? 'bg-amber-500/10' : ''}`}>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
