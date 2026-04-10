@@ -112,8 +112,8 @@ export const PdfPreviewModal = ({
   if (!pdfBlob) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background/90 backdrop-blur-sm">
-      <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
+    <div className="fixed inset-0 z-50 flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background/90 backdrop-blur-sm">
+      <div className="shrink-0 flex items-center justify-between border-b border-border bg-background px-4 py-3">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" />
           <span className="text-sm font-semibold">{title}</span>
@@ -134,7 +134,10 @@ export const PdfPreviewModal = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div
+        className="min-h-0 flex-1 overflow-y-scroll overscroll-contain px-4 py-4"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+      >
         {isLoading ? (
           <div className="flex min-h-full flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -147,14 +150,14 @@ export const PdfPreviewModal = ({
             <p className="text-sm text-muted-foreground">{error}</p>
           </div>
         ) : (
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 pb-8">
             {pageImages.map((pageImage, index) => (
               <div key={pageImage} className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                 <img
                   src={pageImage}
                   alt={`Protokoll Seite ${index + 1}`}
-                  className="h-auto w-full"
-                  loading="lazy"
+                  className="block h-auto w-full"
+                  decoding="async"
                 />
                 {watermarkText ? (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
