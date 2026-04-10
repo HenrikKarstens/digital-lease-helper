@@ -183,8 +183,8 @@ Es ist BESSER, ein Feld leer zu lassen, als einen falschen Wert zu liefern.
 
 5. ADRESSEN-PLAUSIBILITÄT – Prüfe bei tenantAddress und priorAddress:
    - Sieht die extrahierte Adresse wie eine echte deutsche Adresse aus? (Straße + Hausnummer, PLZ + Ort)
-   - Wenn eine Adresse offensichtlich unplausibel ist (z.B. fehlende PLZ, unvollständig, oder keine erkennbare Straße), markiere sie mit "?" am Ende.
-   - Wenn du dir unsicher bist ob die Adresse existiert, füge sie dem confidence-Objekt mit "medium" hinzu.
+    - Wenn eine Adresse offensichtlich unplausibel ist (z.B. fehlende PLZ, unvollständig, oder keine erkennbare Straße), füge sie dem confidence-Objekt mit "low" hinzu.
+    - Wenn du dir unsicher bist ob die Adresse existiert, füge sie dem confidence-Objekt mit "medium" hinzu.
 
 Extrahiere die folgenden Informationen als JSON:
 ${extraFields}
@@ -192,7 +192,7 @@ ${extraFields}
 FORMAT-REGELN:
 - Antworte NUR mit validem JSON. KEIN Markdown-Codeblock, keine Erklärungen.
 - Felder die nicht im Dokument gefunden werden: "" (leerer String).
-- Unsichere/unleserliche Werte: Wert + "?" (z.B. "280?" oder "Musterstraße 1?").
+- Unsichere/unleserliche Werte: Gib den bestmöglichen Wert OHNE Fragezeichen an und füge das Feld dem "confidence"-Objekt mit "low" oder "medium" hinzu. KEIN "?" an Werte anhängen!
 - Zahlen ohne Währungssymbol, nur die Zahl (z.B. "280" nicht "280 €").
 - Datumsformat immer TT.MM.JJJJ (z.B. "01.08.2019").
 - Halte die Antwort KOMPAKT. Bewertungen in max 1 Satz.
@@ -339,7 +339,7 @@ FORMAT-REGELN:
       const addressValidation: Record<string, { exists: boolean; corrected?: string; original: string }> = {};
 
       const validateAddress = async (address: string): Promise<{ exists: boolean; corrected?: string }> => {
-        if (!address || address.endsWith('?') || address.length < 5) return { exists: true }; // skip uncertain/empty
+        if (!address || address.length < 5) return { exists: true }; // skip uncertain/empty
         try {
           const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&countrycodes=de&format=json&limit=1&addressdetails=1`;
           const resp = await fetch(url, {
@@ -365,14 +365,12 @@ FORMAT-REGELN:
       // Run validations in parallel (with small stagger to respect Nominatim rate limits)
       for (const field of addressFieldsToValidate) {
         const raw = parsedData[field.key];
-        if (raw && typeof raw === 'string' && raw.length >= 5 && !raw.endsWith('?')) {
+        if (raw && typeof raw === 'string' && raw.length >= 5) {
           const result = await validateAddress(raw);
           addressValidation[field.key] = { ...result, original: raw };
           if (!result.exists) {
             console.warn(`[address-check] ${field.label} "${raw}" NOT found in Germany – marking uncertain`);
-            // Mark the value as uncertain so the user checks it
-            parsedData[field.key] = raw + '?';
-            // Add to confidence object
+            // Add to confidence object (don't append "?" to the value)
             if (!parsedData.confidence) parsedData.confidence = {};
             parsedData.confidence[field.key] = 'low';
           }
