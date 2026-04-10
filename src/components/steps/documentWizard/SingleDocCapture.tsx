@@ -219,6 +219,24 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       if (result._addressValidation) {
         patch['_addressValidation'] = JSON.stringify(result._addressValidation);
       }
+      // Store OCR confidence map for uncertain fields
+      if (result.confidence && typeof result.confidence === 'object') {
+        // Merge with existing confidence data
+        const existing = (data as any)._ocrConfidence || {};
+        patch['_ocrConfidence'] = JSON.stringify({ ...existing, ...result.confidence });
+      }
+      // Strip trailing "?" from all values (legacy AI responses) and add to confidence
+      const confidenceFromQuestionMarks: Record<string, string> = {};
+      for (const [key, val] of Object.entries(patch)) {
+        if (typeof val === 'string' && val.endsWith('?') && key !== '_addressValidation' && key !== '_ocrConfidence') {
+          patch[key] = val.slice(0, -1);
+          confidenceFromQuestionMarks[key] = 'low';
+        }
+      }
+      if (Object.keys(confidenceFromQuestionMarks).length > 0) {
+        const prev = patch['_ocrConfidence'] ? JSON.parse(patch['_ocrConfidence']) : ((data as any)._ocrConfidence || {});
+        patch['_ocrConfidence'] = JSON.stringify({ ...prev, ...confidenceFromQuestionMarks });
+      }
       updateData(patch as any);
       console.log('[EstateTurn] Daten in globalen State geschrieben:', Object.keys(patch));
 
