@@ -11,6 +11,7 @@ import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useToast } from '@/hooks/use-toast';
 import { generateMasterProtocolBlob } from '@/lib/pdfGenerator';
+import { PdfPreviewModal } from '@/components/pdf/PdfPreviewModal';
 import {
   Tooltip,
   TooltipContent,
@@ -62,7 +63,7 @@ export const Step12Unlock = () => {
 
   const [processing, setProcessing] = useState(false);
   const [dsgvoConsent, setDsgvoConsent] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [previewViewed, setPreviewViewed] = useState(data.previewViewed ?? false);
 
   const isUnlocked = data.paymentStatus === 'paid' || data.serviceCheckStatus === 'completed';
@@ -87,32 +88,36 @@ export const Step12Unlock = () => {
   // PDF Preview
   const handlePreview = useCallback(() => {
     try {
-      const blob = generateMasterProtocolBlob(data);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Uebergabeprotokoll_Vorschau_${new Date().toISOString().slice(0, 10)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      setPreviewBlob(generateMasterProtocolBlob(data));
       setPreviewViewed(true);
       updateData({ previewViewed: true });
-      toast({ title: '📥 PDF heruntergeladen', description: 'Protokoll-Vorschau wurde als PDF gespeichert.' });
     } catch {
       toast({ title: 'Fehler', description: 'PDF konnte nicht erstellt werden.', variant: 'destructive' });
     }
   }, [data, toast, updateData]);
 
   const closePreview = useCallback(() => {
-    setPreviewUrl(null);
+    setPreviewBlob(null);
   }, []);
 
   const handlePrint = useCallback(() => {
-    if (!previewUrl) return;
-    const win = window.open(previewUrl, '_blank');
-    win?.focus();
-  }, [previewUrl]);
+    if (!previewBlob) return;
+    const pdfUrl = URL.createObjectURL(previewBlob);
+    const win = window.open(pdfUrl, '_blank');
+
+    if (!win) {
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = `Uebergabeprotokoll_${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      win.focus();
+    }
+
+    window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 5000);
+  }, [previewBlob]);
 
   const sendProtocol = (recipients: { name: string; email: string }[]) => {
     updateData({ protocolSent: true });
@@ -208,36 +213,14 @@ export const Step12Unlock = () => {
   return (
     <TooltipProvider>
       <div className="min-h-[80vh] flex flex-col items-center px-4 py-8">
-        {/* PDF Preview Modal */}
-        {previewUrl && (
-          <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                <span className="font-semibold text-sm">Protokoll-Vorschau</span>
-                <span className="text-[10px] bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium">VORABZUG</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 rounded-xl">
-                  <Printer className="w-4 h-4" />
-                  Drucken
-                </Button>
-                <Button size="icon" variant="ghost" onClick={closePreview} className="rounded-xl">
-                  <X className="w-5 h-5" />
-                </Button>
-              </div>
-            </div>
-            <div className="flex-1 relative">
-              <iframe src={previewUrl} className="w-full h-full border-0" title="Protokoll PDF Vorschau" />
-              <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center">
-                <div className="text-destructive/15 font-black text-2xl sm:text-4xl whitespace-nowrap select-none"
-                  style={{ transform: 'rotate(-35deg)', letterSpacing: '0.05em' }}>
-                  VORABZUG – Kein Original
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <PdfPreviewModal
+          pdfBlob={previewBlob}
+          title="Protokoll-Vorschau"
+          badgeText="VORABZUG"
+          watermarkText="VORABZUG – Kein Original"
+          onPrint={handlePrint}
+          onClose={closePreview}
+        />
 
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
