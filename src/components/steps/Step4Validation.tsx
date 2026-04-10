@@ -209,6 +209,7 @@ export const Step4Validation = () => {
             sourceRef={FIELD_SOURCE_REFS[row.key as string]}
             value={(data[row.key] as string) || ''}
             filled={!!(data[row.key])}
+            uncertain={!!(ocrConfidence[row.key as string])}
             onSave={v => updateData({ [row.key]: v } as any)}
           />
         ))}
