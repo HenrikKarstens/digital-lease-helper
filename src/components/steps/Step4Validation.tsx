@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 import { Step3SmartEntry } from './Step3SmartEntry';
 
@@ -17,9 +17,10 @@ interface EditableRowProps {
   onSave: (v: string) => void;
   filled: boolean;
   rowId?: string;
+  uncertain?: boolean;
 }
 
-const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId }: EditableRowProps) => {
+const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId, uncertain }: EditableRowProps) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -28,7 +29,7 @@ const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId }: Editabl
   const handleBlur = () => { if (draft !== value) { onSave(draft); } setEditing(false); };
 
   return (
-    <div id={rowId} className="flex items-center gap-2 py-2.5 border-b border-border/40 last:border-0 scroll-mt-20">
+    <div id={rowId} className={`flex items-center gap-2 py-2.5 border-b border-border/40 last:border-0 scroll-mt-20 rounded-lg px-2 -mx-2 ${uncertain && !editing ? 'bg-amber-500/10' : ''}`}>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
@@ -62,9 +63,14 @@ const EditableRow = ({ label, value, sourceRef, onSave, filled, rowId }: Editabl
             </button>
           </div>
         ) : (
-          <p className={`text-sm font-medium truncate ${filled ? 'text-foreground' : 'text-muted-foreground/50 italic'}`}>
-            {value || '—'}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className={`text-sm font-medium truncate ${filled ? 'text-foreground' : 'text-muted-foreground/50 italic'}`}>
+              {value || '—'}
+            </p>
+            {uncertain && (
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">bitte prüfen</span>
+            )}
+          </div>
         )}
       </div>
       {!editing && (
@@ -100,6 +106,13 @@ export const Step4Validation = () => {
 
   const isMoveIn = data.handoverDirection === 'move-in';
   const hasAmendment = (data.capturedDocuments || []).some(d => d.type === 'amendment');
+
+  // Parse OCR confidence map for uncertain field highlighting
+  const ocrConfidence: Record<string, string> = useMemo(() => {
+    const raw = (data as any)._ocrConfidence;
+    if (!raw) return {};
+    try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return {}; }
+  }, [data]);
 
 
   const rows: { key: keyof typeof data; label: string }[] = [
@@ -196,6 +209,7 @@ export const Step4Validation = () => {
             sourceRef={FIELD_SOURCE_REFS[row.key as string]}
             value={(data[row.key] as string) || ''}
             filled={!!(data[row.key])}
+            uncertain={!!(ocrConfidence[row.key as string])}
             onSave={v => updateData({ [row.key]: v } as any)}
           />
         ))}
