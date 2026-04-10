@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHandover } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 import { Step3SmartEntry } from './Step3SmartEntry';
 
