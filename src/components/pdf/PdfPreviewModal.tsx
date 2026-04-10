@@ -112,7 +112,7 @@ export const PdfPreviewModal = ({
   if (!pdfBlob) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background/90 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex h-[100dvh] flex-col bg-background/90 backdrop-blur-sm" style={{ minHeight: 0 }}>
       <div className="shrink-0 flex items-center justify-between border-b border-border bg-background px-4 py-3">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" />
@@ -135,8 +135,8 @@ export const PdfPreviewModal = ({
       </div>
 
       <div
-        className="min-h-0 flex-1 overflow-y-scroll overscroll-contain px-4 py-4"
-        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+        className="flex-1 overflow-y-auto overscroll-contain px-4 py-4"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', minHeight: 0 }}
       >
         {isLoading ? (
           <div className="flex min-h-full flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">
