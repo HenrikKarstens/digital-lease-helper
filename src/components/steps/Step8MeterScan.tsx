@@ -162,13 +162,10 @@ export const Step8MeterScan = () => {
 
       setScanMessage('Erkenne Zählerstand...');
 
-      const response = await fetch(
+      const response = await authFetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-photo`,
         {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
           body: formData,
         }
       );

@@ -69,13 +69,10 @@ export const ContractCancellationCard = ({
       formData.append('context', 'provider-document');
       formData.append('extractFields', 'providerName,customerNumber,contractNumber');
 
-      const response = await fetch(
+      const response = await authFetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-photo`,
         {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
           body: formData,
         }
       );

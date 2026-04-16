@@ -247,11 +247,10 @@ export const RoomDetailSheet = memo(({ room, onClose, onUpdate, onComplete }: Pr
       formData.append('room', room.name);
       formData.append('isMoveIn', String(isMoveIn));
       
-      const response = await fetch(
+      const response = await authFetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-photo`,
         {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
           body: formData,
         }
       );
