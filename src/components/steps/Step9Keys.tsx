@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useHandover } from '@/context/HandoverContext';
 import { useGeoPhoto } from '@/hooks/useGeoPhoto';
 import { useToast } from '@/hooks/use-toast';
+import { authFetch } from '@/lib/authFetch';
 import { processForensicPhoto } from '@/lib/photoForensics';
 
 const KEY_TYPES = [

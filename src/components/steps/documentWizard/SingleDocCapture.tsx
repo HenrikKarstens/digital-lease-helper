@@ -11,6 +11,7 @@ import { DocumentScanner } from './DocumentScanner';
 
 import { useExtractionValidation } from './useExtractionValidation';
 import type { DocStep, PagePhoto, InputMode } from './types';
+import { authFetch } from '@/lib/authFetch';
 
 const analysisStepLabels = [
   'Seiten werden geladen...',

@@ -8,6 +8,7 @@ import { useHandover, MeterReading, HkvRoomReading } from '@/context/HandoverCon
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { authFetch } from '@/lib/authFetch';
 import { useGeoPhoto } from '@/hooks/useGeoPhoto';
 import { GeoPermissionGuard } from '@/components/GeoPermissionGuard';
 import { processForensicPhoto } from '@/lib/photoForensics';

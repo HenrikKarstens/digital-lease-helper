@@ -6,6 +6,7 @@ import {
   FileText, StickyNote, ArrowRight, Loader2, Gauge, Zap, Droplets, Flame, Thermometer, HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { authFetch } from '@/lib/authFetch';
 import { useHandover, Finding, EntryType } from '@/context/HandoverContext';
 import { useTransactionLabels } from '@/hooks/useTransactionLabels';
 import { useState, useEffect, useCallback } from 'react';
