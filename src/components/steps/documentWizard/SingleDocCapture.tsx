@@ -11,6 +11,7 @@ import { DocumentScanner } from './DocumentScanner';
 
 import { useExtractionValidation } from './useExtractionValidation';
 import type { DocStep, PagePhoto, InputMode } from './types';
+import { authFetch } from '@/lib/authFetch';
 
 const analysisStepLabels = [
   'Seiten werden geladen...',
@@ -159,11 +160,9 @@ export const SingleDocCapture = ({ docStep, docIndex, totalDocs, onDone, onSkip 
       });
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/analyze-contract`, {
+      const response = await authFetch(`${supabaseUrl}/functions/v1/analyze-contract`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${supabaseKey}` },
         body: formData,
       });
 

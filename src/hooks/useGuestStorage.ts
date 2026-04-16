@@ -30,24 +30,23 @@ const stripBase64 = (data: HandoverData): Record<string, unknown> => ({
 
 export const saveGuestProject = (data: HandoverData, step: number) => {
   try {
-    localStorage.setItem(GUEST_PROJECT_KEY, JSON.stringify(stripBase64(data)));
-    localStorage.setItem(GUEST_STEP_KEY, String(step));
+    sessionStorage.setItem(GUEST_PROJECT_KEY, JSON.stringify(stripBase64(data)));
+    sessionStorage.setItem(GUEST_STEP_KEY, String(step));
   } catch (e) {
-    // If still over quota, clear old data and retry once
     try {
-      localStorage.removeItem(GUEST_PROJECT_KEY);
-      localStorage.setItem(GUEST_PROJECT_KEY, JSON.stringify(stripBase64(data)));
-      localStorage.setItem(GUEST_STEP_KEY, String(step));
+      sessionStorage.removeItem(GUEST_PROJECT_KEY);
+      sessionStorage.setItem(GUEST_PROJECT_KEY, JSON.stringify(stripBase64(data)));
+      sessionStorage.setItem(GUEST_STEP_KEY, String(step));
     } catch {
-      console.warn('localStorage quota exceeded, could not save guest project');
+      console.warn('sessionStorage quota exceeded, could not save guest project');
     }
   }
 };
 
 export const loadGuestProject = (): { data: Partial<HandoverData>; step: number } | null => {
   try {
-    const raw = localStorage.getItem(GUEST_PROJECT_KEY);
-    const step = localStorage.getItem(GUEST_STEP_KEY);
+    const raw = sessionStorage.getItem(GUEST_PROJECT_KEY);
+    const step = sessionStorage.getItem(GUEST_STEP_KEY);
     if (!raw) return null;
     return { data: JSON.parse(raw), step: Number(step) || 0 };
   } catch (e) {
@@ -57,13 +56,13 @@ export const loadGuestProject = (): { data: Partial<HandoverData>; step: number 
 };
 
 export const clearGuestProject = () => {
-  localStorage.removeItem(GUEST_PROJECT_KEY);
-  localStorage.removeItem(GUEST_STEP_KEY);
+  sessionStorage.removeItem(GUEST_PROJECT_KEY);
+  sessionStorage.removeItem(GUEST_STEP_KEY);
 };
 
 export const getGuestProjectData = (): HandoverData | null => {
   try {
-    const raw = localStorage.getItem(GUEST_PROJECT_KEY);
+    const raw = sessionStorage.getItem(GUEST_PROJECT_KEY);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {

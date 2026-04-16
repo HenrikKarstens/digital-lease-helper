@@ -466,7 +466,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
   // Restore from localStorage on mount (without blobs – those come from IndexedDB)
   const [data, setData] = useState<HandoverData>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         return { ...defaultData, ...parsed.data };
@@ -476,7 +476,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
   });
   const [currentStep, setCurrentStep] = useState(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) return JSON.parse(saved).step || 0;
     } catch {}
     return 0;
@@ -523,9 +523,9 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
           })),
         })),
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ data: stripped, step: currentStep }));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ data: stripped, step: currentStep }));
     } catch (e) {
-      console.warn('localStorage save failed:', e);
+      console.warn('sessionStorage save failed:', e);
     }
 
     // Save blobs to IndexedDB (async, non-blocking)
@@ -556,7 +556,7 @@ export const HandoverProvider = ({ children }: { children: ReactNode }) => {
   const resetData = useCallback(() => {
     setData(defaultData);
     setCurrentStep(0);
-    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
     idbClearAll().catch(e => console.warn('[IDB] clear failed:', e));
   }, []);
 

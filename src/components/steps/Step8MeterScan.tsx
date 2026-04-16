@@ -8,6 +8,7 @@ import { useHandover, MeterReading, HkvRoomReading } from '@/context/HandoverCon
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { authFetch } from '@/lib/authFetch';
 import { useGeoPhoto } from '@/hooks/useGeoPhoto';
 import { GeoPermissionGuard } from '@/components/GeoPermissionGuard';
 import { processForensicPhoto } from '@/lib/photoForensics';
@@ -162,13 +163,10 @@ export const Step8MeterScan = () => {
 
       setScanMessage('Erkenne Zählerstand...');
 
-      const response = await fetch(
+      const response = await authFetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-photo`,
         {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
           body: formData,
         }
       );

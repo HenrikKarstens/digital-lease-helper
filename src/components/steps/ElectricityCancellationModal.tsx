@@ -8,6 +8,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { authFetch } from '@/lib/authFetch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useHandover, MeterReading } from '@/context/HandoverContext';
@@ -62,13 +63,10 @@ export const ElectricityCancellationModal = ({
       formData.append('file', file);
       formData.append('context', 'utility-bill');
 
-      const response = await fetch(
+      const response = await authFetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-photo`,
         {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
           body: formData,
         }
       );

@@ -1,9 +1,32 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+async function authenticateAndRateLimit(req: Request, functionName: string): Promise<{ userId: string } | Response> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return new Response(JSON.stringify({ error: 'Nicht autorisiert' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  const userClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
+  const token = authHeader.replace('Bearer ', '');
+  const { data: claims, error: authErr } = await userClient.auth.getClaims(token);
+  if (authErr || !claims?.claims?.sub) {
+    return new Response(JSON.stringify({ error: 'Ungültiges Token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  const userId = claims.claims.sub as string;
+  const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const since = new Date(Date.now() - 60000).toISOString();
+  const { count } = await supabaseAdmin.from('ai_rate_limits').select('*', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since);
+  if ((count ?? 0) >= 10) {
+    return new Response(JSON.stringify({ error: 'Rate-Limit: max. 10 Anfragen/Minute. Bitte warten.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  await supabaseAdmin.from('ai_rate_limits').insert({ user_id: userId, function_name: functionName });
+  return { userId };
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,6 +34,8 @@ serve(async (req) => {
   }
 
   try {
+    const authResult = await authenticateAndRateLimit(req, 'analyze-contract');
+    if (authResult instanceof Response) return authResult;
     const formData = await req.formData();
     const transactionType = formData.get('transactionType') as string || 'rental';
     const documentType = formData.get('documentType') as string || 'main-contract';

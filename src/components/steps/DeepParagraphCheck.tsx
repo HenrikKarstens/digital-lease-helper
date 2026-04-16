@@ -32,18 +32,18 @@ function getDocumentHash(pages: Array<{ dataUrl: string }>): string {
 
 function getClauseCache(docHash: string): Record<string, DeepClause> {
   try {
-    const version = localStorage.getItem(CLAUSE_CACHE_VERSION_KEY);
+    const version = sessionStorage.getItem(CLAUSE_CACHE_VERSION_KEY);
     if (version !== docHash) return {};
-    return JSON.parse(localStorage.getItem(CLAUSE_CACHE_KEY) || '{}');
+    return JSON.parse(sessionStorage.getItem(CLAUSE_CACHE_KEY) || '{}');
   } catch { return {}; }
 }
 
 function setCachedClause(docHash: string, ref: string, clause: DeepClause) {
   try {
-    localStorage.setItem(CLAUSE_CACHE_VERSION_KEY, docHash);
+    sessionStorage.setItem(CLAUSE_CACHE_VERSION_KEY, docHash);
     const cache = getClauseCache(docHash);
     cache[ref] = clause;
-    localStorage.setItem(CLAUSE_CACHE_KEY, JSON.stringify(cache));
+    sessionStorage.setItem(CLAUSE_CACHE_KEY, JSON.stringify(cache));
   } catch {
     console.warn('Could not cache clause detail');
   }
@@ -51,8 +51,8 @@ function setCachedClause(docHash: string, ref: string, clause: DeepClause) {
 
 function clearClauseCache() {
   try {
-    localStorage.removeItem(CLAUSE_CACHE_KEY);
-    localStorage.removeItem(CLAUSE_CACHE_VERSION_KEY);
+    sessionStorage.removeItem(CLAUSE_CACHE_KEY);
+    sessionStorage.removeItem(CLAUSE_CACHE_VERSION_KEY);
   } catch {}
 }
 
